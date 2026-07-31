@@ -54,7 +54,7 @@ Training-only. Completing the course auto-submits.
 | `COLLISION.horizontal_minimum_delta` | impulse magnitude in kg·m/s, despite the name |
 | baro | `abs_pressure`, `pressure_alt`, `temperature` all `nan`. No barometric altitude |
 | race status | keeps counting from the previous race until reset; `race_time_s` can read hundreds of seconds on a fresh connect |
-| hover thrust | **~0.25** (not the 0.55 first guessed) |
+| hover thrust | **~0.27** (not the 0.55 first guessed; refined from 0.25 in flight 2026-07-31). `THRUST_HOVER` is only the default — override per flight with `teleop.py --hover` |
 | `SIM_RESET` settle | **3–4 s**. Wait for `race_start_boot_time_ms` to change, then check pose, then a guard margin — a fixed sleep samples mid-transition and returns the *previous* pose |
 
 Physics is unchanged from VQ1 (all three spec revisions diffed) — only §4.5 Telemetry
@@ -279,11 +279,11 @@ path. Release the sticks and it returns to level instead of holding attitude.
 Throttle changes ride along with the assist and are off in plain acro:
 
 * **Tilt compensation.** Thrust acts along body −z, so at tilt θ you need
-  `THRUST_HOVER / cos(θ)` to hold altitude — 1.22× at 35° bank. Without it hover sags
-  every time you turn, which is most of what makes altitude hard to hold through a lap.
-  Uses the *achieved* attitude, so it compensates the bank you are at rather than the one
-  you asked for. Clamped at 1.6× (~51°) because 1/cos runs away near 90°.
-  At hover 0.25: 0.259 at 15°, 0.289 at 30°, 0.305 at 35°, 0.325 at 35° roll + 20° pitch.
+  `hover / cos(θ)` to hold altitude. Without it hover sags every time you turn, which is
+  most of what makes altitude hard to hold through a lap. Uses the *achieved* attitude, so
+  it compensates the bank you are at rather than the one you asked for. Clamped at 1.6×
+  (~51°) because 1/cos runs away near 90°. As multipliers on the hover point:
+  ×1.04 at 15°, ×1.15 at 30°, ×1.22 at 35°, ×1.30 at 35° roll + 20° pitch.
 * **Return to hover.** Throttle keys slew away from the compensated hover point and it
   eases back exponentially (τ = 0.7 s) when released, so throttle is an offset rather than
   an absolute. From 0.45 it reaches 0.298 in 1 s and 0.261 in 2 s.

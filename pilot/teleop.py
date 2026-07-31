@@ -196,7 +196,7 @@ RATE_SIGN_PITCH = math.copysign(1.0, -ACRO_PITCH)
 # --- auto takeoff on arm --------------------------------------------------------------
 # Open loop, because nothing in VQ2 observes altitude or vertical speed. It unsticks the
 # pad and settles to hover thrust; it does NOT hold height, so expect to trim.
-TAKEOFF_THRUST = 0.40     # UNVERIFIED - above hover (~0.25), below anything violent
+TAKEOFF_THRUST = 0.40     # UNVERIFIED - above THRUST_HOVER, below anything violent
 TAKEOFF_S = 1.0
 
 SLEW_PER_S = 12.0         # command ramp, in units of the per-axis limit per second
@@ -862,7 +862,8 @@ class Sticks:
 # --------------------------------------------------------------------------------------
 
 class Pilot:
-    def __init__(self, conn, rec, boot_ms, listen_only=False):
+    def __init__(self, conn, rec, boot_ms, listen_only=False,
+                 hover=THRUST_HOVER):
         self.conn = conn
         self.rec = rec
         self.boot_ms = boot_ms
@@ -876,7 +877,11 @@ class Pilot:
         self.auto_takeoff = True
         self.levelling = False
         self.level_err = (0.0, 0.0)
-        self.hover_ref = THRUST_HOVER
+        # The hover point is a MEASURED quantity, so it lives on the instance and is
+        # settable with --hover. THRUST_HOVER is only its default. Everything that
+        # needs a hover thrust reads self.hover; nothing re-states the number.
+        self.hover = hover
+        self.hover_ref = hover
 
     # -- one-shot commands ------------------------------------------------------
     def arm(self, armed=True):
@@ -887,7 +892,7 @@ class Pilot:
             mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM, 0,
             1 if armed else 0, 0, 0, 0, 0, 0, 0)
         self.rec.event("arm_command", armed=armed)
-        if armed and self.auto_takeoff and THRUST_HOVER > 0.0:
+        if armed and self.auto_takeoff and self.hover > 0.0:
             self.takeoff_until = time.time() + TAKEOFF_S
             self.rec.event("auto_takeoff", thrust=TAKEOFF_THRUST,
                            seconds=TAKEOFF_S)
@@ -956,7 +961,7 @@ class Pilot:
                 # actually at rather than the one you asked for.
                 ctilt = math.cos(t_roll) * math.cos(t_pitch)
                 comp = TILT_COMP_MAX if ctilt <= 1.0 / TILT_COMP_MAX else 1.0 / ctilt
-                self.hover_ref = min(1.0, THRUST_HOVER * comp)
+                self.hover_ref = min(1.0, self.hover * comp)
 
         # Align to velocity: yaw until the direction of travel is under the nose.
         # The bearing is physical (body frame, from the accelerometer), so the
@@ -977,7 +982,7 @@ class Pilot:
         if self.takeoff_until:
             if thr_ax < -0.05 or time.time() >= self.takeoff_until:
                 self.takeoff_until = 0.0
-                self.thrust = THRUST_HOVER
+                self.thrust = self.hover
             else:
                 self.thrust = TAKEOFF_THRUST
         elif self.levelling and abs(thr_ax) < THRUST_STICK_EPS:
@@ -1102,6 +1107,10 @@ def main():
                     help="skip the cv2 window (less jitter in the control loop)")
     ap.add_argument("--duration", type=float, default=0.0,
                     help="exit cleanly after N seconds (0 = until the quit key)")
+    ap.add_argument("--hover", type=float, default=THRUST_HOVER,
+                    help="measured hover thrust 0..1 (default %(default)s). F10 snaps "
+                         "to it, auto-takeoff settles to it, and the levelling assist "
+                         "returns to it tilt-compensated.")
     ap.add_argument("--listen", action="store_true",
                     help="record only: send no setpoints, no arm/disarm, no reset. "
                          "Safe to attach to a flight already in progress.")
@@ -1125,7 +1134,8 @@ def main():
     boot_ms = int(time.time() * 1000)
     tel = Telemetry(conn, rec)
     vision = VisionRX(rec, decode=not args.no_view)
-    pilot = Pilot(conn, rec, boot_ms, listen_only=args.listen)
+    pilot = Pilot(conn, rec, boot_ms, listen_only=args.listen,
+                  hover=args.hover)
     sticks = Sticks()
     heading = HeadingReadout()
 
@@ -1140,7 +1150,7 @@ def main():
         print("Body-rate control only. This flies like an acro quad: the drone holds\n"
               "whatever attitude you leave it in, so it will NOT self-level and\n"
               "releasing the keys is not a hover. Throttle starts at %.2f.\n"
-              % THRUST_HOVER)
+              % pilot.hover)
         print("Press %s to arm, %s to cut and quit.\n"
               % (KEYS_COMMAND["arm"].upper(), KEYS_COMMAND["quit"].upper()))
 
@@ -1184,9 +1194,9 @@ def main():
                     heading.zero(snap["heading_gyro"])
                     print("\n[sim reset] (heading zeroed)")
                 elif action == "hover":
-                    pilot.thrust = THRUST_HOVER
-                    rec.event("thrust_to_hover", thrust=THRUST_HOVER)
-                    print("\n[throttle] %.2f" % THRUST_HOVER)
+                    pilot.thrust = pilot.hover
+                    rec.event("thrust_to_hover", thrust=pilot.hover)
+                    print("\n[throttle] %.2f" % pilot.hover)
                 elif action == "zero_head":
                     heading.zero(snap["heading_gyro"])
                     rec.event("heading_zeroed")
