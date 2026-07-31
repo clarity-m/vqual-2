@@ -1,0 +1,33 @@
+Connecting to udpin:127.0.0.1:14550 ...
+Connected to system 1.
+resting accel: (-2.456362724304199, -0.0037845373153686523, -9.505391120910645)
+
+  --- rep 0 ---
+    rate           +1 : asym +0.1164 (all +0.0599, n=128)   d_roll -109.40 deg
+    rate           -1 : asym -0.2368 (all -0.1467, n=128)   d_roll -54.85 deg
+    attitude       +1 : asym +0.2207 (all +0.2164, n=129)   d_roll +19.75 deg
+    attitude       -1 : asym -0.2398 (all -0.1526, n=129)   d_roll -17.16 deg
+  --- rep 1 ---
+    rate           +1 : asym -0.1345 (all -0.1129, n=127)   d_roll -120.62 deg
+    rate           -1 : asym -0.2389 (all -0.1459, n=126)   d_roll -112.70 deg
+    attitude       +1 : asym +0.3449 (all +0.2991, n=128)   d_roll +19.66 deg
+    attitude       -1 : asym -0.2598 (all -0.1701, n=129)   d_roll -17.75 deg
+  --- rep 2 ---
+    rate           +1 : asym +0.1021 (all +0.0520, n=128)   d_roll -113.00 deg
+    rate           -1 : asym -0.2491 (all -0.1585, n=128)   d_roll -121.41 deg
+    attitude       +1 : asym +0.3539 (all +0.3039, n=125)   d_roll +20.03 deg
+    attitude       -1 : asym -0.2747 (all -0.1775, n=129)   d_roll -17.62 deg
+
+  rate_control: +mean +0.0280  -mean -0.2416  paired diff +0.2696  signs agree True
+      tilt cross-check: d_roll diff -18.016 deg, agree False
+  attitude_test: +mean +0.3065  -mean -0.2581  paired diff +0.5646  signs agree True
+      tilt cross-check: d_roll diff +37.324 deg, agree True
+
+  cutting and disarming ...
+
+========================================================================
+VERDICT: QUATERNION HONOURED
+   attitude commands split by sign, every pair agreeing: diff +0.5646 against rate-control diff +0.2696
+========================================================================
+
+wrote C:\Users\USER\Projects\vqual-2\pilot\probe_angle_result.json

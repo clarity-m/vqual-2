@@ -1,0 +1,15 @@
+# The simulator itself (4.7 GB, vendor binary, redownloadable). Lives in this folder
+# only because that is where it was unpacked.
+AI-GP Simulator*/
+
+# Flight recordings: hundreds of thousands of JPEGs, gigabytes. Never in git.
+# If a frame is worth keeping, copy it into pilot/evidence/ — that is what it is for.
+pilot/sessions/
+
+# Archives used to move recordings off the CAEN VM
+*.tar
+*.zip
+
+__pycache__/
+*.pyc
+.venv/

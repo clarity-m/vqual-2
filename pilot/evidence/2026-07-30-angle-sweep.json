@@ -1,0 +1,62 @@
+{
+  "thrust": 0.2,
+  "reps": 3,
+  "roll_rate_test": 1.0,
+  "roll_angle_test": 20.0,
+  "acro_mask": 144,
+  "angle_mask": 16,
+  "measure_s": 2.0,
+  "reset_per_trial": true,
+  "sweep": [
+    {
+      "commanded": 5.0,
+      "achieved": 4.078022401647528,
+      "asym": 0.3689195906359052,
+      "ready": true
+    },
+    {
+      "commanded": -5.0,
+      "achieved": -3.6085290917394737,
+      "asym": -0.14188993483548984,
+      "ready": true
+    },
+    {
+      "commanded": 10.0,
+      "achieved": 9.523935886921729,
+      "asym": 0.38392919316425805,
+      "ready": true
+    },
+    {
+      "commanded": -10.0,
+      "achieved": -5.17279302421388,
+      "asym": -0.2527231076528551,
+      "ready": true
+    },
+    {
+      "commanded": 20.0,
+      "achieved": 19.648669935435674,
+      "asym": 0.3492767420812295,
+      "ready": true
+    },
+    {
+      "commanded": -20.0,
+      "achieved": -17.706677308274752,
+      "asym": -0.2756236136483494,
+      "ready": true
+    },
+    {
+      "commanded": 30.0,
+      "achieved": 24.41879338014928,
+      "asym": 0.05109842558662722,
+      "ready": true
+    },
+    {
+      "commanded": -30.0,
+      "achieved": -29.08913000636315,
+      "asym": -0.24172822396133758,
+      "ready": true
+    }
+  ],
+  "sweep_slope": 0.8904367344027622,
+  "sweep_rms": 1.9012558192374296
+}

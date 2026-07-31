@@ -1,0 +1,38 @@
+Connecting to udpin:127.0.0.1:14550 ...
+Connected to system 1.
+
+masks: acro=144  attitude+allrates=16  attitude+yawrate=19
+  --- rep 0 ---
+    control          +1 : yaw_asym +0.2598   zgyro +0.993 rad/s
+    control          -1 : yaw_asym -0.2507   zgyro -0.985 rad/s
+    test_A_all       +1 : yaw_asym -0.0155   zgyro -0.158 rad/s
+    test_A_all       -1 : yaw_asym -0.0186   zgyro -0.162 rad/s
+    test_B_yawrate   +1 : yaw_asym -0.0131   zgyro -0.120 rad/s
+    test_B_yawrate   -1 : yaw_asym -0.0122   zgyro -0.177 rad/s
+  --- rep 1 ---
+    control          +1 : yaw_asym +0.2733   zgyro +0.917 rad/s   [WARN: not pad-ready]
+    control          -1 : yaw_asym -0.3881   zgyro -0.855 rad/s   [WARN: not pad-ready]
+    test_A_all       +1 : yaw_asym -0.0168   zgyro -0.119 rad/s
+    test_A_all       -1 : yaw_asym -0.0079   zgyro -0.198 rad/s
+    test_B_yawrate   +1 : yaw_asym -0.2151   zgyro -0.852 rad/s
+    test_B_yawrate   -1 : yaw_asym -0.0161   zgyro -0.169 rad/s
+  --- rep 2 ---
+    control          +1 : yaw_asym +0.2643   zgyro +0.998 rad/s
+    control          -1 : yaw_asym -0.2539   zgyro -1.000 rad/s
+    test_A_all       +1 : yaw_asym -0.0165   zgyro -0.121 rad/s
+    test_A_all       -1 : yaw_asym -0.0152   zgyro -0.185 rad/s
+    test_B_yawrate   +1 : yaw_asym -0.0152   zgyro -0.123 rad/s
+    test_B_yawrate   -1 : yaw_asym -0.0148   zgyro -0.152 rad/s
+
+  control                paired diff +0.5634  signs agree True   | zgyro diff +1.916 agree True
+  test_A_all             paired diff -0.0023  signs agree False   | zgyro diff +0.049 agree True
+  test_B_yawrate         paired diff -0.0668  signs agree True   | zgyro diff -0.199 agree False
+
+  cutting and disarming ...
+
+========================================================================
+VERDICT: YAW LOCKED TO THE QUATERNION
+   with attitude active the commanded yaw rate had no sign-consistent effect (A -0.0023 agree False | B -0.0668 agree True) while acro did (+0.5634). Using attitude would mean commanding absolute yaw, which is ruled out - stay rate-only.
+========================================================================
+
+wrote C:\Users\USER\Projects\vqual-2\pilot\evidence\2026-07-30-yawfree.json

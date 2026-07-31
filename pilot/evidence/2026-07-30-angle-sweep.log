@@ -1,0 +1,29 @@
+Connecting to udpin:127.0.0.1:14550 ...
+Connected to system 1.
+resting accel: (0.00857002753764391, 1.1549557447433472, -9.73978328704834)
+
+  sweeping commanded bank angle: [5.0, 10.0, 20.0, 30.0] deg (both signs)
+
+    angle 5        +1 : asym +0.3689 (all +0.3106, n=126)   d_roll +4.08 deg
+    angle -5       -1 : asym -0.1419 (all -0.0524, n=128)   d_roll -3.61 deg
+    angle 10       +1 : asym +0.3839 (all +0.3323, n=129)   d_roll +9.52 deg
+    angle -10      -1 : asym -0.2527 (all -0.1371, n=128)   d_roll -5.17 deg
+    angle 20       +1 : asym +0.3493 (all +0.2964, n=130)   d_roll +19.65 deg
+    angle -20      -1 : asym -0.2756 (all -0.1788, n=128)   d_roll -17.71 deg
+    angle 30       +1 : asym +0.0511 (all +0.0848, n=127)   d_roll +24.42 deg
+    angle -30      -1 : asym -0.2417 (all -0.1843, n=129)   d_roll -29.09 deg
+
+  commanded -> achieved
+      +5.0 deg ->   +4.08 deg   (error -0.92)
+      -5.0 deg ->   -3.61 deg   (error +1.39)
+     +10.0 deg ->   +9.52 deg   (error -0.48)
+     -10.0 deg ->   -5.17 deg   (error +4.83)
+     +20.0 deg ->  +19.65 deg   (error -0.35)
+     -20.0 deg ->  -17.71 deg   (error +2.29)
+     +30.0 deg ->  +24.42 deg   (error -5.58)
+     -30.0 deg ->  -29.09 deg   (error +0.91)
+
+  fit: achieved = 0.890 x commanded  (rms residual 1.90 deg)
+  => achieved angle TRACKS the setpoint: a real attitude controller, not a mechanical stop.
+
+wrote C:\Users\USER\Projects\vqual-2\pilot\probe_angle_result.json
