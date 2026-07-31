@@ -107,7 +107,7 @@ ACRO_YAW = 2.0
 #                 auto-takeoff settles to. Setting this to 0 disables auto-takeoff,
 #                 because "take off then settle to zero thrust" is just a drop.
 THRUST_START = 0.0
-THRUST_HOVER = 0.25      # measured in flight; adjust if it drifts up or down
+THRUST_HOVER = 0.27      # measured in flight; adjust if it drifts up or down
 THRUST_SLEW = 0.5         # per second, while a throttle key is held
 
 BOOST = 2.0               # left ctrl
@@ -162,6 +162,28 @@ LEVEL_MAX_ANGLE = math.radians(35.0)   # full stick = this much bank / pitch
 LEVEL_GAIN = 4.0                       # rad/s of body rate per rad of angle error
 LEVEL_MAX_RATE = 3.0                   # rad/s, clamp on the outer loop's output
 LEVEL_MAX_AGE = 0.25                   # s; older truth than this and the assist drops out
+
+# --- throttle behaviour under the levelling assist -------------------------------------
+# Two separate fixes, both only active while levelling (plain acro is untouched):
+#
+# TILT COMPENSATION. Thrust acts along body -z, so only its vertical component holds the
+# drone up: at a tilt of theta you need THRUST_HOVER / cos(theta) to stay level. At 35 deg
+# bank that is 1.22x, so an uncompensated hover setting sags every time you turn - which is
+# most of what makes a lap hard to hold altitude through. cos(theta) = cos(roll)*cos(pitch),
+# both of which the assist already has. Clamped, because 1/cos runs away near 90 deg.
+#
+# RETURN TO HOVER. Plain teleop's throttle is a held value that stays where you leave it,
+# which pairs badly with an angle-mode stick: you end up trimming throttle constantly. Here
+# the throttle keys slew AWAY from the (compensated) hover point and it eases back when you
+# let go, so throttle becomes an offset rather than an absolute.
+#
+# Both need truth attitude, so like the rest of the assist they cannot engage under VQ2.
+# Neither observes altitude - nothing here is an altitude hold, and letting go returns you
+# to hover THRUST, not to a hover. Vertical speed is not measured, so drift remains yours
+# to trim.
+TILT_COMP_MAX = 1.6            # ceiling on the 1/cos(tilt) factor (~51 deg of tilt)
+THRUST_RETURN_TAU = 0.7        # s; exponential ease back to the hover point
+THRUST_STICK_EPS = 0.02        # |axis| below this counts as "let go"
 
 # Sign that converts a physical (NED) body rate into this sim's mirrored command
 # convention. Derived from the constants the stick path already uses rather than written
@@ -854,6 +876,7 @@ class Pilot:
         self.auto_takeoff = True
         self.levelling = False
         self.level_err = (0.0, 0.0)
+        self.hover_ref = THRUST_HOVER
 
     # -- one-shot commands ------------------------------------------------------
     def arm(self, armed=True):
@@ -928,6 +951,13 @@ class Pilot:
                 roll = p_roll * RATE_SIGN_ROLL
                 pitch = p_pitch * RATE_SIGN_PITCH
 
+                # Thrust needed to hold altitude at this tilt. Uses the ACHIEVED
+                # attitude, not the demanded one, so it compensates the bank you are
+                # actually at rather than the one you asked for.
+                ctilt = math.cos(t_roll) * math.cos(t_pitch)
+                comp = TILT_COMP_MAX if ctilt <= 1.0 / TILT_COMP_MAX else 1.0 / ctilt
+                self.hover_ref = min(1.0, THRUST_HOVER * comp)
+
         # Align to velocity: yaw until the direction of travel is under the nose.
         # The bearing is physical (body frame, from the accelerometer), so the
         # desired yaw RATE is physical too - dividing by ACRO_YAW converts it into
@@ -950,6 +980,14 @@ class Pilot:
                 self.thrust = THRUST_HOVER
             else:
                 self.thrust = TAKEOFF_THRUST
+        elif self.levelling and abs(thr_ax) < THRUST_STICK_EPS:
+            # Let go under the assist: ease back to the tilt-compensated hover point.
+            # Exponential rather than a ramp so a small correction settles quickly and a
+            # large one does not lurch. Nothing here observes altitude - this returns to
+            # hover THRUST, which is not the same as returning to a hover.
+            k = 1.0 - math.exp(-dt / THRUST_RETURN_TAU)
+            self.thrust = min(1.0, max(0.0,
+                                       self.thrust + (self.hover_ref - self.thrust) * k))
         else:
             # Throttle is a held value, not a stick deflection - it integrates
             # while a key is down and stays put when released.
@@ -995,7 +1033,7 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     a, b, c, d = pilot.last_cmd
     line1 = "RATES r%+.2f p%+.2f y%+.2f  THR %.2f%s%s  hdg %+4.0f%s" % (
         a, b, c, d,
-        " LEVEL" if pilot.levelling else "",
+        (" LEVEL hov%.2f" % pilot.hover_ref) if pilot.levelling else "",
         " TAKEOFF" if pilot.takeoff_until else "",
         math.degrees(heading_now),
         "" if tel["gyro_live"] else " (no gyro!)")

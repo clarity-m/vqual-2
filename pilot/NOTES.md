@@ -274,6 +274,25 @@ path. Release the sticks and it returns to level instead of holding attitude.
 
     LEVEL_MAX_ANGLE 35 deg    LEVEL_GAIN 4.0 (rad/s per rad)    LEVEL_MAX_RATE 3.0 rad/s
 
+**Roll/pitch levelling confirmed working in flight (Claire, 2026-07-31).**
+
+Throttle changes ride along with the assist and are off in plain acro:
+
+* **Tilt compensation.** Thrust acts along body −z, so at tilt θ you need
+  `THRUST_HOVER / cos(θ)` to hold altitude — 1.22× at 35° bank. Without it hover sags
+  every time you turn, which is most of what makes altitude hard to hold through a lap.
+  Uses the *achieved* attitude, so it compensates the bank you are at rather than the one
+  you asked for. Clamped at 1.6× (~51°) because 1/cos runs away near 90°.
+  At hover 0.25: 0.259 at 15°, 0.289 at 30°, 0.305 at 35°, 0.325 at 35° roll + 20° pitch.
+* **Return to hover.** Throttle keys slew away from the compensated hover point and it
+  eases back exponentially (τ = 0.7 s) when released, so throttle is an offset rather than
+  an absolute. From 0.45 it reaches 0.298 in 1 s and 0.261 in 2 s.
+
+Neither observes altitude. **This is not an altitude hold** — letting go returns you to
+hover *thrust*, not to a hover, and vertical drift is still yours to trim. Vertical speed
+is not measured anywhere: VQ2 blocks position and velocity, and double-integrating the
+accelerometer drifts.
+
 Four properties that made this preferable to getting angle mode from the sim, even if the
 sim would have given it:
 
