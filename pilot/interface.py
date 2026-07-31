@@ -75,7 +75,7 @@ N_GATES = 3
 # Ribbon direction samples, at increasing look-ahead distance.
 N_RIBBON = 6
 
-OBS_DIM = 70
+OBS_DIM = 73
 
 HOVER_THRUST = 0.25  # measured in flight, NOT the 0.55 originally guessed
 MAX_RATE_RPS = 6.0
@@ -99,10 +99,19 @@ class YawMode(IntEnum):
     and momentum the other. That makes it a FREE GIMBAL: the camera can be pointed
     anywhere at no trajectory cost, and roll alone owns the trajectory.
 
-    AUTO_ATTENTION delegates yaw to a fixed servo that drives Attention.target_dir_body
-    to the frame centre, leaving the policy a 3-DoF problem (roll, pitch, thrust).
-    Recommended default -- a learned policy should not have to rediscover "point the
-    camera at the thing you are looking at". POLICY takes the fourth axis back.
+    AUTO_ATTENTION delegates yaw to a fixed servo driving the target's AZIMUTH
+    (horizontal bearing) to zero -- not the full 3-D direction to the frame centre.
+    Yaw cannot change elevation at all, and with the camera pitched 20 deg up a gate at
+    own altitude sits below centre at zero bearing, so a centre-the-target objective
+    would chase an error no yaw command can reduce.
+
+    Vertical framing is therefore NOT delegated: it stays with pitch/thrust in the
+    policy, and with perception's choice of what to attend to. This is the binding
+    constraint on this course -- see the frame-span note at the top of the file.
+
+    Leaves the policy a 3-DoF problem (roll, pitch, thrust). Recommended default: yaw
+    has almost no direct reward signal, since it does not disturb the trajectory, so
+    learning it from reward is mostly wasted effort. POLICY takes the axis back.
     """
 
     AUTO_ATTENTION = 0
@@ -126,15 +135,35 @@ class GateObs:
 
     pos_body: np.ndarray = field(default_factory=lambda: np.zeros(3))  # metres, x/y/z
 
-    # Unit vector along the gate axis, pointing back OUT toward the approach side.
-    # This is what makes "enter at the normal" expressible: the guidance target is a
-    # virtual approach point at pos_body + d * normal_body, not the gate centre itself.
+    # Unit vector along the gate axis. Guidance target is pos_body + d * normal_body,
+    # which is what makes "enter at the normal" expressible.
+    #
+    # A square is symmetric, so PnP alone yields an UNDIRECTED plane normal and, near
+    # head-on, two tilt solutions that both reproject correctly. Producer must resolve
+    # both before setting normal_valid:
+    #   direction -- sign it to point TOWARD the camera. For a gate not yet crossed
+    #                (race packet says it is still ahead) we are on its approach side
+    #                by construction, so the camera-facing normal IS the approach side.
+    #   tilt      -- resolve by temporal consistency with recent frames. Near head-on
+    #                the two solutions are nearly degenerate and the pick is unreliable;
+    #                set normal_valid False rather than guessing.
+    # normal_valid False means "no approach point available" -- fall back to steering at
+    # the gate centre. It does NOT mean the position is unusable.
     normal_body: np.ndarray = field(default_factory=lambda: np.zeros(3))
     normal_valid: bool = False
 
+    # True when pos_body came from a pose-bearing fit (PnP). False when it came from
+    # centroid + apparent size, which assumes a fronto-parallel gate: an oblique gate
+    # projects narrower and the range is then biased LONG, with no pose available to
+    # correct it -- precisely because the fit that would supply one has failed.
+    # Consumers must treat metric range as uncertain when this is False; range_sigma_m
+    # carries the producer's estimate of how uncertain.
+    pose_valid: bool = False
+    range_sigma_m: float = 0.0
+
     confidence: float = 0.0  # 0..1
     staleness_s: float = 0.0  # 0.0 == observed in the current frame
-    size_px: float = 0.0
+    size_px: float = 0.0  # apparent width of the INNER aperture, longest fitted edge
 
     @property
     def range_m(self) -> float:
@@ -251,12 +280,22 @@ class Observation:
         entries are zeroed with their flag cleared, so "not seen" is representable
         rather than being faked as "seen at the origin".
         """
+        z3 = (0.0, 0.0, 0.0)
         v: list[float] = []
         for g in self.gates:
-            v += list(g.pos_body) + list(g.normal_body)
-            v += [float(g.valid), float(g.normal_valid), g.confidence, min(g.staleness_s, 5.0)]
-        v += list(self.ribbon.bearings_rad) + list(self.ribbon.elevs_rad)
-        v += [float(self.ribbon.valid), self.ribbon.pixel_fraction, min(self.ribbon.staleness_s, 5.0)]
+            # Mask HERE rather than trusting the producer. A stale or half-failed
+            # producer must not be able to leak a phantom gate into a learned policy:
+            # "not seen" has to be unrepresentable as anything but zeros.
+            v += list(g.pos_body) if g.valid else list(z3)
+            v += list(g.normal_body) if (g.valid and g.normal_valid) else list(z3)
+            v += [float(g.valid), float(g.normal_valid), float(g.pose_valid),
+                  g.confidence if g.valid else 0.0,
+                  min(g.staleness_s, 5.0) if g.valid else 5.0]
+        rb = self.ribbon
+        v += list(rb.bearings_rad) if rb.valid else [0.0] * N_RIBBON
+        v += list(rb.elevs_rad) if rb.valid else [0.0] * N_RIBBON
+        v += [float(rb.valid), rb.pixel_fraction if rb.valid else 0.0,
+              min(rb.staleness_s, 5.0) if rb.valid else 5.0]
         o = self.own
         v += list(o.gyro) + list(o.accel)
         v += [o.roll_rad, o.pitch_rad, o.attitude_conf]

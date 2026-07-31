@@ -11,7 +11,7 @@ propose changes, don't edit unilaterally.
    vqual-1's recordings are valid data: the spec diff shows VQ1 and VQ2 physics are
    identical, only telemetry changed.
 2. **Surrogate** — a steppable NumPy sim: fitted plant + course map + *synthetic
-   detections*. It renders no pixels and does not need to; the policy consumes the 70-D
+   detections*. It renders no pixels and does not need to; the policy consumes the 73-D
    observation, not images.
 3. **Policy** — `interface.Policy`. PID, MPC or learned; the surrogate scores them
    identically, so the choice is an implementation detail.

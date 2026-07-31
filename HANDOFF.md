@@ -32,7 +32,7 @@ class Policy:
     def __call__(self, obs: Observation) -> Action: ...
 ```
 
-* `Observation` — 70-D via `.to_vector()`. Up to 3 gates (body-frame position, normal,
+* `Observation` — 73-D via `.to_vector()`. Up to 3 gates (body-frame position, normal,
   confidence, staleness), the guidance ribbon, own IMU state, race state, attention target.
 * `Action` — `roll_rate`, `pitch_rate`, `yaw_rate` (rad/s), `thrust` (0..1).
 
@@ -48,7 +48,7 @@ is the only thing keeping two people's code compatible.
 **1. Plant fit.** Mass, drag, thrust curve, rate-loop response, from `cmd.csv` → `imu.csv`.
 
 **2. Surrogate.** Steppable NumPy sim: fitted plant + course map + *synthetic detections*.
-It renders no pixels and doesn't need to — the policy consumes 70 numbers, not images.
+It renders no pixels and doesn't need to — the policy consumes 73 numbers, not images.
 This is what buys tuning iterations; live sim runs are ~15–25 per session, shared, and
 serialized behind one exclusive UDP port.
 

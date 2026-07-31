@@ -34,8 +34,14 @@ Training-only. Completing the course auto-submits.
   spans **+49.4° to −9.4°** about body-forward. That narrow lower edge is the binding
   constraint on this course: a gate at own altitude renders low, and pitching down to
   accelerate pushes it lower.
-* Known inner square ⇒ monocular rangefinder, spec-exact: **`range_m = 480 / gate_px`**.
-  Four corners ⇒ `solvePnP` ⇒ full gate pose including its normal.
+* Known inner square ⇒ monocular rangefinder, spec-exact: **`range_m = 480 / gate_px`** —
+  but this assumes a **fronto-parallel** gate. An oblique gate projects narrower, so the
+  size-only estimate is biased **long**, and it is used exactly when the pose fit that
+  would correct it has failed. Treat size-only range as uncertain, not metric.
+* Four corners ⇒ `solvePnP` ⇒ gate pose. The square is symmetric, so PnP gives an
+  **undirected** normal plus a two-fold tilt ambiguity near head-on. Direction is resolved
+  by signing it toward the camera (for a gate not yet crossed we are on its approach side
+  by construction); tilt by temporal consistency, or declared invalid.
 
 ## Measured against the live sim
 
@@ -81,7 +87,7 @@ real rad/s). Roll owns the trajectory; yaw is a free gimbal for the camera and c
 nothing in path. Guidance target is a virtual approach point at `pos_body + d·normal_body`,
 which is what makes "enter at the gate normal" expressible.
 
-Interface frozen in `interface.py` (70-D observation, 4-D action). Perception above it,
+Interface frozen in `interface.py` (73-D observation, 4-D action). Perception above it,
 control below it, split across two people.
 
 ### Why velocity setpoints are unusable
