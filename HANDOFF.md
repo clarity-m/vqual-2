@@ -78,6 +78,16 @@ laptop. Ask Claire for a copy; don't assume they're backed up.
 
 `cmd.csv` pairs command with response, which is what makes system ID possible.
 
+**Two sign facts you must have before touching the data** — both settled by measurement on
+2026-07-31, both able to mirror a model silently:
+
+1. The VQ1 truth streams are each wrong on a *different* axis.
+   `truth_roll = ATTITUDE.roll`, `truth_pitch = ODOMETRY.pitch`, `truth_yaw = -ATTITUDE.yaw`.
+2. The simulator's whole body-rate convention is mirrored vs MAVLink NED — commands *and*
+   gyro. Comparing them to each other correlates at +0.96 and proves nothing.
+
+Details and the failed approaches: `pilot/control/README.md`.
+
 ### The VQ1 sim is a ground-truth rig — use it
 
 VQ1 and VQ2 have **identical physics and identical gate dimensions** (all three spec
