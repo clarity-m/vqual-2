@@ -1,7 +1,9 @@
 # init after new vm session
 powershell -NoProfile -ExecutionPolicy Bypass -File Z:\claude-drop\runner.ps1
 
-# flight sim exe path 
+# flight sim exe paths — TWO builds ship side by side
+#   VQ2 (no pose telemetry): AIGP_3391FlightSim.exe
+#   VQ1 (streams ATTITUDE/LOCAL_POSITION_NED/ODOMETRY): AIGP_VQ1_3391FlightSim.exe
 C:\Users\clarity\AppData\Local\aigp\AIGP_3391\FlightSim.exe
  - physics is realtime keep 30 fps
 

@@ -60,6 +60,32 @@ Training-only. Completing the course auto-submits.
 Physics is unchanged from VQ1 (all three spec revisions diffed) — only §4.5 Telemetry
 changed. **All vqual-1 recordings are valid system-ID data for this plant.**
 
+### Two sim builds ship side by side (measured with `msgscan.py`, 2026-07-31)
+
+`AIGP_3391` is VQ2. `AIGP_VQ1_3391` is VQ1 **and still streams pose**:
+
+| message | VQ2 build | VQ1 build |
+|---|---|---|
+| `ATTITUDE` | — | **113.8 Hz** |
+| `LOCAL_POSITION_NED` | — | **92.8 Hz** |
+| `ODOMETRY` | — | **72.2 Hz** |
+| `ACTUATOR_OUTPUT_STATUS` | 96.5 Hz | 92.8 Hz |
+| `HIGHRES_IMU` | 62.9 Hz | 47.7 Hz |
+| `HEARTBEAT` | 10.2 Hz | 10.0 Hz |
+| `ENCAPSULATED_DATA` | 4.1 Hz | 4.0 Hz |
+
+Three consequences:
+
+* **`ATTITUDE` at ~114 Hz is the physics rate**, so `HIGHRES_IMU` is a deliberate
+  downsample, not a bandwidth limit.
+* **IMU rate is load-dependent** — 62.9 vs 47.7 Hz between builds. There is no nominal
+  period to design around; anything fitted from recordings must weight by actual
+  timestamp deltas. VQ1 recordings carry a *sparser* IMU than the VQ2 pilot will see,
+  which errs safe.
+* **`ACTUATOR_OUTPUT_STATUS` (~95 Hz) is permitted under VQ2 and currently unused.** It
+  is the highest-rate signal we are allowed and reflects what the FC did with our rate
+  command — the best available observable for fitting the inner loop.
+
 ## Sign conventions — SETTLED 2026-07-31
 
 Traced `KEYS_AXIS` → `ACRO_*`, flight-confirmed:
