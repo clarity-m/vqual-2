@@ -334,7 +334,11 @@ class Recorder:
         self._put(("event", None, payload))
 
     def frame(self, frame_id, sim_time_ns, jpeg_bytes):
-        name = "%08d.jpg" % frame_id
+        # Under --no-frames the JPEG is not written, so the `file` column must not
+        # name one: it previously recorded a filename that never existed, which
+        # reads as "the frame is there" to anything consuming the CSV later.
+        # Timing and size still carry the frame-rate information worth keeping.
+        name = "%08d.jpg" % frame_id if self.save_frames else ""
         self.row("frames", time.time_ns(), frame_id, sim_time_ns,
                  len(jpeg_bytes), name)
         if self.save_frames:
