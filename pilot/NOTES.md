@@ -113,13 +113,37 @@ Three consequences:
   is the highest-rate signal we are allowed and reflects what the FC did with our rate
   command — the best available observable for fitting the inner loop.
 
-## Sign conventions — PARTIALLY settled
+## Sign conventions — SETTLED 2026-07-31 by camera referee
 
-| axis | sim vs canonical body NED | evidence |
-|---|---|---|
-| roll rate | **INVERTED** (hence `ACRO_ROLL = -2.5`) | flight |
-| yaw rate | **INVERTED** | flight, Claire 2026-07-31: `E` commands +2.0 rad/s and the drone yaws LEFT. Same on both builds |
-| pitch rate | **UNVERIFIED** | rests only on the code comment `w = nose down = forward`. Nobody has watched it |
+**The sim's entire body-rate convention is mirrored relative to MAVLink body NED —
+commands AND gyro, on all three axes.** One sentence, no per-axis exceptions.
+
+Session 20260731-144815, nine isolated taps (D W E × 3). Rotation was cleanly
+single-axis: roll taps show `int_y`, `int_z` = 0.000. Two independent referees:
+
+| tap | commanded | `xyz` gyro | camera says | gravity-validated angle |
+|---|---|---|---|---|
+| `D` | −2.50 | −0.29 | rotation −16.5° ⇒ **rolled RIGHT** | `ATTITUDE.roll` +0.291 ⇒ RIGHT |
+| `W` | −2.50 | −0.30 | dy +96 px ⇒ **pitched UP** | `ODOMETRY.pitch` +0.281 ⇒ UP |
+| `E` | +2.00 | +0.18 | dx +55 px ⇒ **yawed LEFT** | (gravity cannot see yaw) |
+
+Every magnitude agrees: 96 px ⇒ 16.7° vs gyro 16.6°; 55 px ⇒ 9.8° vs gyro 10.3°.
+
+So a **negative** commanded rate produces a **positive** NED rotation, and the gyro
+reports the same (mirrored) sign as the command — which is exactly why comparing
+command against gyro looks perfectly consistent and proves nothing.
+
+**Consequences for the teleop keys** (`camreferee.py` re-runs this on any session):
+
+| key | sends | actually does | intuitive? |
+|---|---|---|---|
+| `D` | −2.5 | rolls RIGHT | yes |
+| `W` | −2.5 | pitches **UP** — flies BACKWARD | **no** |
+| `E` | +2.0 | yaws **LEFT** | **no** |
+
+**The code comment `w = nose down = forward` is wrong.** Under the interface rule that
+signs live in the link layer only, `ACRO_PITCH` and `ACRO_YAW` want flipping so `W` is
+nose-down and `E` is yaw-right; `ACRO_ROLL` is already correct.
 
 **Correction, 2026-07-31.** An earlier version of this section declared all three settled,
 with pitch and yaw "to spec". That was wrong. It came from reading `KEYS_AXIS` — which

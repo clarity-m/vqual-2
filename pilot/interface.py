@@ -22,20 +22,28 @@ Canonical body NED, textbook:  x forward,  y right,  z down.
     bearing    > 0  ->  target is RIGHT of the nose
     elevation  > 0  ->  target is ABOVE the nose
 
-Measured state of the simulator:
+THE SIMULATOR'S ENTIRE BODY-RATE CONVENTION IS MIRRORED vs the above -- commands AND
+gyro, all three axes. Settled 2026-07-31 against the camera (pilot/camreferee.py) and
+corroborated by the gravity-validated attitude streams.
 
-    roll_rate   INVERTED vs the convention above  (SIGN_ROLL = -1)   flight-confirmed
-    yaw_rate    INVERTED                          (SIGN_YAW  = -1)   flight-confirmed
-    pitch_rate  UNVERIFIED -- rests on a code comment, not an observation
+    SIGN_ROLL = SIGN_PITCH = SIGN_YAW = -1
 
-Corrections live in the link layer ONLY, applied when encoding a MAVLink message.
-No file above the link layer may contain a sign flip.
+Applied in the link layer ONLY, when encoding a MAVLink message, and correspondingly
+when reading HIGHRES_IMU's gyro. No file above the link layer may contain a sign flip.
 
-An acro sign error is SELF-ANNOUNCING: the drone visibly moves the wrong way within a
-second of flight. But it only announces itself to someone WATCHING. Two of these were
-initially recorded as "to spec" by reading the source -- which shows only which key is
-positive, never which way the airframe goes -- and were corrected by a pilot's eyes.
-Reading the code is not a substitute for watching the drone.
+WHY THIS WAS HARD, and the trap to not re-enter: the gyro is mirrored in the SAME
+direction as the command, so commanded-rate vs measured-gyro correlates at +0.96 and
+looks like confirmation. It is not. It is a closed loop inside one convention, and it
+cannot see a mirror applied to both ends -- the identical failure that hid vqual-1's
+yaw sign for three sessions, reproduced here with a different pair of streams.
+
+Only a referee OUTSIDE the convention settles it. The camera works because it is bolted
+to the airframe and the world's motion in the image is a physical fact. Gravity works
+for roll and pitch but is blind to yaw, and is swamped by linear acceleration during
+aggressive flight -- it is trustworthy only when nearly stationary.
+
+Reading the source is not a substitute. KEYS_AXIS names which key is positive; it can
+never say which way the airframe goes.
 
     *** WHERE SIGN ERRORS ARE ACTUALLY DANGEROUS: THE SURROGATE FIT. ***
 
