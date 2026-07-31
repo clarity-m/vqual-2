@@ -142,6 +142,11 @@ actuation basis differs all the way down. `link.py` (MAVLink plumbing) does tran
 * Gate count (~20) is Claire-observed, unconfirmed.
 * Vertical profile of the course is unknown. In VQ1 it descended ~20°, which put gates below
   the camera's −9.4° lower frame edge.
-* Whether the sim's Acro ↔ Stabilized flight-mode toggle self-levels while accepting
-  ordinary body rates. If it does, we get roll/pitch stabilisation with no quaternion ever
-  transmitted — clean by construction. All probes so far ran in ACRO.
+* Whether the sim's **ANGLE** flight mode honours body-rate setpoints over the bit-16 path,
+  or takes stick input only. The sim ships a mode selector — ACRO ("complete manual
+  control"), ANGLE ("manual throttle, stabilized"), ARCADE (auto altitude), GPS — so if
+  ANGLE accepts our rates we get roll/pitch self-levelling with no quaternion ever
+  transmitted. Untested; all probes so far ran in ACRO. Note `FLIGHT MODE (RESTARTS RACE)`
+  and a hardcoded `YOU MUST USE ACRO FLIGHT MODE` string: events can mandate a mode.
+  (An earlier draft called this an "Acro ↔ Stabilized toggle" — "Stabilized" is ANGLE's
+  description, not a separate mode, and the whole entry predated anyone checking.)

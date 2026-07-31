@@ -293,10 +293,29 @@ input with response for system ID.
 * **Gate count** (~20) wants confirming.
 * **Vertical profile** of the course unknown. VQ1 descended ~20°, putting gates below the
   frame's −9.4° edge; check whether VQ2 does the same.
-* **Acro ↔ Stabilized flight-mode toggle** unexplored (`SetFcFlightMode` in the pak, HUD
-  shows `FLIGHT MODE: ACRO`). If the FC self-levels while we send ordinary body rates, no
-  quaternion is transmitted and absolute yaw never enters the protocol — clean by
-  construction. All probes above were run in ACRO, so their results are conditional on it.
+* **Flight modes — what the build actually contains** (pak string scan 2026-07-31; supersedes
+  the earlier "Acro ↔ Stabilized toggle" entry, which named a mode nobody had checked for).
+  The sim is built on the DCL commercial game — hence the `DCL` bit-16 `type_mask` — and
+  ships a user-facing flight-mode selector (`press M to open menu`; the setting sits with the
+  `ACRO_LOW/MED/HIGH/CUSTOM_1..4` rate presets):
+
+      ACRO    "COMPLETE MANUAL CONTROL"          <- all probes to date ran here
+      ANGLE   "MANUAL THROTTLE, STABILIZED"      <- self-levelling attitude, manual throttle
+      ARCADE  "THE ALTITUDE CONTROL IS AUTOMAT[IC]"
+      GPS
+
+  "Stabilized" is the *description of ANGLE*, not a fourth mode. Two constraints also present
+  in the strings: `FLIGHT MODE (RESTARTS RACE)` — switching is not a live toggle — and
+  `YOU MUST USE ACRO FLIGHT MODE` (hardcoded, alongside a templated `YOU MUST FLY IN
+  {flightmode} MODE`), so events can mandate a mode and at least one mandates ACRO.
+
+  **UNTESTED and decisive:** whether ANGLE still honours our body-rate setpoints over the
+  bit-16 path, or accepts stick input only. Strings cannot answer it; it needs a probe.
+  If ANGLE does honour rates, it gives roll/pitch self-levelling with no quaternion
+  transmitted and absolute yaw never entering the protocol — clean by construction.
+
+  Independent of all that, `ACRO_CUSTOM_1..4` means acro rate profiles are configurable,
+  which makes acro easier to hand-fly without changing what the FC does to our commands.
 * Angle-mode slope 0.890 and the shallow negative side are probably ground contact
   resisting roll; would need re-measuring in flight if it ever mattered.
 * **Recordings are backed up nowhere** and are excluded from git. The plant fit depends on
