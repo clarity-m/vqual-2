@@ -15,14 +15,18 @@ Then stop and check `attitude.csv`, `position.csv`, `odometry.csv` are non-empty
 HUD showed `[TRUTH]`. If msgscan shows the messages but the CSVs are empty, the recorder
 is at fault, not the sim — say so and stop.
 
-**Then confirm VQ1 honours body rates at all.** Nobody has tested this: vqual-1 flew
-velocity setpoints exclusively, so the DCL `type_mask` bit-16 path has never run against
-this build. Arm, small roll input, see if it rolls. If it does not, this card is void and
-the ground-truth rig needs rethinking.
+**VQ1 honours body rates — CONFIRMED 2026-07-31** (Claire flew the VQ2 teleop against the
+VQ1 build in acro; handled normally). The DCL `type_mask` bit-16 path works on both
+builds, so the same rate-only control path spans the ground-truth rig and the race sim.
 
 ## Recording
 
-    python3 pilot/teleop.py --sessions <local-disk>
+    python3 pilot/teleop.py --no-frames --no-view --sessions <local-disk>
+
+`--no-frames` because system ID needs no camera, and it drops the session from hundreds of
+megabytes to about a megabyte of CSV — trivial to move. `--no-view` because the cv2 window
+adds control-loop jitter, and command *timing* accuracy is exactly what identifying a rate
+loop depends on.
 
 **Press `F12` between every maneuver.** It writes a marker into `events.jsonl`, which is
 what makes segments findable afterwards instead of hunting a continuous trace. Cheap to
