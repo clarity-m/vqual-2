@@ -297,6 +297,28 @@ class Recorder:
         self._open("collisions", "collisions.csv",
                    "t_wall_ns,what,threat_level,impulse,episode")
 
+        # --- ground-truth streams -----------------------------------------------
+        # VQ2 blocks all three (spec 9.3), so under VQ2 these files stay empty and
+        # cost nothing. The VQ1 simulator still sends them, and its physics and gate
+        # dimensions are identical to VQ2 (all three spec revisions diffed) -- which
+        # makes VQ1 a ground-truth rig for VQ2 development: fly the SAME rate-only
+        # control path and get true pose back to referee against.
+        #
+        # Used to CHECK estimators offline, never to feed the pilot. The VQ2 pilot
+        # consumes permitted streams only.
+        #
+        # Recorded unconditionally rather than behind a flag: one code path for both
+        # sims, and if VQ2 ever leaks one of these it shows up in the data instead of
+        # being silently discarded.
+        self._open("attitude", "attitude.csv",
+                   "t_wall_ns,time_boot_ms,roll,pitch,yaw,"
+                   "rollspeed,pitchspeed,yawspeed")
+        self._open("position", "position.csv",
+                   "t_wall_ns,time_boot_ms,x,y,z,vx,vy,vz")
+        self._open("odometry", "odometry.csv",
+                   "t_wall_ns,time_usec,x,y,z,qw,qx,qy,qz,vx,vy,vz,"
+                   "rollspeed,pitchspeed,yawspeed")
+
     def _open(self, key, name, header):
         f = open(os.path.join(self.dir, name), "w", encoding="utf-8", newline="\n")
         f.write(header + "\n")
@@ -399,6 +421,10 @@ class Telemetry:
         self.imu_count = 0
         self.heading_gyro = 0.0        # integrated zgyro, radians, relative
         self.gyro_live = False         # has zgyro ever been non-zero?
+        # True once any blocked-under-VQ2 stream arrives, i.e. we are on the VQ1
+        # sim and this recording carries ground truth. Surfaced in the HUD so a
+        # truth run is never mistaken for an ordinary one after the fact.
+        self.truth_seen = False
         self._last_imu_us = None
 
         self._track_chunks = {}
@@ -451,6 +477,27 @@ class Telemetry:
 
             elif t == "COLLISION":
                 self._on_collision(msg)
+
+            # --- ground truth: present under VQ1, blocked under VQ2 ---
+            elif t == "ATTITUDE":
+                self.truth_seen = True
+                self.rec.row("attitude", time.time_ns(), msg.time_boot_ms,
+                             msg.roll, msg.pitch, msg.yaw,
+                             msg.rollspeed, msg.pitchspeed, msg.yawspeed)
+
+            elif t == "LOCAL_POSITION_NED":
+                self.truth_seen = True
+                self.rec.row("position", time.time_ns(), msg.time_boot_ms,
+                             msg.x, msg.y, msg.z, msg.vx, msg.vy, msg.vz)
+
+            elif t == "ODOMETRY":
+                self.truth_seen = True
+                q = msg.q  # w, x, y, z
+                self.rec.row("odometry", time.time_ns(), msg.time_usec,
+                             msg.x, msg.y, msg.z,
+                             q[0], q[1], q[2], q[3],
+                             msg.vx, msg.vy, msg.vz,
+                             msg.rollspeed, msg.pitchspeed, msg.yawspeed)
 
             elif t == "ENCAPSULATED_DATA":
                 self._on_encapsulated(msg)
@@ -558,7 +605,8 @@ class Telemetry:
                         collisions=self.collisions, contacts=self.contact_samples,
                         last_collision=self.last_collision,
                         imu_count=self.imu_count,
-                        heading_gyro=self.heading_gyro, gyro_live=self.gyro_live)
+                        heading_gyro=self.heading_gyro, gyro_live=self.gyro_live,
+                        truth_seen=self.truth_seen)
 
 
 # --------------------------------------------------------------------------------------
@@ -871,6 +919,8 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
                                      " ALIGN" if pilot.aligning else "")
     else:
         line1 += "  vel --"
+    if tel.get("truth_seen"):
+        line1 += "  [TRUTH]"   # VQ1 sim: pose telemetry is arriving and being recorded
 
     line2 = "%s  gate %s  t %.1fs  contacts %d  %.0f fps" % (
         "ARMED" if tel["armed"] else "disarmed",
