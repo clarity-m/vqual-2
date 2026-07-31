@@ -133,6 +133,44 @@ ALIGN_MIN_ACCEL = 0.30    # m/s^2 of horizontal specific force before we believe
 ALIGN_GAIN = 2.0          # rad/s of yaw per rad of bearing error
 ALIGN_MAX_RATE = 2.0      # rad/s
 
+# --- levelling assist (our own angle mode) --------------------------------------------
+# The sim ships ACRO / ANGLE / ARCADE / GPS flight modes, but this build exposes only
+# graphics and sound in its menu and nothing in Input.ini or the .sav names a mode, so
+# ANGLE is unreachable. This is angle mode built on OUR side instead: the stick commands
+# a bank ANGLE, an outer loop turns the angle error into a body RATE, and the rate goes
+# out the same acro path as everything else.
+#
+# Three consequences worth being explicit about, because they are the reason this is
+# preferable to asking the sim for angle mode even if the sim would give it:
+#
+#   * cmd.csv keeps recording real body-rate commands, so cmd -> response system ID
+#     needs no reconstruction. Nothing about the data changes.
+#   * No quaternion is transmitted and ATTITUDE_IGNORE stays set, so absolute yaw never
+#     enters the protocol. Yaw is untouched here - it stays pure acro.
+#   * It self-gates to the VQ1 rig. The outer loop needs truth attitude, which VQ2 does
+#     not send, so under VQ2 it cannot engage even if the key is pressed.
+#
+# DATA-COLLECTION ONLY. This closes a loop around ground truth, which the raced pilot may
+# never do. It lives in teleop, which is not the pilot, and interface.Policy cannot see it.
+#
+# Caveat for whoever fits a model to assisted flight: the commands are now generated from
+# the state by this controller, so command and state are correlated through it. That
+# biases an open-loop fit in a way that looks clean. Keep stick input live on top (it
+# offsets the target, so it does excite the loop) and prefer the acro doublet sessions
+# for identifying the rate loop itself.
+LEVEL_MAX_ANGLE = math.radians(35.0)   # full stick = this much bank / pitch
+LEVEL_GAIN = 4.0                       # rad/s of body rate per rad of angle error
+LEVEL_MAX_RATE = 3.0                   # rad/s, clamp on the outer loop's output
+LEVEL_MAX_AGE = 0.25                   # s; older truth than this and the assist drops out
+
+# Sign that converts a physical (NED) body rate into this sim's mirrored command
+# convention. Derived from the constants the stick path already uses rather than written
+# as a bare -1, so the mirror stays recorded in exactly one place per axis:
+#   roll  line is  roll  =  roll_ax * ACRO_ROLL      -> mirror carried by ACRO_ROLL's sign
+#   pitch line is  pitch = -pitch_ax * ACRO_PITCH    -> mirror carried by the explicit minus
+RATE_SIGN_ROLL = math.copysign(1.0, ACRO_ROLL)
+RATE_SIGN_PITCH = math.copysign(1.0, -ACRO_PITCH)
+
 # --- auto takeoff on arm --------------------------------------------------------------
 # Open loop, because nothing in VQ2 observes altitude or vertical speed. It unsticks the
 # pad and settles to hover thrust; it does NOT hold height, so expect to trim.
@@ -189,6 +227,7 @@ KEYS_COMMAND = {                  # action: key
     "quit":      "f8",
     "reset":     "f9",
     "hover":     "f10",
+    "level":     "f11",
     "marker":    "f12",
 }
 
@@ -200,8 +239,8 @@ KEYMAP = """
   UP    throttle up                F8   quit (disarms)
   DOWN  throttle down              F9   sim reset
                                    F10  throttle back to hover
-  C     align nose to velocity     F12  drop a marker
-  LCTRL boost   LALT precision
+  C     align nose to velocity     F11  levelling assist on/off (VQ1 only)
+  LCTRL boost   LALT precision      F12  drop a marker
 
   Throttle is a held value, not a stick position: it stays where you leave it.
   It sits at 0 on arm and after a reset, like a real transmitter. Arming runs a
@@ -211,6 +250,11 @@ KEYMAP = """
 
   Hold C to yaw the nose onto the direction of travel, read from drag in the
   accelerometer. It is gated near hover, where there is no drag to read.
+
+  F11 toggles the levelling assist: the sticks command a bank ANGLE instead of a
+  rate, and releasing them returns to level instead of holding the attitude. It
+  needs the VQ1 truth stream, so under VQ2 the key does nothing and says so. Body
+  rates are still what goes on the wire, so recordings stay ordinary acro data.
 
   Keys reach the simulator too. Commands sit on F-keys because the sim binds
   SPACE to restart; axes sit on letters because an echoed letter is harmless.
@@ -429,6 +473,9 @@ class Telemetry:
         # sim and this recording carries ground truth. Surfaced in the HUD so a
         # truth run is never mistaken for an ordinary one after the fact.
         self.truth_seen = False
+        # (roll, pitch, t_wall) with the per-axis sign correction already applied.
+        # None under VQ2, which is what gates the levelling assist off there.
+        self.truth_att = None
         self._last_imu_us = None
 
         self._track_chunks = {}
@@ -488,6 +535,12 @@ class Telemetry:
                 self.rec.row("attitude", time.time_ns(), msg.time_boot_ms,
                              msg.roll, msg.pitch, msg.yaw,
                              msg.rollspeed, msg.pitchspeed, msg.yawspeed)
+                # Corrected truth for the levelling assist. The VQ1 truth streams are
+                # each wrong on a DIFFERENT axis (NOTES.md, refereed against gravity on
+                # a parked drone): roll is right in ATTITUDE, pitch is right in ODOMETRY
+                # and inverted here. Yaw is not used - the assist never touches yaw.
+                with self.lock:
+                    self.truth_att = (msg.roll, -msg.pitch, time.time())
 
             elif t == "LOCAL_POSITION_NED":
                 self.truth_seen = True
@@ -610,7 +663,7 @@ class Telemetry:
                         last_collision=self.last_collision,
                         imu_count=self.imu_count,
                         heading_gyro=self.heading_gyro, gyro_live=self.gyro_live,
-                        truth_seen=self.truth_seen)
+                        truth_seen=self.truth_seen, truth_att=self.truth_att)
 
 
 # --------------------------------------------------------------------------------------
@@ -799,6 +852,8 @@ class Pilot:
         self.align_bearing = None
         self.align_mag = 0.0
         self.auto_takeoff = True
+        self.levelling = False
+        self.level_err = (0.0, 0.0)
 
     # -- one-shot commands ------------------------------------------------------
     def arm(self, armed=True):
@@ -836,7 +891,8 @@ class Pilot:
         self.conn.mav.timesync_send(time.time_ns(), 0)
 
     # -- streamed setpoints -----------------------------------------------------
-    def send(self, axes, scale, dt, armed, heading=0.0, align=False, accel=None):
+    def send(self, axes, scale, dt, armed, heading=0.0, align=False, accel=None,
+             level=False, truth_att=None):
         """Body rates + collective thrust. No frame, no heading, no rotation:
         a roll rate is a roll rate regardless of where north is, which is the
         whole reason this is the only control path teleop offers."""
@@ -847,6 +903,30 @@ class Pilot:
         roll = roll_ax * ACRO_ROLL * scale
         pitch = -pitch_ax * ACRO_PITCH * scale   # NED: nose down is negative
         yaw = yaw_ax * ACRO_YAW * scale
+
+        # Levelling assist: the stick becomes an angle demand on roll and pitch, and an
+        # outer P loop turns the angle error into the body rate we were going to send
+        # anyway. Yaw and throttle are untouched - yaw stays acro because levelling it
+        # would mean holding a heading, and holding a heading means knowing one.
+        self.levelling = False
+        if level and truth_att is not None:
+            t_roll, t_pitch, t_stamp = truth_att
+            if time.time() - t_stamp <= LEVEL_MAX_AGE:
+                self.levelling = True
+                # Stick deflection is a target ANGLE now, not a rate. `scale` still
+                # applies, so precision/boost trim how much bank a full deflection asks
+                # for, which is the same thing they meant before.
+                want_roll = roll_ax * LEVEL_MAX_ANGLE * scale
+                want_pitch = -pitch_ax * LEVEL_MAX_ANGLE * scale
+                self.level_err = (want_roll - t_roll, want_pitch - t_pitch)
+                p_roll = max(-LEVEL_MAX_RATE, min(LEVEL_MAX_RATE,
+                                                  LEVEL_GAIN * self.level_err[0]))
+                p_pitch = max(-LEVEL_MAX_RATE, min(LEVEL_MAX_RATE,
+                                                   LEVEL_GAIN * self.level_err[1]))
+                # p_* are physical NED rates; the RATE_SIGN_* constants carry them into
+                # the sim's mirrored command convention.
+                roll = p_roll * RATE_SIGN_ROLL
+                pitch = p_pitch * RATE_SIGN_PITCH
 
         # Align to velocity: yaw until the direction of travel is under the nose.
         # The bearing is physical (body frame, from the accelerometer), so the
@@ -913,8 +993,9 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     cv2.rectangle(view, (0, h - 20), (w, h), (0, 0, 0), -1)
 
     a, b, c, d = pilot.last_cmd
-    line1 = "RATES r%+.2f p%+.2f y%+.2f  THR %.2f%s  hdg %+4.0f%s" % (
+    line1 = "RATES r%+.2f p%+.2f y%+.2f  THR %.2f%s%s  hdg %+4.0f%s" % (
         a, b, c, d,
+        " LEVEL" if pilot.levelling else "",
         " TAKEOFF" if pilot.takeoff_until else "",
         math.degrees(heading_now),
         "" if tel["gyro_live"] else " (no gyro!)")
@@ -1036,6 +1117,7 @@ def main():
     last_console = 0.0
     last_loop = time.perf_counter()
     markers = 0
+    level_on = False
     running = True
     deadline = time.perf_counter() + args.duration if args.duration else None
 
@@ -1071,6 +1153,14 @@ def main():
                     heading.zero(snap["heading_gyro"])
                     rec.event("heading_zeroed")
                     print("\n[heading zeroed]")
+                elif action == "level":
+                    if snap["truth_att"] is None:
+                        print("\n[level] unavailable: no ATTITUDE stream "
+                              "(VQ2 blocks it - this needs the VQ1 build)")
+                    else:
+                        level_on = not level_on
+                        rec.event("level_assist", on=level_on)
+                        print("\n[level] %s" % ("ON" if level_on else "OFF"))
                 elif action == "marker":
                     markers += 1
                     rec.event("marker", index=markers,
@@ -1083,7 +1173,8 @@ def main():
 
             head_now = heading.value(snap["heading_gyro"])
             pilot.send(axes, scale, dt, snap["armed"], head_now,
-                       align=sticks.align, accel=snap["accel"])
+                       align=sticks.align, accel=snap["accel"],
+                       level=level_on, truth_att=snap["truth_att"])
 
             wall = time.time()
             if args.listen:

@@ -263,7 +263,44 @@ Flies like an acro quad — no self-levelling, releasing keys is not a hover. Th
 
 `W/S` pitch, `A/D` roll, `Q/E` yaw, `UP/DOWN` throttle, `LCTRL` boost, `LALT` precision,
 `C` align-to-velocity. Commands on F-keys: `F5` arm, `F6` disarm, `F7` zero heading, `F8`
-quit, `F9` reset, `F12` marker.
+quit, `F9` reset, `F11` levelling assist, `F12` marker.
+
+### Levelling assist (`F11`) — our own angle mode
+
+Added 2026-07-31 because the sim's ANGLE mode is unreachable (see the flight-mode entry
+under Open) and hand-flying a clean acro lap is hard. The stick commands a bank *angle*;
+an outer P loop turns the angle error into the body rate that goes out the ordinary acro
+path. Release the sticks and it returns to level instead of holding attitude.
+
+    LEVEL_MAX_ANGLE 35 deg    LEVEL_GAIN 4.0 (rad/s per rad)    LEVEL_MAX_RATE 3.0 rad/s
+
+Four properties that made this preferable to getting angle mode from the sim, even if the
+sim would have given it:
+
+* **`cmd.csv` still records real body-rate commands.** Nothing about the recorded data
+  changes, so cmd → response system ID needs no reconstruction. An FC-side angle mode
+  would have hidden the rate setpoint inside the flight controller where we cannot see it.
+* **No quaternion is transmitted; `ATTITUDE_IGNORE` stays set.** Absolute yaw never enters
+  the protocol. Yaw is untouched by the assist and stays pure acro — levelling yaw would
+  mean holding a heading, and holding a heading means knowing one.
+* **It self-gates to VQ1.** The outer loop needs truth attitude, which VQ2 does not send,
+  so under VQ2 `F11` prints why it did nothing. It cannot leak into a race.
+* **Data collection only.** It closes a loop around ground truth, which the raced pilot may
+  never do. It lives in teleop, which is not the pilot; `interface.Policy` cannot see it.
+
+The truth attitude it consumes carries the per-axis sign correction (`roll` from ATTITUDE,
+`pitch` = −ATTITUDE.pitch), and the physical→command conversion reuses `ACRO_ROLL`'s sign
+and the explicit minus on the pitch line rather than writing the mirror out again.
+
+Verified offline only: signs agree with the stick path, and the closed loop settles on
+target from +30°→0, 0→+20°, +10°→−25° under the measured mirror. That checks the algebra
+*given* the convention; it cannot re-check the convention, which `camreferee.py` settled.
+**Gains are untuned and it has never touched the sim.**
+
+**If you fit a model to assisted flight:** commands are now generated from the state by
+this controller, so command and state are correlated through it, which biases an open-loop
+fit in a way that looks clean. Stick input still offsets the target and so does excite the
+loop, but prefer the acro doublet sessions for identifying the rate loop itself.
 
 **Commands live on F-keys because the sim eats keystrokes.** The global hook is not
 exclusive — every keystroke reaches teleop *and* the sim, which binds ordinary game keys
@@ -309,13 +346,15 @@ input with response for system ID.
   `YOU MUST USE ACRO FLIGHT MODE` (hardcoded, alongside a templated `YOU MUST FLY IN
   {flightmode} MODE`), so events can mandate a mode and at least one mandates ACRO.
 
-  **UNTESTED and decisive:** whether ANGLE still honours our body-rate setpoints over the
-  bit-16 path, or accepts stick input only. Strings cannot answer it; it needs a probe.
-  If ANGLE does honour rates, it gives roll/pitch self-levelling with no quaternion
-  transmitted and absolute yaw never entering the protocol — clean by construction.
+  **RESOLVED — none of it is reachable in this build** (Claire, 2026-07-31): the in-sim menu
+  exposes graphics and sound only, there is no mode selector, `Input.ini` binds nothing
+  mode-related, and `DCLSave-LocalPlayer.sav` is an opaque UE4 GVAS blob. The strings are
+  the parent game's full table; the AIGP build ships the code without the UI. **A string in
+  the pak is evidence the code exists, not that we can reach it** — that inference was made
+  and corrected twice in one session, in both directions.
 
-  Independent of all that, `ACRO_CUSTOM_1..4` means acro rate profiles are configurable,
-  which makes acro easier to hand-fly without changing what the FC does to our commands.
+  So ACRO is not a setting we chose, it is the only mode available, and `ACRO_CUSTOM_1..4`
+  is equally out of reach. The levelling assist below exists because of this.
 * Angle-mode slope 0.890 and the shallow negative side are probably ground contact
   resisting roll; would need re-measuring in flight if it ever mattered.
 * **Recordings are backed up nowhere** and are excluded from git. The plant fit depends on
