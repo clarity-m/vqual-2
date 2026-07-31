@@ -1,0 +1,41 @@
+{"control": "body_rates", "ip": "127.0.0.1", "port": 14550, "listen_only": false, "kind": "session_start", "t_wall_ns": 1785517985690715600}
+{"from_gate": -1, "to_gate": 0, "sim_boot_time_ms": 25590, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785517985780731400}
+{"episode": 1, "what": "environment", "threat_level": 1, "impulse": 0.006537832319736481, "kind": "collision_episode", "t_wall_ns": 1785518003161466300}
+{"index": 1, "active_gate": 0, "race_time_s": 47.385, "kind": "marker", "t_wall_ns": 1785518011082221300}
+{"kind": "sim_reset", "t_wall_ns": 1785518058596965700}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518059096912100}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785518059493666800}
+{"episode": 2, "what": "environment", "threat_level": 1, "impulse": 0.009854286909103394, "kind": "collision_episode", "t_wall_ns": 1785518072066010000}
+{"index": 2, "active_gate": 0, "race_time_s": 59.105, "kind": "marker", "t_wall_ns": 1785518121555105000}
+{"index": 3, "active_gate": 0, "race_time_s": 68.132, "kind": "marker", "t_wall_ns": 1785518130542539300}
+{"index": 4, "active_gate": 0, "race_time_s": 72.9, "kind": "marker", "t_wall_ns": 1785518135540623600}
+{"index": 5, "active_gate": 0, "race_time_s": 77.667, "kind": "marker", "t_wall_ns": 1785518140065020300}
+{"index": 6, "active_gate": 0, "race_time_s": 82.186, "kind": "marker", "t_wall_ns": 1785518144740503800}
+{"kind": "sim_reset", "t_wall_ns": 1785518196553221300}
+{"kind": "sim_reset", "t_wall_ns": 1785518197593477600}
+{"kind": "sim_reset", "t_wall_ns": 1785518199505280700}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785518199570315000}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518199579286400}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518199598689100}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785518199900240100}
+{"kind": "sim_reset", "t_wall_ns": 1785518200987046200}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785518201469912000}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518201478494200}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518201480717500}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518201496718900}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785518201937667500}
+{"episode": 3, "what": "environment", "threat_level": 1, "impulse": 0.0043243104591965675, "kind": "collision_episode", "t_wall_ns": 1785518261845421800}
+{"episode": 4, "what": "environment", "threat_level": 1, "impulse": 0.10212782025337219, "kind": "collision_episode", "t_wall_ns": 1785518291843597800}
+{"episode": 5, "what": "environment", "threat_level": 2, "impulse": 5.523767471313477, "kind": "collision_episode", "t_wall_ns": 1785518298669649200}
+{"episode": 6, "what": "environment", "threat_level": 1, "impulse": 0.11049829423427582, "kind": "collision_episode", "t_wall_ns": 1785518299923560100}
+{"episode": 7, "what": "environment", "threat_level": 1, "impulse": 0.2700140178203583, "kind": "collision_episode", "t_wall_ns": 1785518304923349500}
+{"episode": 8, "what": "environment", "threat_level": 1, "impulse": 0.004855805076658726, "kind": "collision_episode", "t_wall_ns": 1785518308971226900}
+{"kind": "sim_reset", "t_wall_ns": 1785518315645984000}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785518316167526500}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518316179742700}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518316181870000}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785518316189196300}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785518316562811300}
+{"armed": false, "kind": "arm_command", "t_wall_ns": 1785518465304255100}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785518465394042900}
+{"frames": 13940, "frames_dropped": 8, "duplicate_packets": 363194, "contact_samples": 575, "contact_episodes": 8, "kind": "session_end", "t_wall_ns": 1785518465404780000}

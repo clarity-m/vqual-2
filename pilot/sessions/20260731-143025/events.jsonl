@@ -1,0 +1,29 @@
+{"from_gate": -1, "to_gate": 0, "sim_boot_time_ms": 27728, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785522626136742200}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785522626137742500}
+{"control": "body_rates", "ip": "127.0.0.1", "port": 14550, "listen_only": false, "kind": "session_start", "t_wall_ns": 1785522626139705200}
+{"episode": 1, "what": "environment", "threat_level": 1, "impulse": 0.008335146121680737, "kind": "collision_episode", "t_wall_ns": 1785522630577423900}
+{"index": 1, "active_gate": 0, "race_time_s": 37.218, "kind": "marker", "t_wall_ns": 1785522638746700200}
+{"index": 2, "active_gate": 0, "race_time_s": 37.972, "kind": "marker", "t_wall_ns": 1785522639626556500}
+{"index": 3, "active_gate": 0, "race_time_s": 38.976, "kind": "marker", "t_wall_ns": 1785522640626692600}
+{"index": 4, "active_gate": 0, "race_time_s": 39.729, "kind": "marker", "t_wall_ns": 1785522641426919600}
+{"index": 5, "active_gate": 0, "race_time_s": 40.733, "kind": "marker", "t_wall_ns": 1785522642406587400}
+{"index": 6, "active_gate": 0, "race_time_s": 41.737, "kind": "marker", "t_wall_ns": 1785522643387031700}
+{"index": 7, "active_gate": 0, "race_time_s": 43.242, "kind": "marker", "t_wall_ns": 1785522644786573500}
+{"index": 8, "active_gate": 0, "race_time_s": 43.993, "kind": "marker", "t_wall_ns": 1785522645626591200}
+{"index": 9, "active_gate": 0, "race_time_s": 44.996, "kind": "marker", "t_wall_ns": 1785522646546851100}
+{"index": 10, "active_gate": 0, "race_time_s": 45.748, "kind": "marker", "t_wall_ns": 1785522647426468300}
+{"index": 11, "active_gate": 0, "race_time_s": 46.751, "kind": "marker", "t_wall_ns": 1785522648286483200}
+{"index": 12, "active_gate": 0, "race_time_s": 47.753, "kind": "marker", "t_wall_ns": 1785522649306920500}
+{"index": 13, "active_gate": 0, "race_time_s": 49.508, "kind": "marker", "t_wall_ns": 1785522651086335300}
+{"index": 14, "active_gate": 0, "race_time_s": 50.511, "kind": "marker", "t_wall_ns": 1785522652246523700}
+{"index": 15, "active_gate": 0, "race_time_s": 51.765, "kind": "marker", "t_wall_ns": 1785522653306708600}
+{"index": 16, "active_gate": 0, "race_time_s": 52.768, "kind": "marker", "t_wall_ns": 1785522654347246700}
+{"index": 17, "active_gate": 0, "race_time_s": 53.771, "kind": "marker", "t_wall_ns": 1785522655427156200}
+{"index": 18, "active_gate": 0, "race_time_s": 54.773, "kind": "marker", "t_wall_ns": 1785522656526281800}
+{"kind": "sim_reset", "t_wall_ns": 1785522659886700100}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785522660376168200}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785522660379134700}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785522660799157000}
+{"armed": false, "kind": "arm_command", "t_wall_ns": 1785522661331579900}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785522661404620300}
+{"frames": 1059, "frames_dropped": 0, "duplicate_packets": 27640, "contact_samples": 106, "contact_episodes": 1, "kind": "session_end", "t_wall_ns": 1785522661431901800}

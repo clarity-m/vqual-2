@@ -1,0 +1,6 @@
+{"from_gate": -1, "to_gate": 0, "sim_boot_time_ms": 245242, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785517664129567300}
+{"control": "body_rates", "ip": "127.0.0.1", "port": 14550, "listen_only": false, "kind": "session_start", "t_wall_ns": 1785517664133760700}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785517664231428200}
+{"armed": false, "kind": "arm_command", "t_wall_ns": 1785517737517082400}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785517737585576500}
+{"frames": 2064, "frames_dropped": 0, "duplicate_packets": 57897, "contact_samples": 0, "contact_episodes": 0, "kind": "session_end", "t_wall_ns": 1785517737617453400}

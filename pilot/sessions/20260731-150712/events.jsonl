@@ -1,0 +1,44 @@
+{"from_gate": -1, "to_gate": 0, "sim_boot_time_ms": 484755, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785524832492566100}
+{"control": "body_rates", "ip": "127.0.0.1", "port": 14550, "listen_only": false, "kind": "session_start", "t_wall_ns": 1785524832494280600}
+{"index": 1, "active_gate": 0, "race_time_s": 515.801, "kind": "marker", "t_wall_ns": 1785524866958113700}
+{"index": 2, "active_gate": 0, "race_time_s": 542.645, "kind": "marker", "t_wall_ns": 1785524893798351800}
+{"index": 3, "active_gate": 0, "race_time_s": 594.059, "kind": "marker", "t_wall_ns": 1785524945157864000}
+{"kind": "sim_reset", "t_wall_ns": 1785524978077715600}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785524978594522900}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785524978971396000}
+{"episode": 1, "what": "environment", "threat_level": 1, "impulse": 0.005008873995393515, "kind": "collision_episode", "t_wall_ns": 1785524986858764400}
+{"episode": 2, "what": "environment", "threat_level": 2, "impulse": 6.23148250579834, "kind": "collision_episode", "t_wall_ns": 1785524997304592600}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785524999837510500}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785524999840765800}
+{"kind": "sim_reset", "t_wall_ns": 1785525000197849700}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785525000693229200}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785525001041557900}
+{"episode": 3, "what": "environment", "threat_level": 1, "impulse": 0.004754616413265467, "kind": "collision_episode", "t_wall_ns": 1785525035423332100}
+{"episode": 4, "what": "environment", "threat_level": 2, "impulse": 5.175140380859375, "kind": "collision_episode", "t_wall_ns": 1785525050521185600}
+{"kind": "sim_reset", "t_wall_ns": 1785525051557786900}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785525052069059400}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785525052071065300}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785525052439642800}
+{"episode": 5, "what": "environment", "threat_level": 1, "impulse": 0.006294082384556532, "kind": "collision_episode", "t_wall_ns": 1785525057889299400}
+{"from_gate": 0, "to_gate": 1, "sim_boot_time_ms": 10577, "last_gate_race_time": 7082870483, "kind": "gate_advance", "t_wall_ns": 1785525062647206900}
+{"kind": "sim_reset", "t_wall_ns": 1785525069458578900}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785525069968488400}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785525069970586400}
+{"from_gate": 1, "to_gate": 0, "sim_boot_time_ms": 6, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785525069973453000}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785525070361800100}
+{"episode": 6, "what": "environment", "threat_level": 1, "impulse": 0.002353683114051819, "kind": "collision_episode", "t_wall_ns": 1785525074821296800}
+{"from_gate": 0, "to_gate": 1, "sim_boot_time_ms": 9228, "last_gate_race_time": 5785591602, "kind": "gate_advance", "t_wall_ns": 1785525079195335700}
+{"kind": "sim_reset", "t_wall_ns": 1785525084798345200}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785525085300724600}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785525085303598300}
+{"from_gate": 1, "to_gate": 0, "sim_boot_time_ms": 6, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785525085306491900}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785525085688084600}
+{"episode": 7, "what": "environment", "threat_level": 1, "impulse": 0.005954176653176546, "kind": "collision_episode", "t_wall_ns": 1785525090187564500}
+{"episode": 8, "what": "environment", "threat_level": 2, "impulse": 6.088812351226807, "kind": "collision_episode", "t_wall_ns": 1785525132284106300}
+{"kind": "sim_reset", "t_wall_ns": 1785525133524696800}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785525134029691100}
+{"num_gates": 6, "note": "geometry nulled under VQ2 telemetry restrictions", "kind": "track_info", "t_wall_ns": 1785525134032554700}
+{"armed": true, "kind": "armed_changed", "t_wall_ns": 1785525134456293800}
+{"armed": false, "kind": "arm_command", "t_wall_ns": 1785525135668715600}
+{"armed": false, "kind": "armed_changed", "t_wall_ns": 1785525135765030900}
+{"frames": 9099, "frames_dropped": 0, "duplicate_packets": 230010, "contact_samples": 1143, "contact_episodes": 8, "kind": "session_end", "t_wall_ns": 1785525135769249800}

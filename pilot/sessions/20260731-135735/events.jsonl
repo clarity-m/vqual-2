@@ -1,0 +1,3 @@
+{"from_gate": -1, "to_gate": 0, "sim_boot_time_ms": 198904, "last_gate_race_time": -1, "kind": "gate_advance", "t_wall_ns": 1785520655704396200}
+{"control": "body_rates", "ip": "127.0.0.1", "port": 14550, "listen_only": true, "kind": "session_start", "t_wall_ns": 1785520655705907100}
+{"frames": 568, "frames_dropped": 0, "duplicate_packets": 15866, "contact_samples": 0, "contact_episodes": 0, "kind": "session_end", "t_wall_ns": 1785520674638350600}

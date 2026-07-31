@@ -4,6 +4,11 @@ AI-GP Simulator*/
 
 # Flight recordings: hundreds of thousands of JPEGs, gigabytes. Never in git.
 # If a frame is worth keeping, copy it into pilot/evidence/ — that is what it is for.
+#
+# EXCEPTION: the VQ1 telemetry CSVs are tracked, added deliberately with `git add -f`
+# (see pilot/sessions/README.md). They are ~127 MB of text that compresses ~22x, and they
+# are what the plant fit is built from. This rule still ignores everything else here, so
+# a new session is NOT committed by accident — force-add it if you want it tracked.
 pilot/sessions/
 
 # Archives used to move recordings off the CAEN VM
