@@ -22,19 +22,20 @@ Canonical body NED, textbook:  x forward,  y right,  z down.
     bearing    > 0  ->  target is RIGHT of the nose
     elevation  > 0  ->  target is ABOVE the nose
 
-Measured state of the simulator, flight-confirmed via teleop:
+Measured state of the simulator:
 
-    roll_rate   INVERTED vs the convention above  (SIGN_ROLL = -1)
-    pitch_rate  to spec
-    yaw_rate    to spec
+    roll_rate   INVERTED vs the convention above  (SIGN_ROLL = -1)   flight-confirmed
+    yaw_rate    INVERTED                          (SIGN_YAW  = -1)   flight-confirmed
+    pitch_rate  UNVERIFIED -- rests on a code comment, not an observation
 
-The one correction lives in the link layer ONLY, applied when encoding a MAVLink
-message. No file above the link layer may contain a sign flip.
+Corrections live in the link layer ONLY, applied when encoding a MAVLink message.
+No file above the link layer may contain a sign flip.
 
-This is cheap insurance, not a crisis: an acro sign error is SELF-ANNOUNCING -- the
-drone visibly rolls the wrong way within a second of the first flight, which is exactly
-how the roll inversion was found and fixed. Body rates in, body-frame perception out;
-nothing in the flight stack ever converts to a world frame.
+An acro sign error is SELF-ANNOUNCING: the drone visibly moves the wrong way within a
+second of flight. But it only announces itself to someone WATCHING. Two of these were
+initially recorded as "to spec" by reading the source -- which shows only which key is
+positive, never which way the airframe goes -- and were corrected by a pilot's eyes.
+Reading the code is not a substitute for watching the drone.
 
     *** WHERE SIGN ERRORS ARE ACTUALLY DANGEROUS: THE SURROGATE FIT. ***
 

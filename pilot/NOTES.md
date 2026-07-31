@@ -86,18 +86,31 @@ Three consequences:
   is the highest-rate signal we are allowed and reflects what the FC did with our rate
   command — the best available observable for fitting the inner loop.
 
-## Sign conventions — SETTLED 2026-07-31
+## Sign conventions — PARTIALLY settled
 
-Traced `KEYS_AXIS` → `ACRO_*`, flight-confirmed:
+| axis | sim vs canonical body NED | evidence |
+|---|---|---|
+| roll rate | **INVERTED** (hence `ACRO_ROLL = -2.5`) | flight |
+| yaw rate | **INVERTED** | flight, Claire 2026-07-31: `E` commands +2.0 rad/s and the drone yaws LEFT. Same on both builds |
+| pitch rate | **UNVERIFIED** | rests only on the code comment `w = nose down = forward`. Nobody has watched it |
 
-| axis | sim vs canonical body NED |
-|---|---|
-| roll rate | **INVERTED** (hence `ACRO_ROLL = -2.5`) |
-| pitch rate | to spec |
-| yaw rate | to spec |
+**Correction, 2026-07-31.** An earlier version of this section declared all three settled,
+with pitch and yaw "to spec". That was wrong. It came from reading `KEYS_AXIS` — which
+says only which key is *positive*, never which physical direction that is — and filling
+the gap with an assumed convention (`E` = yaw right). The assumption then got recorded as
+if it were a trace, and was used to retire a standing "pitch and yaw want confirming"
+caveat that had been correct all along.
 
-Two of three never deviated, and roll announced itself on the first flight. An acro sign
-error is self-announcing; this is not a standing risk.
+The lesson is the one this project keeps relearning from the other side: **a convention
+must be refereed against an independent observation, never against an assumption about
+what a key or a comment means.** A code comment is a write-up, and "re-derive rather than
+trust the write-up" applies to our own files too.
+
+**Pitch is still open.** Watch the nose while pressing `W` and settle it.
+
+For system ID this does not corrupt data: `cmd.csv` records what was commanded and the
+VQ1 truth streams record what happened, so a fit recovers the true sign on its own. It
+matters for hand-labelling a maneuver direction, and for teleop feeling right.
 
 **Where a sign error is actually dangerous: the surrogate fit** — the only place a world
 frame appears, and the only place the error is silent. See `interface.py`.
