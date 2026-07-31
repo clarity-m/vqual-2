@@ -174,15 +174,14 @@ LEVEL_MAX_AGE = 0.25                   # s; older truth than this and the assist
 #
 # RETURN TO HOVER. Plain teleop's throttle is a held value that stays where you leave it,
 # which pairs badly with an angle-mode stick: you end up trimming throttle constantly. Here
-# the throttle keys slew AWAY from the (compensated) hover point and it eases back when you
-# let go, so throttle becomes an offset rather than an absolute.
+# the throttle keys slew AWAY from the (compensated) hover point and it returns the moment
+# you let go, so throttle becomes an offset rather than an absolute.
 #
 # Both need truth attitude, so like the rest of the assist they cannot engage under VQ2.
 # Neither observes altitude - nothing here is an altitude hold, and letting go returns you
 # to hover THRUST, not to a hover. Vertical speed is not measured, so drift remains yours
 # to trim.
 TILT_COMP_MAX = 1.6            # ceiling on the 1/cos(tilt) factor (~51 deg of tilt)
-THRUST_RETURN_TAU = 0.7        # s; exponential ease back to the hover point
 THRUST_STICK_EPS = 0.02        # |axis| below this counts as "let go"
 
 # Sign that converts a physical (NED) body rate into this sim's mirrored command
@@ -986,13 +985,20 @@ class Pilot:
             else:
                 self.thrust = TAKEOFF_THRUST
         elif self.levelling and abs(thr_ax) < THRUST_STICK_EPS:
-            # Let go under the assist: ease back to the tilt-compensated hover point.
-            # Exponential rather than a ramp so a small correction settles quickly and a
-            # large one does not lurch. Nothing here observes altitude - this returns to
-            # hover THRUST, which is not the same as returning to a hover.
-            k = 1.0 - math.exp(-dt / THRUST_RETURN_TAU)
-            self.thrust = min(1.0, max(0.0,
-                                       self.thrust + (self.hover_ref - self.thrust) * k))
+            # Let go under the assist: snap straight to the tilt-compensated hover point.
+            #
+            # This used to ease back with a time constant. Flight-tested 2026-07-31: the
+            # step is not felt, because thrust reaches velocity through mass and drag,
+            # which is itself a first-order lag - the airframe already supplies the
+            # smoothing. A filter here would put a second lag in series with it.
+            #
+            # It is also the better choice for the data. A step is what excites a plant;
+            # a pre-smoothed command shares its shape with the response, which is exactly
+            # what makes a command->thrust lag hard to bracket (plantfit.py failed on that
+            # and on thrust R^2 ~ 0.05). Sharp edges in cmd.csv are worth keeping.
+            #
+            # Nothing here observes altitude - this returns to hover THRUST, not to hover.
+            self.thrust = min(1.0, max(0.0, self.hover_ref))
         else:
             # Throttle is a held value, not a stick deflection - it integrates
             # while a key is down and stays put when released.

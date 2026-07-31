@@ -285,8 +285,13 @@ Throttle changes ride along with the assist and are off in plain acro:
   (~51°) because 1/cos runs away near 90°. As multipliers on the hover point:
   ×1.04 at 15°, ×1.15 at 30°, ×1.22 at 35°, ×1.30 at 35° roll + 20° pitch.
 * **Return to hover.** Throttle keys slew away from the compensated hover point and it
-  eases back exponentially (τ = 0.7 s) when released, so throttle is an offset rather than
-  an absolute. From 0.45 it reaches 0.298 in 1 s and 0.261 in 2 s.
+  snaps back the moment you release, so throttle is an offset rather than an absolute.
+  An earlier version eased back over τ = 0.7 s; flight test says the step is not felt,
+  because thrust reaches velocity through mass and drag, which is already a first-order
+  lag — the airframe supplies the smoothing and a filter here would just add a second lag
+  in series. It is also the better choice for the data: a step excites the plant, whereas
+  a pre-smoothed command shares its shape with the response, which is precisely what makes
+  a command→thrust lag hard to bracket (`plantfit.py` failed on exactly that).
 
 Neither observes altitude. **This is not an altitude hold** — letting go returns you to
 hover *thrust*, not to a hover, and vertical drift is still yours to trim. Vertical speed
