@@ -58,7 +58,17 @@ Training-only. Completing the course auto-submits.
 | `SIM_RESET` settle | **3–4 s**. Wait for `race_start_boot_time_ms` to change, then check pose, then a guard margin — a fixed sleep samples mid-transition and returns the *previous* pose |
 
 Physics is unchanged from VQ1 (all three spec revisions diffed) — only §4.5 Telemetry
-changed. **All vqual-1 recordings are valid system-ID data for this plant.**
+changed, so the VQ1 *build* is a valid rig for this plant.
+
+**But vqual-1's own recordings are not system-ID data** (checked 2026-07-31; an earlier
+note here claimed they were). They are `meta.jsonl` only — `t, x, y, z, roll, pitch, yaw,
+gate, det` at **~9 Hz**, with no gyro, no thrust, no command channel and no motor outputs.
+Differentiating 9 Hz attitude for a racing quad aliases rather than merely adding noise,
+and the pose stream carries outliers (one frame pair implies 1881 m/s). Their real value is
+elsewhere: pose paired with gate truth makes them **labelled perception data**.
+
+The usable plant data is the 2026-07-31 VQ1-build sessions recorded through `teleop.py`,
+now tracked in `sessions/` — see `sessions/README.md`.
 
 ### The VQ1 truth streams are each wrong on a different axis (2026-07-31)
 
@@ -133,40 +143,22 @@ So a **negative** commanded rate produces a **positive** NED rotation, and the g
 reports the same (mirrored) sign as the command — which is exactly why comparing
 command against gyro looks perfectly consistent and proves nothing.
 
-**Consequences for the teleop keys** (`camreferee.py` re-runs this on any session):
+`camreferee.py` re-runs this against any session. Key-mapping consequences are in
+`TELEOP-NOTES.md`.
 
-| key | sends | actually does | intuitive? |
-|---|---|---|---|
-| `D` | −2.5 | rolls RIGHT | yes |
-| `W` | −2.5 | pitches **UP** — flies BACKWARD | **no** |
-| `E` | +2.0 | yaws **LEFT** | **no** |
+**A convention must be refereed against an independent observation, never against an
+assumption about what a key or a comment means.** Learned by getting it wrong here: an
+earlier version of this section declared all three axes settled by reading `KEYS_AXIS`,
+which says only which key is *positive*, never which physical direction that is. The gap
+was filled with an assumed convention, recorded as if it were a trace, and then used to
+retire a caveat that had been correct all along. "Re-derive rather than trust the
+write-up" applies to our own files.
 
-**The code comment `w = nose down = forward` is wrong.** Under the interface rule that
-signs live in the link layer only, `ACRO_PITCH` and `ACRO_YAW` want flipping so `W` is
-nose-down and `E` is yaw-right; `ACRO_ROLL` is already correct.
-
-**Correction, 2026-07-31.** An earlier version of this section declared all three settled,
-with pitch and yaw "to spec". That was wrong. It came from reading `KEYS_AXIS` — which
-says only which key is *positive*, never which physical direction that is — and filling
-the gap with an assumed convention (`E` = yaw right). The assumption then got recorded as
-if it were a trace, and was used to retire a standing "pitch and yaw want confirming"
-caveat that had been correct all along.
-
-The lesson is the one this project keeps relearning from the other side: **a convention
-must be refereed against an independent observation, never against an assumption about
-what a key or a comment means.** A code comment is a write-up, and "re-derive rather than
-trust the write-up" applies to our own files too.
-
-**Pitch is still open.** Watch the nose while pressing `W` and settle it.
-
-For system ID this does not corrupt data: `cmd.csv` records what was commanded and the
-VQ1 truth streams record what happened, so a fit recovers the true sign on its own. It
-matters for hand-labelling a maneuver direction, and for teleop feeling right.
-
-**Where a sign error is actually dangerous: the surrogate fit** — the only place a world
-frame appears, and the only place the error is silent. See `interface.py`.
-
-`YAW_GYRO_SIGN` remains unverified but feeds only the HUD readout.
+For system ID none of this corrupts data: `cmd.csv` records what was commanded and the
+truth streams record what happened, so a fit recovers the true sign on its own. **Where a
+sign error is actually dangerous is the surrogate fit** — the only place a world frame
+appears, and so the only place the error is silent. `YAW_GYRO_SIGN` is unverified but
+feeds only the HUD readout.
 
 ## Control architecture — decided
 
@@ -252,95 +244,15 @@ the lights are additionally separated by position (centroid y=66). Bloom cost on
 the gate bounding box, so the orange mask is near-solid — but fill contours rather than
 trusting a filled mask.
 
-## teleop.py
-
-    python3 pilot/teleop.py              # fly + record + live view
-    python3 pilot/teleop.py --listen     # record only, sends nothing (safe mid-flight attach)
-    python3 pilot/teleop.py --no-view    # no cv2 window, lower loop jitter
-
-Flies like an acro quad — no self-levelling, releasing keys is not a hover. Throttle is a
-*held value* that integrates while a key is down; `F10` panics back to hover.
-
-`W/S` pitch, `A/D` roll, `Q/E` yaw, `UP/DOWN` throttle, `LCTRL` boost, `LALT` precision,
-`C` align-to-velocity. Commands on F-keys: `F5` arm, `F6` disarm, `F7` zero heading, `F8`
-quit, `F9` reset, `F11` levelling assist, `F12` marker.
-
-### Levelling assist (`F11`) — our own angle mode
-
-Added 2026-07-31 because the sim's ANGLE mode is unreachable (see the flight-mode entry
-under Open) and hand-flying a clean acro lap is hard. The stick commands a bank *angle*;
-an outer P loop turns the angle error into the body rate that goes out the ordinary acro
-path. Release the sticks and it returns to level instead of holding attitude.
-
-    LEVEL_MAX_ANGLE 35 deg    LEVEL_GAIN 4.0 (rad/s per rad)    LEVEL_MAX_RATE 3.0 rad/s
-
-**Roll/pitch levelling confirmed working in flight (Claire, 2026-07-31).**
-
-Throttle changes ride along with the assist and are off in plain acro:
-
-* **Tilt compensation.** Thrust acts along body −z, so at tilt θ you need
-  `hover / cos(θ)` to hold altitude. Without it hover sags every time you turn, which is
-  most of what makes altitude hard to hold through a lap. Uses the *achieved* attitude, so
-  it compensates the bank you are at rather than the one you asked for. Clamped at 1.6×
-  (~51°) because 1/cos runs away near 90°. As multipliers on the hover point:
-  ×1.04 at 15°, ×1.15 at 30°, ×1.22 at 35°, ×1.30 at 35° roll + 20° pitch.
-* **Return to hover.** Throttle keys slew away from the compensated hover point and it
-  snaps back the moment you release, so throttle is an offset rather than an absolute.
-  An earlier version eased back over τ = 0.7 s; flight test says the step is not felt,
-  because thrust reaches velocity through mass and drag, which is already a first-order
-  lag — the airframe supplies the smoothing and a filter here would just add a second lag
-  in series. It is also the better choice for the data: a step excites the plant, whereas
-  a pre-smoothed command shares its shape with the response, which is precisely what makes
-  a command→thrust lag hard to bracket (`plantfit.py` failed on exactly that).
-
-Neither observes altitude. **This is not an altitude hold** — letting go returns you to
-hover *thrust*, not to a hover, and vertical drift is still yours to trim. Vertical speed
-is not measured anywhere: VQ2 blocks position and velocity, and double-integrating the
-accelerometer drifts.
-
-Four properties that made this preferable to getting angle mode from the sim, even if the
-sim would have given it:
-
-* **`cmd.csv` still records real body-rate commands.** Nothing about the recorded data
-  changes, so cmd → response system ID needs no reconstruction. An FC-side angle mode
-  would have hidden the rate setpoint inside the flight controller where we cannot see it.
-* **No quaternion is transmitted; `ATTITUDE_IGNORE` stays set.** Absolute yaw never enters
-  the protocol. Yaw is untouched by the assist and stays pure acro — levelling yaw would
-  mean holding a heading, and holding a heading means knowing one.
-* **It self-gates to VQ1.** The outer loop needs truth attitude, which VQ2 does not send,
-  so under VQ2 `F11` prints why it did nothing. It cannot leak into a race.
-* **Data collection only.** It closes a loop around ground truth, which the raced pilot may
-  never do. It lives in teleop, which is not the pilot; `interface.Policy` cannot see it.
-
-The truth attitude it consumes carries the per-axis sign correction (`roll` from ATTITUDE,
-`pitch` = −ATTITUDE.pitch), and the physical→command conversion reuses `ACRO_ROLL`'s sign
-and the explicit minus on the pitch line rather than writing the mirror out again.
-
-Verified offline only: signs agree with the stick path, and the closed loop settles on
-target from +30°→0, 0→+20°, +10°→−25° under the measured mirror. That checks the algebra
-*given* the convention; it cannot re-check the convention, which `camreferee.py` settled.
-**Gains are untuned and it has never touched the sim.**
-
-**If you fit a model to assisted flight:** commands are now generated from the state by
-this controller, so command and state are correlated through it, which biases an open-loop
-fit in a way that looks clean. Stick input still offsets the target and so does excite the
-loop, but prefer the acro doublet sessions for identifying the rate loop itself.
-
-**Commands live on F-keys because the sim eats keystrokes.** The global hook is not
-exclusive — every keystroke reaches teleop *and* the sim, which binds ordinary game keys
-(SPACE restarts the run; found the hard way). Continuous axes sit on letters/arrows where an
-echo is cosmetic. `suppress=True` was considered and not shipped: unverifiable here, and a
-control scheme that fails silently is worse than one that collides visibly.
-
-HUD `hdg` is **diagnostic only** — the unbounded integral of `zgyro`; nothing in the control
-path reads it.
-
-Writes `pilot/sessions/<timestamp>/`: `imu.csv`, `race.csv`, `cmd.csv`, `frames.csv`,
-`actuators.csv`, `collisions.csv`, `events.jsonl`, `frames/*.jpg` (raw). `cmd.csv` pairs
-input with response for system ID.
-
 ## Gotchas
 
+* **ACRO is the only flight mode reachable** — not a choice we made. The sim is built on the
+  DCL commercial game (hence the `DCL` bit-16 `type_mask`), whose pak carries ACRO / ANGLE
+  ("manual throttle, stabilized") / ARCADE / GPS and their rate presets — but this build's
+  menu exposes graphics and sound only, `Input.ini` binds nothing mode-related, and the
+  `.sav` is an opaque UE4 blob. Settled 2026-07-31; do not re-investigate. **A string in the
+  pak is evidence the code exists, not that we can reach it.** The `F11` levelling assist
+  exists because of this.
 * **Only one client can hold UDP 14550** — teleop and the pilot cannot run together.
 * The example client's `main.py` calls `get_thread_for_join()` on a `TimeSync` built via
   its constructor rather than `create_timesync()`, so `.thread` is `None` and the join
@@ -351,35 +263,11 @@ input with response for system ID.
 ## Open
 
 * **`R_COMMIT`** (attention handoff range) unset — needs a real approach measurement.
-* **Gate count** (~20) wants confirming.
-* **Vertical profile** of the course unknown. VQ1 descended ~20°, putting gates below the
-  frame's −9.4° edge; check whether VQ2 does the same.
-* **Flight modes — what the build actually contains** (pak string scan 2026-07-31; supersedes
-  the earlier "Acro ↔ Stabilized toggle" entry, which named a mode nobody had checked for).
-  The sim is built on the DCL commercial game — hence the `DCL` bit-16 `type_mask` — and
-  ships a user-facing flight-mode selector (`press M to open menu`; the setting sits with the
-  `ACRO_LOW/MED/HIGH/CUSTOM_1..4` rate presets):
-
-      ACRO    "COMPLETE MANUAL CONTROL"          <- all probes to date ran here
-      ANGLE   "MANUAL THROTTLE, STABILIZED"      <- self-levelling attitude, manual throttle
-      ARCADE  "THE ALTITUDE CONTROL IS AUTOMAT[IC]"
-      GPS
-
-  "Stabilized" is the *description of ANGLE*, not a fourth mode. Two constraints also present
-  in the strings: `FLIGHT MODE (RESTARTS RACE)` — switching is not a live toggle — and
-  `YOU MUST USE ACRO FLIGHT MODE` (hardcoded, alongside a templated `YOU MUST FLY IN
-  {flightmode} MODE`), so events can mandate a mode and at least one mandates ACRO.
-
-  **RESOLVED — none of it is reachable in this build** (Claire, 2026-07-31): the in-sim menu
-  exposes graphics and sound only, there is no mode selector, `Input.ini` binds nothing
-  mode-related, and `DCLSave-LocalPlayer.sav` is an opaque UE4 GVAS blob. The strings are
-  the parent game's full table; the AIGP build ships the code without the UI. **A string in
-  the pak is evidence the code exists, not that we can reach it** — that inference was made
-  and corrected twice in one session, in both directions.
-
-  So ACRO is not a setting we chose, it is the only mode available, and `ACRO_CUSTOM_1..4`
-  is equally out of reach. The levelling assist below exists because of this.
-* Angle-mode slope 0.890 and the shallow negative side are probably ground contact
-  resisting roll; would need re-measuring in flight if it ever mattered.
-* **Recordings are backed up nowhere** and are excluded from git. The plant fit depends on
-  them.
+  Measurable from VQ1 flying, since gate dimensions are identical.
+* **The VQ2 course cannot be mapped at all.** §9.3 blocks gate geometry *and* both pose
+  streams, and world-frame mapping needs position and attitude. So gate count (~20,
+  Claire-observed) and the vertical profile are not "unconfirmed pending a measurement" —
+  there is no measurement available. VQ1's map is a different course (6 gates, ~167 m).
+  Anything downstream that wants a course must randomise over it rather than know it.
+* Frames are still backed up nowhere — gigabytes of JPEG, excluded from git, one laptop.
+  The telemetry CSVs are now tracked, so the plant fit no longer depends on that laptop.

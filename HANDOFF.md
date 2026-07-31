@@ -102,7 +102,10 @@ instead of `cmd` → IMU-and-hope. That directly de-risks your largest task. `te
 records `attitude.csv`, `position.csv` and `odometry.csv` automatically whenever those
 messages arrive, and shows `[TRUTH]` in the HUD when they do.
 
-All vqual-1 recordings are also valid system-ID data for the same reason.
+**vqual-1's own recordings are not usable for this**, despite an earlier draft here saying
+they were. They hold pose at ~9 Hz and nothing else — no gyro, no thrust, no command
+channel — so there is no input to regress against, and differentiating 9 Hz attitude for a
+racing quad aliases. They are labelled *perception* data, not plant data.
 
 **The rule:** ground truth is used to *check* estimators offline. It never feeds the pilot.
 The VQ2 pilot consumes permitted streams only.
