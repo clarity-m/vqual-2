@@ -7,14 +7,24 @@ propose changes, don't edit unilaterally.
 
 ## What this half owns
 
+**The deliverable is a policy** — `interface.Policy`, beating the baseline. PID, MPC or
+learned; nothing above the interface cares which.
+
+The other two are **means, and optional**:
+
 1. **Plant fit** — mass, drag, thrust curve, rate-loop response, from `cmd.csv` → `imu.csv`.
    vqual-1's recordings are valid data: the spec diff shows VQ1 and VQ2 physics are
    identical, only telemetry changed.
 2. **Surrogate** — a steppable NumPy sim: fitted plant + course map + *synthetic
    detections*. It renders no pixels and does not need to; the policy consumes the 73-D
    observation, not images.
-3. **Policy** — `interface.Policy`. PID, MPC or learned; the surrogate scores them
-   identically, so the choice is an implementation detail.
+
+They exist for one reason: live sim runs are ~15–25 per session, shared and serialized
+behind a single exclusive UDP port, so tuning against the real thing is rate-limited. A
+surrogate buys iterations. If a policy flies without one — reactive control off the
+guidance ribbon, hand-tuned gains, whatever works — that is a win, not a shortcut. Note
+also that the first-cut fit did not converge (see the dead ends below), so the model route
+is not a solved subproblem with a known cost.
 
 ## READ THIS FIRST: the ground truth is sign-corrupted
 
@@ -40,7 +50,7 @@ mirror applied to both ends. Only a referee outside the convention settles it.
 
 ## Two things that will cost you a week if skipped
 
-**Validate the fit before tuning anything on it.** Replay recorded commands through the
+**If you fit a plant, validate it before tuning anything on it.** Replay recorded commands through the
 fitted model, compare predicted vs. recorded IMU. This is the *only* place in the project
 where a world frame appears, so it is the only place a sign error is silent rather than
 self-announcing — and a wrong sign yields a model that fits, looks sensible, and quietly

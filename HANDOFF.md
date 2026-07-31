@@ -43,20 +43,24 @@ problem; yaw has almost no direct reward signal, so learning it is mostly wasted
 **Propose changes to `interface.py`, don't make them.** It is owned by neither side, and it
 is the only thing keeping two people's code compatible.
 
-## Your three deliverables
+## Your deliverables
 
-**1. Plant fit.** Mass, drag, thrust curve, rate-loop response, from `cmd.csv` → `imu.csv`.
+**Policy.** `interface.Policy`, beating the baseline. This is the only hard requirement.
 
-**2. Surrogate.** Steppable NumPy sim: fitted plant + course map + *synthetic detections*.
-It renders no pixels and doesn't need to — the policy consumes 73 numbers, not images.
-This is what buys tuning iterations; live sim runs are ~15–25 per session, shared, and
-serialized behind one exclusive UDP port.
+**Plant fit and surrogate are means, not ends.** The reasoning behind them: live sim runs
+are ~15–25 per session, shared, and serialized behind one exclusive UDP port, so a
+steppable NumPy sim (fitted plant + course map + *synthetic detections*, no pixels — the
+policy consumes 73 numbers, not images) is what buys tuning iterations. If you get a
+policy that flies without one — reactive control off the guidance ribbon, hand-tuned gains,
+anything — that counts. Nothing in the interface assumes a model exists.
 
-**3. Policy.** Beat the baseline.
+Worth knowing before you commit to the model route: the first-cut fit did **not** converge
+(thrust R² ≈ 0.05 against both command and motor sum; see the dead-end list below). It is
+not a solved subproblem you can budget an afternoon for.
 
 ## Two things that will cost you a week if skipped
 
-**Validate the fit before tuning on it.** Replay recorded commands through the fitted model
+**If you fit a plant, validate it before tuning on it.** Replay recorded commands through the fitted model
 and compare predicted vs. recorded IMU. The surrogate is the *only* place in this project
 where a world frame appears, so it's the only place a sign error is silent instead of
 self-announcing — and a wrong sign yields a model that fits the data, looks sensible, and
