@@ -10,7 +10,7 @@ C:\Users\clarity\AppData\Local\aigp\AIGP_3391\FlightSim.exe
 
 # teleop record to local disk
 python Z:\vqual-2\pilot\teleop.py --sessions C:\Users\clarity\AppData\Local\aigp\sessions
- - remember default is record pass --no-record if necessary
+ - remember default is record pass --no-frames for frames --no-record if necessary
 
 # zips up local session (session name printed after teleop F8)
 tar -cf "$env:LOCALAPPDATA\aigp\session.tar" -C "$env:LOCALAPPDATA\aigp\sessions" <session-name>

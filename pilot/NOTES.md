@@ -60,6 +60,33 @@ Training-only. Completing the course auto-submits.
 Physics is unchanged from VQ1 (all three spec revisions diffed) — only §4.5 Telemetry
 changed. **All vqual-1 recordings are valid system-ID data for this plant.**
 
+### The VQ1 truth streams are each wrong on a different axis (2026-07-31)
+
+Refereed against gravity in `HIGHRES_IMU` on a parked drone (session 20260731-135735,
+`|a|` = 9.8100 so genuinely at rest). Magnitudes agree to five decimals; only signs differ:
+
+| | gravity (referee) | `ATTITUDE` | `ODOMETRY` (from quaternion) |
+|---|---|---|---|
+| roll | **+0.00025** | +0.00025 ✓ | −0.000247 ✗ |
+| pitch | **−0.31068** | +0.31068 ✗ | −0.31066 ✓ |
+| yaw | — | −3.140550 | −3.140550 |
+
+    truth_roll  =  ATTITUDE.roll      # == -ODOMETRY.roll
+    truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
+
+Independently reproduces vqual-1's "ATTITUDE pitch and ODOMETRY roll are sign-inverted",
+re-derived rather than inherited. **Anything using these as ground truth must apply the
+per-field correction first** — a fit refereed against raw `ODOMETRY` roll or raw
+`ATTITUDE` pitch is mirrored, and mirrored silently.
+
+**Yaw is NOT settled and cannot be settled from a parked recording.** Both streams read
+−179.9°, which is the degenerate point where a sign flip is invisible — the same trap that
+hid vqual-1's yaw error for three sessions (fine at the 180° start heading, growing with
+every degree of turn). Needs data at a heading well away from 180°.
+
+Also measured, and real rather than an offset: **the launch pad is inclined 17.8°
+nose-down** (roll 0.01°, so a clean pitch incline).
+
 ### Two sim builds ship side by side (measured with `msgscan.py`, 2026-07-31)
 
 `AIGP_3391` is VQ2. `AIGP_VQ1_3391` is VQ1 **and still streams pose**:
