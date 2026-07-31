@@ -13,3 +13,6 @@ pilot/sessions/
 __pycache__/
 *.pyc
 .venv/
+
+# Fork/worktree scratch space — never part of the project tree
+.claude/worktrees/
