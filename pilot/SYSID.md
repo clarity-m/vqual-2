@@ -56,6 +56,18 @@ Maneuver 7 is the one to not skip. Skidding is a control *hazard* but the exact 
 the velocity-direction estimator needs, and that estimator is load-bearing for coordinated
 turning in VQ2.
 
+## Correct the truth streams before using them
+
+`ATTITUDE` and `ODOMETRY` are each sign-inverted on a **different** axis (refereed against
+gravity — see NOTES.md). Apply this first, or every downstream fit is mirrored:
+
+    truth_roll  =  ATTITUDE.roll      # == -ODOMETRY.roll
+    truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
+
+Yaw is unresolved: parked, both streams sit at −179.9°, the degenerate heading where a
+sign flip is invisible. **Maneuver 4 is what settles it** — the first data at a heading
+well away from 180°. Do not skip it.
+
 ## After
 
 Fit on maneuvers 1–7. **Validate on maneuver 8, held out.** If the model predicts a lap it
