@@ -5,13 +5,23 @@ real. GAE(lambda), clipped surrogate objective, clipped value loss, entropy bonu
 several minibatch epochs per rollout, global gradient-norm clipping, optional KL early
 stop.
 
-The environment contract (`surrogate/env.VecSurrogate`) is auto-resetting, so:
-  * the observation returned by `step` for a done env already belongs to the next episode
-    (the frame stack is refilled for those envs, see framestack.py);
-  * `done` gives no truncation flag and the pre-reset terminal observation is not
-    recoverable, so every done bootstraps at zero. For time-limit truncations that is a
-    mild value bias, accepted — it is uniform across gates and does not change the sign
-    of any term.
+The environment contract (`surrogate/env.VecSurrogate`) is auto-resetting, so the
+observation returned by `step` for a done env already belongs to the next episode (the
+frame stack is refilled for those envs, see framestack.py). The ending observation is not
+lost, though: it arrives out of band as `info['terminal_obs']`, which is exactly why
+`surrogate/env.py` emits it. So:
+
+  * a TIME-LIMIT truncation (`info['timeout']`) bootstraps from `V(s_T)`, reconstructing
+    the terminal frame stack from the pre-step stack plus the terminal observation;
+  * a genuine terminal — collision, corridor exit, finish — bootstraps at zero, and wins
+    when it coincides with a timeout on the same step (env.py combines the flags with OR);
+  * an environment that reports neither key falls back to bootstrapping every done at
+    zero, which is what `testenv` did before it published the flags.
+
+An earlier version of this file recorded that the terminal observation was "not
+recoverable" and accepted the resulting value bias. That was never true of this env, and
+the note is why it went unnoticed: it read as a considered trade-off rather than a
+dropped hand-off.
 """
 
 from __future__ import annotations
@@ -108,6 +118,9 @@ class PPO:
         self.b_val = np.zeros((T, N), dtype=np.float32)
         self.b_rew = np.zeros((T, N), dtype=np.float32)
         self.b_done = np.zeros((T, N), dtype=np.float32)
+        # gamma * V(s_T) where a time limit cut the episode; zero at genuine terminals and
+        # at every non-terminal step, so it can be added to delta unconditionally.
+        self.b_trunc_val = np.zeros((T, N), dtype=np.float32)
 
         self.env = None
         self._needs_reset = True
@@ -175,6 +188,14 @@ class PPO:
             self.b_done[t] = done.astype(np.float32)
             raw_rew_sum += float(rew.mean())
 
+            # Before the stack rolls: `s` is still the pre-step stack, which is what the
+            # terminal frame has to be appended to.
+            self.b_trunc_val[t] = 0.0
+            if done.any():
+                tv = self._truncation_values(s, info, done)
+                if tv is not None:
+                    self.b_trunc_val[t] = tv
+
             self.obs_norm.update(obs)
             self.stack.push(self.obs_norm(obs), done=done)
 
@@ -186,6 +207,45 @@ class PPO:
         stats.raw_reward_mean = raw_rew_sum / max(cfg.n_steps, 1)
         stats.sps = stats.steps / max(time.perf_counter() - t0, 1e-9)
         return stats
+
+    @torch.no_grad()
+    def _truncation_values(self, s: np.ndarray, info: dict, done: np.ndarray) -> np.ndarray | None:
+        """`gamma * V(s_T)` for envs a time limit cut off; zero everywhere else.
+
+        Returns None when the environment reports no truncation information at all, which
+        restores the old bootstrap-at-zero behaviour rather than guessing.
+        """
+        term = info.get("terminal_obs") if isinstance(info, dict) else None
+        timeout = info_array(info, "timeout", self.n_envs)
+        if term is None or timeout is None:
+            return None
+
+        trunc = done & timeout.astype(bool)
+        # A genuine terminal wins: env.py ORs the flags, so one step can be both a
+        # collision and a timeout, and that episode's future value really is zero.
+        # "finished" is the surrogate's name for it, "completed" is testenv's.
+        for key in ("collision", "corridor_exit", "finished", "completed"):
+            flag = info_array(info, key, self.n_envs)
+            if flag is not None:
+                trunc &= ~flag.astype(bool)
+        idx = np.flatnonzero(trunc)
+        if idx.size == 0:
+            return None
+
+        term = np.asarray(term, dtype=np.float32).reshape(self.n_envs, self.obs_dim)
+        # Roll one frame into the pre-step stack. The layout is oldest-first with the most
+        # recent observation last (framestack.py), so this is exactly the stack the policy
+        # would have seen at s_T. `s[:, D:]` is empty at k == 1, which is correct.
+        d = self.obs_dim
+        stacked = np.concatenate([s[:, d:], self.obs_norm(term)], axis=1)
+
+        # `obs_norm` is applied but deliberately not updated with the terminal frames: the
+        # normalizer's update stream stays identical to before this change, so the effect
+        # of the bootstrap is attributable to the bootstrap alone.
+        v = self.net.value(torch.as_tensor(stacked[idx], device=self.device)).cpu().numpy()
+        out = np.zeros(self.n_envs, dtype=np.float32)
+        out[idx] = self.cfg.gamma * v.astype(np.float32)
+        return out
 
     def _record_episodes(self, stats: RolloutStats, info: dict, done: np.ndarray) -> None:
         n = self.n_envs
@@ -220,7 +280,11 @@ class PPO:
         for t in reversed(range(cfg.n_steps)):
             nonterminal = 1.0 - self.b_done[t]
             next_val = last_val if t == cfg.n_steps - 1 else self.b_val[t + 1]
-            delta = self.b_rew[t] + cfg.gamma * next_val * nonterminal - self.b_val[t]
+            # `b_trunc_val` is nonzero only where `nonterminal` is 0, so exactly one of the
+            # two bootstrap terms fires. The recursion still cuts on `nonterminal`: the
+            # episode boundary is real even when the value bootstraps across it.
+            delta = (self.b_rew[t] + cfg.gamma * next_val * nonterminal
+                     + self.b_trunc_val[t] - self.b_val[t])
             last_gae = delta + cfg.gamma * cfg.gae_lambda * nonterminal * last_gae
             adv[t] = last_gae
         return adv, adv + self.b_val

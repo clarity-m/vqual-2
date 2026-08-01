@@ -31,7 +31,11 @@ from pilot.control.train.curriculum import (  # noqa: E402
     CurriculumConfig,
     make_completion_fn,
 )
-from pilot.control.train.network import ActorCritic, save_checkpoint  # noqa: E402
+from pilot.control.train.network import (  # noqa: E402
+    ActorCritic,
+    load_checkpoint,
+    save_checkpoint,
+)
 from pilot.control.train.normalize import ObsNormalizer, RewardScaler  # noqa: E402
 from pilot.control.train.ppo import PPO, PPOConfig  # noqa: E402
 from pilot.interface import HOVER_THRUST, OBS_DIM  # noqa: E402
@@ -131,6 +135,85 @@ def restore_env_config(d: dict, cls=None):
     return cls(**kwargs)
 
 
+# --- resume ------------------------------------------------------------------------------
+#
+# The seven-key checkpoint contract in network.py is frozen — `policies/rl.py` and the
+# evalsuite code against it — so nothing here adds keys to the `.pt`. Everything a training
+# run needs to continue and a deployment does not (optimizer moments, the normalizer's
+# sample COUNT, the curriculum's counters, RNG) goes in a separate `<stem>_resume.pt`,
+# written in the same call as the checkpoint so the two can never drift apart.
+
+RESUME_FORMAT = 1
+
+# Weight given to obs statistics recovered from a `.pt` alone, which carries mean and std
+# but not the count they were computed from. Large enough that the restored statistics are
+# not immediately washed out, small enough that they keep adapting — unlike
+# `ObsNormalizer.from_arrays`, which freezes and fabricates 1e6 for the deployment path.
+DEGRADED_OBS_COUNT = 1e5
+
+
+def resume_sidecar_path(pt_path: Path) -> Path:
+    return pt_path.with_name(f"{pt_path.stem}_resume.pt")
+
+
+def resolve_checkpoint(spec: str) -> Path:
+    """Accept a run name (`run1_s5046272`), a stem, or a path, with or without `.pt`."""
+    p = Path(spec)
+    seen, cands = set(), []
+    for c in (p, p.with_suffix(".pt"), CHECKPOINT_DIR / p.name,
+              CHECKPOINT_DIR / f"{p.name}.pt", CHECKPOINT_DIR / p.with_suffix(".pt").name):
+        if c.suffix == ".pt" and str(c) not in seen:
+            seen.add(str(c))
+            cands.append(c)
+    for c in cands:
+        if c.exists():
+            return c
+    raise FileNotFoundError(
+        f"--resume {spec!r}: no checkpoint found. Tried:\n  "
+        + "\n  ".join(str(c) for c in cands)
+    )
+
+
+def _resume_state(curriculum, update: int, next_archive: int, n_rebuilds: int) -> dict:
+    """The parts of the loop's state `_save` cannot read off the agent."""
+    return {
+        "curriculum": curriculum.state_dict(),
+        "update": int(update),
+        "next_archive": int(next_archive),
+        "n_rebuilds": int(n_rebuilds),
+    }
+
+
+def _print_resume_banner(args, ckpt_path, ckpt_state, curriculum, degraded_levels,
+                         global_step, start_update, total_updates, steps_per_update,
+                         appending) -> None:
+    """Say exactly what came back and what did not. A resume that quietly drops the
+    optimizer moments and the curriculum window looks identical to one that does not,
+    right up until the loss curve does something inexplicable."""
+    remaining = max(0, total_updates - start_update)
+    print(f"[resume] from {ckpt_path}", flush=True)
+    print(f"[resume]   step {global_step:,} of {args.total_steps:,} target "
+          f"-> {remaining} more updates ({remaining * steps_per_update:,} steps)")
+    print(f"[resume]   curriculum: {curriculum.summary()} "
+          f"progress_gate_scale={curriculum.progress_gate_scale:.2f}")
+    print(f"[resume]   log {args.name}_log.csv: {'appending' if appending else 'new file'}")
+    if ckpt_state is not None:
+        print("[resume]   restored: weights, optimizer, obs+reward statistics, "
+              "curriculum counters, RNG")
+        return
+    print(f"[resume]   NO RESUME SIDECAR beside {ckpt_path.name} "
+          f"(expected {resume_sidecar_path(ckpt_path).name})")
+    print("[resume]   restored ...... weights; obs mean/std from the .pt "
+          f"(count seeded to {DEGRADED_OBS_COUNT:.0e}, unfrozen)")
+    if degraded_levels:
+        levels = " ".join(f"{k}={v}" for k, v in degraded_levels.items())
+        print(f"[resume]   recovered ..... {levels} (from the checkpoint's env_config)")
+    print("[resume]   LOST .......... Adam moments, reward-scaler statistics, "
+          "curriculum window and counters, RNG")
+    print("[resume]   The first updates will be noisier than a clean continuation.",
+          flush=True)
+
+
 def n_gates_hint(cfg) -> int | None:
     rng = getattr(cfg, "n_gates_range", None)
     try:
@@ -146,7 +229,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="T4 PPO training harness")
     p.add_argument("--env", default="surrogate", choices=("surrogate", "testenv"))
     p.add_argument("--name", default="ppo")
-    p.add_argument("--total-steps", type=int, default=20_000_000)
+    p.add_argument("--total-steps", type=int, default=20_000_000,
+                   help="ABSOLUTE step target, not steps-to-add: resuming a 5M-step run "
+                        "with 20000000 runs ~15M more, not 20M more")
+    p.add_argument("--resume", default=None, metavar="NAME_OR_PATH",
+                   help="continue from a checkpoint, e.g. --resume run1_s5046272. Uses the "
+                        "matching <stem>_resume.pt when present; without it, weights and "
+                        "obs statistics are restored and the loss is reported loudly")
     p.add_argument("--n-envs", type=int, default=256)
     p.add_argument("--n-steps", type=int, default=128, help="rollout length per env")
     p.add_argument("--frame-stack", type=int, default=6)
@@ -210,6 +299,28 @@ def run(args: argparse.Namespace) -> dict:
     extra_env = _parse_env_kwargs(args.env_kwarg)
     hidden = tuple(int(h) for h in str(args.hidden).replace(" ", "").split(",") if h)
 
+    # --- resume: load before anything is built, so the checkpoint governs the shapes ----
+    ckpt = ckpt_net = ckpt_state = None
+    ckpt_path = None
+    if args.resume:
+        ckpt_path = resolve_checkpoint(args.resume)
+        ckpt_net, ckpt = load_checkpoint(ckpt_path, map_location=args.device, eval_mode=False)
+        sidecar = resume_sidecar_path(ckpt_path)
+        if sidecar.exists():
+            ckpt_state = torch.load(sidecar, map_location=args.device, weights_only=False)
+        # The weights decide the architecture; a CLI flag that disagrees is a mistake, not
+        # an instruction. Loudly follow the checkpoint rather than crash on a stale default.
+        ck_stack = int(ckpt.get("frame_stack", args.frame_stack))
+        ck_hidden = tuple(int(h) for h in ckpt["net_config"].get("hidden", hidden))
+        if ck_stack != args.frame_stack:
+            print(f"[resume] --frame-stack {args.frame_stack} -> {ck_stack} (from checkpoint)",
+                  flush=True)
+            args.frame_stack = ck_stack
+        if ck_hidden != hidden:
+            print(f"[resume] --hidden {list(hidden)} -> {list(ck_hidden)} (from checkpoint)",
+                  flush=True)
+            hidden = ck_hidden
+
     curriculum = Curriculum(
         CurriculumConfig(
             difficulty_start=args.difficulty_start,
@@ -224,8 +335,25 @@ def run(args: argparse.Namespace) -> dict:
         )
     )
 
+    # Curriculum state comes back before the env is built, so the env is constructed at the
+    # difficulty the run had actually reached rather than at the CLI start values.
+    n_rebuilds = 0
+    degraded_levels: dict = {}
+    if ckpt_state is not None and "curriculum" in ckpt_state:
+        curriculum.load_state_dict(ckpt_state["curriculum"])
+        n_rebuilds = int(ckpt_state.get("n_rebuilds", 0))
+    elif ckpt is not None:
+        env_c = ckpt.get("env_config") or {}
+        degraded_levels = curriculum.seed_from(
+            difficulty=env_c.get("difficulty"),
+            speed_cap=env_c.get("speed_cap"),
+            progress_gate_scale=env_c.get("progress_gate_scale"),
+            enable_time_penalty=env_c.get("enable_time_penalty"),
+        )
+
     env_seed = args.seed * 100003
-    env, env_cfg = build_env(args.env, args.n_envs, env_seed, curriculum.env_spec(), extra_env)
+    env, env_cfg = build_env(args.env, args.n_envs, env_seed + 7919 * n_rebuilds,
+                             curriculum.env_spec(), extra_env)
     obs_dim = int(getattr(env, "obs_dim"))
     act_dim = int(getattr(env, "act_dim"))
     if args.env == "surrogate" and (obs_dim != OBS_DIM or act_dim != 3):
@@ -235,16 +363,27 @@ def run(args: argparse.Namespace) -> dict:
     action_map = resolve_action_map()
     thrust_bias = action_map.thrust_pre_tanh_bias(HOVER_THRUST)
 
-    net = ActorCritic(
-        obs_dim=obs_dim,
-        frame_stack=args.frame_stack,
-        act_dim=act_dim,
-        hidden=hidden,
-        log_std_init=args.log_std_init,
-        thrust_bias=thrust_bias,
-        hover_thrust=HOVER_THRUST,
-        thrust_floor=action_map.thrust_floor,
-    ).to(args.device)
+    if ckpt_net is not None:
+        if ckpt_net.obs_dim != obs_dim or ckpt_net.act_dim != act_dim:
+            raise RuntimeError(
+                f"--resume {ckpt_path}: checkpoint network is "
+                f"obs_dim={ckpt_net.obs_dim} act_dim={ckpt_net.act_dim}, but --env "
+                f"{args.env} reports {obs_dim}/{act_dim}. Resuming across a different "
+                f"observation contract would load weights into the wrong channels."
+            )
+        net = ckpt_net.to(args.device)
+        net.train()
+    else:
+        net = ActorCritic(
+            obs_dim=obs_dim,
+            frame_stack=args.frame_stack,
+            act_dim=act_dim,
+            hidden=hidden,
+            log_std_init=args.log_std_init,
+            thrust_bias=thrust_bias,
+            hover_thrust=HOVER_THRUST,
+            thrust_floor=action_map.thrust_floor,
+        ).to(args.device)
 
     ppo_cfg = PPOConfig(
         n_steps=args.n_steps,
@@ -280,6 +419,36 @@ def run(args: argparse.Namespace) -> dict:
 
     steps_per_update = args.n_steps * args.n_envs
     total_updates = max(1, args.total_steps // steps_per_update)
+    next_archive = args.checkpoint_every
+    start_update = 0
+
+    if ckpt is not None:
+        agent.global_step = int(ckpt.get("step", 0))
+        if ckpt_state is not None:
+            agent.opt.load_state_dict(ckpt_state["opt"])
+            agent.obs_norm.rms.load_state_dict(ckpt_state["obs_rms"])
+            agent.rew_scaler.rms.load_state_dict(ckpt_state["rew_rms"])
+            agent.global_step = int(ckpt_state.get("global_step", agent.global_step))
+            torch.set_rng_state(ckpt_state["torch_rng"].cpu().to(torch.uint8))
+            np.random.set_state(ckpt_state["numpy_rng"])
+        else:
+            # Weights-only. `obs_mean`/`obs_std` are in the .pt but the count they came
+            # from is not, so it is seeded rather than invented at 1e6 — and left
+            # unfrozen, so the statistics keep tracking.
+            rms = agent.obs_norm.rms
+            rms.mean = np.asarray(ckpt["obs_mean"], dtype=np.float64).reshape(-1).copy()
+            std = np.asarray(ckpt["obs_std"], dtype=np.float64).reshape(-1)
+            rms.var = np.maximum(std ** 2 - agent.obs_norm.epsilon, 0.0)
+            rms.count = DEGRADED_OBS_COUNT
+
+        # Derived from the step count, not from a stored update index, so a resume with a
+        # different --n-envs / --n-steps still lands in the right place on the schedule.
+        start_update = int(agent.global_step // steps_per_update)
+        if args.checkpoint_every > 0:
+            next_archive = ((agent.global_step // args.checkpoint_every) + 1) * args.checkpoint_every
+        agent.speed_cap = curriculum.speed_cap
+
+    resumed_log = ckpt is not None
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     log_path = CHECKPOINT_DIR / f"{args.name}_log.csv"
     log_fields = [
@@ -287,9 +456,13 @@ def run(args: argparse.Namespace) -> dict:
         "completion_rate", "difficulty", "speed_cap", "time_penalty", "policy_loss",
         "value_loss", "entropy", "approx_kl", "clip_frac", "explained_var", "reward_scale",
     ]
-    log_file = log_path.open("w", newline="", encoding="utf-8")
+    # Append on resume: opening "w" here would silently destroy the history of the run
+    # being continued (run1_log.csv is 77 updates of the only training evidence there is).
+    append = resumed_log and log_path.exists() and log_path.stat().st_size > 0
+    log_file = log_path.open("a" if append else "w", newline="", encoding="utf-8")
     log_writer = csv.DictWriter(log_file, fieldnames=log_fields)
-    log_writer.writeheader()
+    if not append:
+        log_writer.writeheader()
 
     if not args.quiet:
         print(
@@ -299,13 +472,16 @@ def run(args: argparse.Namespace) -> dict:
             f"thrust_bias={thrust_bias:+.4f} -> thrust {action_map.thrust_of(np.tanh(thrust_bias)):.3f}",
             flush=True,
         )
+    if ckpt is not None:
+        _print_resume_banner(args, ckpt_path, ckpt_state, curriculum, degraded_levels,
+                             agent.global_step, start_update, total_updates,
+                             steps_per_update, append)
 
     history: list[dict] = []
-    n_rebuilds = 0
-    next_archive = args.checkpoint_every
     t_start = time.perf_counter()
+    update = start_update
 
-    for update in range(1, total_updates + 1):
+    for update in range(start_update + 1, total_updates + 1):
         if args.anneal_lr:
             frac = 1.0 - (update - 1) / total_updates
             for g in agent.opt.param_groups:
@@ -364,27 +540,34 @@ def run(args: argparse.Namespace) -> dict:
 
         if agent.global_step >= next_archive:
             next_archive += args.checkpoint_every
-            _save(args, agent, net, env_cfg, action_map, tag=f"_s{agent.global_step}")
+            _save(args, agent, net, env_cfg, action_map, tag=f"_s{agent.global_step}",
+                  resume_state=_resume_state(curriculum, update, next_archive, n_rebuilds))
         if update % 10 == 0 or update == total_updates:
-            _save(args, agent, net, env_cfg, action_map)  # rolling latest
+            _save(args, agent, net, env_cfg, action_map,  # rolling latest
+                  resume_state=_resume_state(curriculum, update, next_archive, n_rebuilds))
 
-    final = _save(args, agent, net, env_cfg, action_map, tag="_final")
+    final = _save(args, agent, net, env_cfg, action_map, tag="_final",
+                  resume_state=_resume_state(curriculum, update, next_archive, n_rebuilds))
     log_file.close()
 
     elapsed = time.perf_counter() - t_start
+    # Steps run in THIS session, not the absolute count: dividing a resumed run's 5M total
+    # by the few minutes it just spent reports a fictional throughput.
+    ran = max(0, update - start_update) * steps_per_update
     if not args.quiet:
         print(
-            f"[train] done: {agent.global_step} steps in {elapsed:.1f}s "
-            f"({agent.global_step / max(elapsed, 1e-9):.0f} FPS overall); "
-            f"checkpoint {final}",
+            f"[train] done: {ran} steps in {elapsed:.1f}s "
+            f"({ran / max(elapsed, 1e-9):.0f} FPS overall); "
+            f"total {agent.global_step}; checkpoint {final}",
             flush=True,
         )
     return {"history": history, "checkpoint": str(final), "curriculum": curriculum,
             "agent": agent, "elapsed_s": elapsed}
 
 
-def _save(args, agent: PPO, net: ActorCritic, env_cfg, action_map, tag: str = "") -> Path:
-    return save_checkpoint(
+def _save(args, agent: PPO, net: ActorCritic, env_cfg, action_map, tag: str = "",
+          resume_state: dict | None = None) -> Path:
+    pt_path = save_checkpoint(
         CHECKPOINT_DIR / f"{args.name}{tag}",
         net,
         agent.obs_norm.mean,
@@ -402,6 +585,25 @@ def _save(args, agent: PPO, net: ActorCritic, env_cfg, action_map, tag: str = ""
             "seed": args.seed,
         },
     )
+    if resume_state is not None:
+        # Same call as the checkpoint, deliberately: a resume sidecar that can be newer or
+        # older than the weights beside it is worse than none at all.
+        torch.save(
+            {
+                "format": RESUME_FORMAT,
+                "global_step": int(agent.global_step),
+                "opt": agent.opt.state_dict(),
+                "obs_rms": agent.obs_norm.rms.state_dict(),
+                "rew_rms": agent.rew_scaler.rms.state_dict(),
+                "rew_enabled": bool(agent.rew_scaler.enabled),
+                "torch_rng": torch.get_rng_state(),
+                "numpy_rng": np.random.get_state(),
+                "args": {k: v for k, v in vars(args).items()},
+                **resume_state,
+            },
+            resume_sidecar_path(pt_path),
+        )
+    return pt_path
 
 
 def main(argv=None) -> int:
