@@ -36,6 +36,26 @@ import detect as D  # noqa: E402
 
 MIN_SIZE_PX = 26.0   # below this the PnP range is too soft to anchor a scale
 
+# Label vocabulary. Three outcomes, not two, because "not a gate" and "a gate I cannot
+# name" are different facts and collapsing them throws one away:
+#   0..16  -- this detection is that race index
+#   null   -- not a gate at all (decoration, glow, false positive)
+#   "?"    -- a real gate, identity unknown
+# UNSURE cannot feed scale or height, both of which need identity. It still carries two
+# things: it is a TRUE POSITIVE for measuring detector precision, and when it shares a frame
+# with an identified gate the measured distance narrows which race index it can be -- see
+# suggest_unsure().
+UNSURE = ('?', '-', -1, 'x', 'X')
+
+
+def parse_label(v):
+    """-> ('gate', idx) | ('unsure', None) | ('notgate', None)"""
+    if v is None:
+        return ('notgate', None)
+    if v in UNSURE or (isinstance(v, str) and v.strip() in ('?', '-', 'x', 'X')):
+        return ('unsure', None)
+    return ('gate', int(v))
+
 
 def drop_decorations_by_parent(img, det, range_ratio=1.6):
     """Reject decoration false positives using the ORANGE BLOB each hole sits in.
@@ -279,7 +299,8 @@ def solve(session, labels_json, map_json):
     # so single-session label files from before this change still resolve.
     root = os.path.dirname(os.path.normpath(session))
     imu_cache, frames_cache = {}, {}
-    rows, heights = [], {}
+    rows, heights, unsure_rows = [], {}, []
+    tally = {'gate': 0, 'unsure': 0, 'notgate': 0}
     for key, mapping in labels.items():
         if '/' in key:
             sname, fname = key.split('/', 1)
@@ -291,8 +312,12 @@ def solve(session, labels_json, map_json):
             frames_cache[sess] = {r['file']: r for r in
                                   L.load_csv(os.path.join(sess, 'frames.csv')) if r['file']}
         imu = imu_cache[sess]
-        used = {int(i): v for i, v in mapping.items() if v is not None}
-        if len(used) < 2:
+        parsed = {int(i): parse_label(v) for i, v in mapping.items()}
+        for kind, _ in parsed.values():
+            tally[kind] += 1
+        used = {i: idx for i, (kind, idx) in parsed.items() if kind == 'gate'}
+        unsure = [i for i, (kind, _) in parsed.items() if kind == 'unsure']
+        if len(used) + len(unsure) < 2:
             continue
         img = cv2.imread(os.path.join(sess, 'frames', fname))
         if img is None:
@@ -321,6 +346,18 @@ def solve(session, labels_json, map_json):
                     dh = -float((pb - pa) @ g_body)     # +ve => rb is HIGHER than ra
                     heights.setdefault((min(ra, rb), max(ra, rb)), []).append(
                         dh if ra < rb else -dh)
+
+        # An UNSURE detection paired with an identified one still measures a distance. Once
+        # the scale is known that distance names the candidates: only race indices whose
+        # sketch separation from the known gate matches can be what it is. Recorded here
+        # and turned into a shortlist after the scale has been estimated below.
+        for iu in unsure:
+            for ik, ra in used.items():
+                if iu >= len(det) or ik >= len(det):
+                    continue
+                d_m = float(np.linalg.norm(np.array(det[iu]['pos_body']) -
+                                           np.array(det[ik]['pos_body'])))
+                unsure_rows.append({'frame': key, 'det': iu, 'known': ra, 'd_m': d_m})
 
     if not rows:
         raise SystemExit('no labelled pairs found — fill in labels.json first')
