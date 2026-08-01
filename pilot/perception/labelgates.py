@@ -155,6 +155,39 @@ def drop_decorations(det, range_ratio=1.25):
     return keep
 
 
+def quality(d, w=640, h=360, max_disagree=0.30, max_aspect=1.8):
+    """Reasons this detection should not anchor a metric measurement. Empty list = fine.
+
+    Found by asking why frame 00015742 of 20260730-222547 gave a distance 40% off every
+    other measurement of the same gate pair. Four things were wrong at once and the
+    detector already knew about all of them:
+
+      * `source: 'outer'` -- the 2700 mm fallback, which detect.py calls the worse
+        observation outright;
+      * the fitted quad EXTRAPOLATES past the image edge, so its far corners were never
+        seen. A clipped gate's pose is invented, not measured;
+      * extreme obliquity, where a small corner error swings the pose a long way;
+      * range_m (PnP) and range_size_m (apparent size) disagreeing by 50%. Those are two
+        independent estimates of one number, so their disagreement is a free confidence
+        measure that nothing was reading.
+    """
+    bad = []
+    if d.get('source') == 'outer':
+        bad.append('outer-fallback')
+    q = d.get('quad')
+    if q is not None:
+        q = np.asarray(q).reshape(-1, 2)
+        if q[:, 0].min() < 0 or q[:, 1].min() < 0 or q[:, 0].max() > w or q[:, 1].max() > h:
+            bad.append('clipped')
+        e = [float(np.linalg.norm(q[k] - q[(k + 1) % 4])) for k in range(4)]
+        if max(e) / max(min(e), 1e-6) > max_aspect:
+            bad.append('oblique %.1f' % (max(e) / min(e)))
+    r1, r2 = d.get('range_m'), d.get('range_size_m')
+    if r1 and r2 and abs(r1 - r2) / max(r1, r2) > max_disagree:
+        bad.append('pnp-vs-size %.0f%%' % (100 * abs(r1 - r2) / max(r1, r2)))
+    return bad
+
+
 def gravity_at(imu_rows, t_ns):
     """Unit gravity in BODY frame at the given time, from the accelerometer.
 
@@ -241,11 +274,20 @@ def pick(sessions, npick, stride, outdir):
         for k, d in enumerate(det):
             c = d['centre'].astype(int)
             s = int(max(8, d['size_px'] / 2))
-            cv2.rectangle(img, (c[0] - s, c[1] - s), (c[0] + s, c[1] + s), (0, 220, 255), 2)
+            q = d.get('quad')
+            col = (0, 220, 255) if not quality(d) else (0, 140, 255)
+            if q is not None:
+                cv2.polylines(img, [np.asarray(q).reshape(-1, 2).astype(np.int32)], True, col, 2)
+            else:
+                cv2.rectangle(img, (c[0] - s, c[1] - s), (c[0] + s, c[1] + s), col, 2)
             cv2.putText(img, str(k), (c[0] - s, c[1] - s - 4), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7, (0, 220, 255), 2, cv2.LINE_AA)
+                        0.7, col, 2, cv2.LINE_AA)
+            bad = quality(d)
+            if bad:
+                cv2.putText(img, ','.join(bad)[:26], (c[0] - s, c[1] + s + 26),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.36, col, 1, cv2.LINE_AA)
             cv2.putText(img, '%.0fm' % np.linalg.norm(d['pos_body']), (c[0] - s, c[1] + s + 14),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 255), 1, cv2.LINE_AA)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.42, col, 1, cv2.LINE_AA)
         cv2.imwrite(os.path.join(outdir, key.replace('/', '__').replace('.jpg', '.png')),
                     cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_NEAREST))
         stub[key] = {str(k): None for k in range(len(det))}
