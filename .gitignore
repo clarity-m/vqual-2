@@ -33,3 +33,7 @@ label-*/
 #   verify_autolabel/    <- overlay sheets, rendered on demand
 pilot/perception/autolabels_vq1.json
 pilot/perception/verify_autolabel/
+
+# Training checkpoints: ~38 MB of .pt per run, regenerable from gatenet.py + autolabel.py.
+# The RESULTS live in perception/TRAINING.md, which is tracked; the weights are not.
+pilot/perception/gatenet_runs/
