@@ -101,7 +101,17 @@ SESSIONS = os.path.join(HERE, "..", "sessions")
 
 CARD1 = ["20260731-150712", "20260731-143025", "20260731-144815"]
 CARD2 = ["20260801-004843", "20260801-005059"]
-HOLDOUT = ["20260731-131305"]
+HOLDOUT = [
+    # Nine minutes of ordinary flying. Held out across every fit so far, which is what
+    # makes their numbers comparable -- do not swap it out.
+    "20260731-131305",
+    # The only completed 6/6 lap ever recorded, and the only thing on disk shaped like a
+    # race course: winding, slow, and flown near hover rather than in a straight line.
+    # `sessions/README.md` has always said "do not fit on it"; it belongs here because
+    # free-flight drift and course drift turn out to be very different numbers, and the
+    # one that matters is the one measured on a course.
+    "20260731-204841-vq1-lap-slow",
+]
 EXCLUDED = {
     "20260731-130744": "referee does not close (median 1.45 m/s^2); position velocity "
                        "stream repeats in 53% of rows",
@@ -360,15 +370,33 @@ def build_knots(bins, apex_reads):
     for t, tm in apex_reads:
         by_thr.setdefault(round(t, 3), []).append(tm)
     reads = {t: float(np.mean(v)) for t, v in by_thr.items()}
+    anchors = sorted(reads.items())
 
-    knots = list(reads.items())
-    knots += [(b[0], b[1]) for b in bins
-              if all(abs(b[0] - t) > BIN_W for t in reads)]
-    knots.sort()
+    # A bin that contradicts the direct reads bracketing it is dropped, not averaged in
+    # and not allowed to push them around. This is the half that used to be missing, and
+    # it cost 0.2 m/s^2 at hover: the monotone repair below is a running maximum from the
+    # bottom, so a single low bin reading high dragged every read above it up with it --
+    # the measured 0.05 read (0.595) came out of the table at 0.762 because one bin near
+    # zero throttle sat above it. A measurement losing to a regression bin is backwards.
+    def bracket(t):
+        lo = max([v for rt, v in anchors if rt < t], default=-np.inf)
+        hi = min([v for rt, v in anchors if rt > t], default=np.inf)
+        return lo, hi
+
+    kept = []
+    for b in bins:
+        if any(abs(b[0] - t) <= BIN_W for t in reads):
+            continue                      # a read already covers this throttle
+        lo, hi = bracket(b[0])
+        if lo <= b[1] <= hi:
+            kept.append((b[0], b[1]))
+
+    knots = sorted(list(reads.items()) + kept)
 
     # A non-monotone table would let a policy find a throttle band where pushing harder
     # produces less thrust, which is a fit artefact and exactly the kind of thing an
-    # optimiser goes looking for.
+    # optimiser goes looking for. After the bracket filter above this can only ever be
+    # repairing bins against each other, never a bin against a measurement.
     out = [list(knots[0])]
     for t, tm in knots[1:]:
         out.append([t, max(tm, out[-1][1])])
@@ -542,7 +570,7 @@ def main(argv):
     print("    %d throttle bins carry the curve: %s"
           % (len(bins), " ".join("%.2f" % b[0] for b in bins)))
     knots = build_knots(bins, apex["thrust_reads"])
-    print("    %d knots after the card 2 reads replace the bins they overlap"
+    print("    %d knots after the direct reads replace the bins they overlap"
           % len(knots))
 
     c_lift, r2_lift, lift_forms = fit_body_lift(f, vb, thr, wt, kz, knots)

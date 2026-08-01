@@ -33,14 +33,33 @@ first answers "how far off is it, per metre flown": the windows that drift worst
 be the ones that travel least, and dividing medians hides exactly that. On the shipped
 plant the honest figure is 7.4% at 5 s where the ratio of medians reads 6.0%.
 
-Result (2026-08-01, held out on `20260731-131305`, which the fit never saw):
+Result (2026-08-01), over a median 35 m travelled per 5 s window on `20260731-131305`.
+Every sign corruption is caught by 31x to 45x; the nearest is vertical drag removed at
+2x / 5x.
 
-    horizon   fitted drift          nearest corrupted variant
-    2 s       0.35 m, 0.5 deg, 2.8%    vertical drag removed, 2x
-    5 s       1.57 m, 1.0 deg, 3.9%    vertical drag removed, 4x
+    session                        2 s     5 s
+    20260731-131305                2.6%    5.1%
+    20260731-204841-vq1-lap-slow   9.3%   24.3%
 
-over a median 35 m travelled per 5 s window. Every sign corruption is caught by 31x to
-45x.
+**The lap does not meet the target and this is not a regression.** It is the only
+recording shaped like a race course -- winding, 3.7 m/s, flown near hover -- and it reads
+24% whether or not it is in the fit set (24.5% when fitted on), so its error is
+misspecification rather than missing data. Two thirds of it is *not* horizontal: median
+position error decomposes to 0.91 m horizontal against 3.58 m vertical, where free flight
+is 0.57 / 0.93.
+
+Most of that vertical error is a **per-session hover trim offset**, which no single global
+thrust curve can carry. The signed vertical error on the lap has the same sign in 70% of
+windows and implies the model over-thrusts by 0.23 m/s^2, about 2.3% of hover; on
+`131305` the same statistic is 52%, i.e. no bias at all. Scaling thrust per session
+confirms it -- `131305` bottoms out at x0.99 (3.9%) and the lap at x0.97 (18.1%). So trim
+accounts for roughly six of the lap's twenty-four points and something still unidentified
+carries the rest.
+
+This is worth being precise about, because it bounds what refitting can buy: a controller
+trims hover out in closed loop (`policies/baseline.py` already adapts it), while an
+open-loop replay cannot. Course-scale open-loop drift is therefore dominated by a term the
+flying controller does not actually pay.
 
 The body-lift term is what moved this: the same plant with `c_lift` set to zero drifts
 7.4% at 5 s, which is precisely where the model sat before that term existed. Adding
@@ -182,13 +201,27 @@ def main(argv):
     print("plant   %s" % path)
     print("%s\n" % plant.describe())
 
-    eps = load_epochs([os.path.join(SESSIONS, s) for s in plant.meta["holdout"]])
+    held = plant.meta["holdout"]
+    eps = load_epochs([os.path.join(SESSIONS, s) for s in held])
     print("held-out epochs: %s" % ", ".join(ep.name for ep in eps))
+
+    # The corruption controls are scored on the FIRST held-out session only, and drift on
+    # all of them. Same reason each axis control is scored only on windows that excite
+    # that axis: a control the data cannot see reports "indistinguishable" and means
+    # "untested". Drag scales with v^2, so pooling in a slow session dilutes every drag
+    # control -- adding the recorded lap drops the 2 s margin from 3x to 2x without the
+    # model changing at all. Drift has the opposite need: it is the number the target is
+    # about, and the slow winding session is the one that resembles a race course.
+    primary = held[0]
+    corr_eps = [ep for ep in eps if ep.name.split("#")[0] == primary]
+    print("corruption controls on %s; drift on all held-out sessions" % primary)
 
     margins = []
     drifts = {}
+    by_session = {}
     for horizon in HORIZONS:
-        all_windows = [(ep, s, rms) for ep in eps for s, rms in windows(ep, horizon)]
+        all_windows = [(ep, s, rms) for ep in corr_eps
+                       for s, rms in windows(ep, horizon)]
         if not all_windows:
             print("\nhorizon %.0f s: no contact-free flying window that long" % horizon)
             continue
@@ -198,6 +231,20 @@ def main(argv):
               % (horizon, len(all_windows), travelled))
         print("    variant                        n   speed err  position err"
               "  attitude err   drift")
+
+        # Drift is also reported per held-out session, because they are not the same
+        # kind of flying and pooling them hides the harder one. Nine minutes of free
+        # flight runs nearly straight at 7 m/s; the recorded lap winds through gates at
+        # under 4 and spends its time near hover. The second is what a race course looks
+        # like, so it is the number the target is really about.
+        for sname in sorted({ep.name.split("#")[0] for ep in eps}):
+            sel = [(ep, s) for ep in eps if ep.name.split("#")[0] == sname
+                   for s, _ in windows(ep, horizon)]
+            if len(sel) < 10:
+                continue
+            d = float(np.nanmedian([replay(ep, plant, horizon, s, 1.0)["drift"]
+                                    for ep, s in sel]))
+            by_session.setdefault(sname, {})[horizon] = (d, len(sel))
 
         for name, p, sign, axis, gated in variants(plant):
             sel = all_windows if axis is None else \
@@ -244,14 +291,17 @@ def main(argv):
     # The drift target says the model is accurate enough to tune a gain against. A
     # model can hold one and fail the other in either direction, so neither number
     # substitutes for the other.
-    worst = max(drifts.values()) if drifts else float("nan")
     print("\nopen-loop drift, position error per metre flown (target < %.0f%%):"
           % (100 * DRIFT_TARGET))
-    for horizon in sorted(drifts):
-        print("  horizon %.0f s   %.1f%%%s"
-              % (horizon, 100 * drifts[horizon],
-                 "" if drifts[horizon] < DRIFT_TARGET else "   <-- over target"))
-    on_target = bool(drifts) and worst < DRIFT_TARGET
+    worst = 0.0
+    for sname in sorted(by_session):
+        cells = by_session[sname]
+        print("  %-30s %s" % (sname, "   ".join(
+            "%.0f s %5.1f%% (n=%d)%s" % (h, 100 * d, n,
+                                         "" if d < DRIFT_TARGET else " OVER")
+            for h, (d, n) in sorted(cells.items()))))
+        worst = max([worst] + [d for d, _ in cells.values()])
+    on_target = bool(by_session) and worst < DRIFT_TARGET
 
     ok = caught and on_target
     print("\n%s" % (
