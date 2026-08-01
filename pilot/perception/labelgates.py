@@ -188,11 +188,32 @@ def score_frames(session, npick, stride):
     return out[:npick]
 
 
-def pick(session, npick, stride, outdir):
+def pick(sessions, npick, stride, outdir):
+    """Pick across ONE OR MORE sessions into a single labelling set.
+
+    Multi-session matters for HEIGHT specifically. A frame yields a height only if the
+    aircraft happened to be steady, and whether that ever happens is a property of how the
+    session was flown, not of the frame -- 20260731-222724 is a straight-fly test and almost
+    never steady. Searching several sessions finds the steady moments a single recording
+    simply does not contain.
+
+    Keys become 'session/frame.jpg' when more than one session is in play and stay plain
+    'frame.jpg' otherwise, so the existing single-session label file keeps working.
+    """
     os.makedirs(outdir, exist_ok=True)
-    picks = score_frames(session, npick, stride)
+    multi = len(sessions) > 1
+    picks = []
+    for sess in sessions:
+        for p in score_frames(sess, npick, stride):
+            p['session'] = sess
+            picks.append(p)
+    picks.sort(key=lambda x: -x['score'])
+    picks = picks[:npick]
     stub = {}
     for p in picks:
+        session = p['session']
+        sname = os.path.basename(os.path.normpath(session))
+        key = (sname + '/' + p['file']) if multi else p['file']
         img = cv2.imread(os.path.join(session, 'frames', p['file']))
         det = drop_decorations_by_parent(img, [d for d in D.detections(img)
                                              if d['size_px'] >= MIN_SIZE_PX])
@@ -205,11 +226,11 @@ def pick(session, npick, stride, outdir):
                         0.7, (0, 220, 255), 2, cv2.LINE_AA)
             cv2.putText(img, '%.0fm' % np.linalg.norm(d['pos_body']), (c[0] - s, c[1] + s + 14),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 255), 1, cv2.LINE_AA)
-        cv2.imwrite(os.path.join(outdir, p['file'].replace('.jpg', '.png')),
+        cv2.imwrite(os.path.join(outdir, key.replace('/', '__').replace('.jpg', '.png')),
                     cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_NEAREST))
-        stub[p['file']] = {str(k): None for k in range(len(det))}
-        print('%s  %d gates, baseline %.1f m, smallest %.0f px, |a| %.2f%s'
-              % (p['file'], p['n'], p['sep_m'], p['min_size_px'], p['gmag'],
+        stub[key] = {str(k): None for k in range(len(det))}
+        print('%-46s %d gates, baseline %.1f m, smallest %.0f px, |a| %.2f%s'
+              % (key, p['n'], p['sep_m'], p['min_size_px'], p['gmag'],
                  '' if abs(p['gmag'] - 9.81) < 1.5 else '  (too dynamic for height)'))
     # NEVER CLOBBER HAND WORK. An earlier version overwrote labels.json on every --pick,
     # and re-running the picker destroyed labels Claire had already entered -- the one file
@@ -253,20 +274,33 @@ def solve(session, labels_json, map_json):
                                            (pa['across'] - pb['across']) * k))
 
     labels = json.load(open(labels_json))
-    imu = list(L.load_csv(os.path.join(session, 'imu.csv')))
+    # A key may name its own session ('20260730-215221/00012345.jpg') when the set was
+    # picked across several. Plain keys fall back to the session given on the command line,
+    # so single-session label files from before this change still resolve.
+    root = os.path.dirname(os.path.normpath(session))
+    imu_cache, frames_cache = {}, {}
     rows, heights = [], {}
-    for fname, mapping in labels.items():
+    for key, mapping in labels.items():
+        if '/' in key:
+            sname, fname = key.split('/', 1)
+            sess = os.path.join(root, sname)
+        else:
+            sess, fname = session, key
+        if sess not in imu_cache:
+            imu_cache[sess] = list(L.load_csv(os.path.join(sess, 'imu.csv')))
+            frames_cache[sess] = {r['file']: r for r in
+                                  L.load_csv(os.path.join(sess, 'frames.csv')) if r['file']}
+        imu = imu_cache[sess]
         used = {int(i): v for i, v in mapping.items() if v is not None}
         if len(used) < 2:
             continue
-        img = cv2.imread(os.path.join(session, 'frames', fname))
+        img = cv2.imread(os.path.join(sess, 'frames', fname))
         if img is None:
             continue
         det = drop_decorations_by_parent(img, [d for d in D.detections(img)
                                              if d['size_px'] >= MIN_SIZE_PX])
         det.sort(key=lambda d: -d['size_px'])
-        frow = next((r for r in L.load_csv(os.path.join(session, 'frames.csv'))
-                     if r['file'] == fname), None)
+        frow = frames_cache[sess].get(fname)
         g_body, gmag, dt = gravity_at(imu, float(frow['t_recv_wall_ns'])) if frow else (None, 0, 9)
         idxs = sorted(used)
         for ii in range(len(idxs)):
@@ -280,7 +314,7 @@ def solve(session, labels_json, map_json):
                 pa, pb = np.array(det[i]['pos_body']), np.array(det[j]['pos_body'])
                 d_m = float(np.linalg.norm(pb - pa))
                 u = U[(min(ra, rb), max(ra, rb))]
-                rows.append({'frame': fname, 'pair': (ra, rb), 'd_m': d_m, 'u': u,
+                rows.append({'frame': key, 'pair': (ra, rb), 'd_m': d_m, 'u': u,
                              'scale': d_m / u if u > 1e-6 else np.nan})
                 # Height: project the inter-gate vector onto gravity. Yaw-free.
                 if g_body is not None and abs(gmag - 9.81) < 1.5 and dt < 0.2:
@@ -317,7 +351,8 @@ def main():
                                                   'map_approx.json'))
     args = ap.parse_args()
     if args.pick:
-        pick(args.session, args.pick, args.stride, args.outdir)
+        sessions = args.session.split(',')
+        pick(sessions, args.pick, args.stride, args.outdir)
     if args.solve:
         solve(args.session, args.solve, args.map)
 
