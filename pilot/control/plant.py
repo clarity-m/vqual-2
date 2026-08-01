@@ -9,10 +9,25 @@ The model, in body axes, with (u, v, w) the body-frame velocity:
     accelerometer_x = -kx * u|u|
     accelerometer_y = -ky * v|v|
     accelerometer_z = -T/m - kz * w|w|
-    T/m             = max(0, thrust_c0 + thrust_c1 * throttle)
+    T/m             = interp(throttle, thrust_knots)
     body rates      = rate_gain * commanded rates          (simulator convention)
 
-Two properties worth knowing before using it.
+Three properties worth knowing before using it.
+
+**The thrust curve is a measured table, not a polynomial.** Card 2 made `T/m` directly
+readable -- wherever `|w|` is small the drag term is under 0.2 m/s^2, so `-a_z` *is*
+thrust -- and the reads that come back do not have a low-order shape. There is a
+deadband below throttle 0.05 (0.35 m/s^2 at zero, 0.60 at 0.05), then a rise steepening
+to about 76 m/s^2 per unit throttle near 0.6, then a flattening to 51.7 at full. Fitting
+that with a quadratic overshoots full throttle by 3.9 m/s^2 and puts hover at 0.252
+against the 0.27 measured in flight; the table reproduces both ends and puts hover at
+0.270. Held-out body-z R^2: 0.78 quadratic, 0.90 table.
+
+The affine curve this replaces was the reason `thrust()` needed a hand clamp -- it went
+negative below throttle 0.10 and had to be clipped, which made the model predict a free
+fall at throttle 0.10 where the drone actually holds 2.3 m/s^2. That was the last
+unmeasured hack in the plant and it sat squarely in the regime a policy enters every
+time it chops throttle into a descent.
 
 **The drag is component-wise quadratic, not a function of |v|.** `-k * v_i * |v_i|` per
 axis fits to R^2 0.999; the isotropic `-k * |v| * v_i` fits the same data to 0.80. That
@@ -40,14 +55,23 @@ SIGN_RATE = -1.0    # NED body rate = SIGN_RATE * (gyro or commanded rate)
 class Plant:
     """Fitted parameters plus the algebra they define. Stateless."""
 
-    FIELDS = ("kx", "ky", "kz", "thrust_c0", "thrust_c1", "rate_gain",
+    FIELDS = ("kx", "ky", "kz", "thrust_knots", "rate_gain",
               "rate_delay", "thrust_delay", "rate_tau_max")
 
     def __init__(self, **kw):
         self.meta = kw.pop("meta", {})
         for f in self.FIELDS:
+            if f not in kw:
+                raise KeyError("plant parameter %r missing" % f)
             setattr(self, f, kw[f])
         self.rate_gain = np.asarray(self.rate_gain, dtype=float)
+        knots = np.asarray(self.thrust_knots, dtype=float)
+        if knots.ndim != 2 or knots.shape[1] != 2:
+            raise ValueError("thrust_knots must be a list of [throttle, T/m] pairs")
+        order = np.argsort(knots[:, 0])
+        self._knot_x = knots[order, 0]
+        self._knot_y = knots[order, 1]
+        self.thrust_knots = knots[order].tolist()
 
     # -- serialisation ----------------------------------------------------------
     def to_json(self, path):
@@ -65,10 +89,16 @@ class Plant:
 
     # -- the model --------------------------------------------------------------
     def thrust(self, throttle):
-        """T/m in m/s^2. Clamped at zero: the affine curve is the best fit over the
-        flown range (throttle 0.08..0.86) but goes negative below 0.10, and a surrogate
-        that lets a policy push *down* harder than gravity would teach it nonsense."""
-        return np.maximum(0.0, self.thrust_c0 + self.thrust_c1 * np.asarray(throttle))
+        """T/m in m/s^2, interpolated between the measured knots.
+
+        `np.interp` holds the end values outside the knot range, which is the safe
+        behaviour here: the table spans throttle 0.00 to 1.00 and the command is clipped
+        to the same interval, so the flat extension is never reached in normal use and
+        cannot invent thrust if it is. No clamp at zero is needed any more -- the lowest
+        knot is a measured +0.35 m/s^2 of idle thrust, so the curve is non-negative by
+        construction rather than by correction.
+        """
+        return np.interp(np.asarray(throttle, dtype=float), self._knot_x, self._knot_y)
 
     def drag(self, v_body):
         v = np.asarray(v_body, dtype=float)
@@ -85,7 +115,8 @@ class Plant:
         return SIGN_RATE * self.rate_gain * np.asarray(cmd_rates, dtype=float)
 
     def hover_throttle(self):
-        return float((G - self.thrust_c0) / self.thrust_c1)
+        """The throttle at which T/m == g. The table is monotone, so this inverts it."""
+        return float(np.interp(G, self._knot_y, self._knot_x))
 
     def terminal_speed(self, axis=0, tilt_deg=20.0):
         """Speed at which drag balances the horizontal component of thrust at a tilt."""
@@ -96,8 +127,9 @@ class Plant:
         return "\n".join([
             "drag        kx %.4f  ky %.4f  kz %.4f   (m/s^2 per (m/s)^2, body axes)"
             % (self.kx, self.ky, self.kz),
-            "thrust      T/m = %+.2f %+.2f * throttle   hover %.3f   full %.1f m/s^2 (%.2f g)"
-            % (self.thrust_c0, self.thrust_c1, self.hover_throttle(),
+            "thrust      %d measured knots, idle %.2f   hover %.3f   "
+            "full %.1f m/s^2 (%.2f g)"
+            % (len(self._knot_x), self.thrust(0.0), self.hover_throttle(),
                self.thrust(1.0), self.thrust(1.0) / G),
             "rate loop   gain %.3f %.3f %.3f   delay %.0f ms   tau < %.0f ms   sign %+.0f"
             % (*self.rate_gain, self.rate_delay * 1e3, self.rate_tau_max * 1e3,

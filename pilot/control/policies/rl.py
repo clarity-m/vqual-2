@@ -1,0 +1,129 @@
+"""D6's deployment wrapper: a frozen checkpoint behind `interface.Policy`.
+
+    Observation -> to_vector() -> ObsNormalizer(frozen mean/std) -> FrameStack(k)
+                -> ActorCritic.infer(deterministic) -> u in [-1,1]^3
+                -> policy_to_action -> interface.Action(yaw_mode=AUTO_ATTENTION)
+
+Every stage of that chain is the TRAINING SIBLING'S OWN CODE, called the way
+`train/README.md` specifies, and none of it is reimplemented here. That is the whole
+design rule for this file. Each stage is a place where deployment can silently disagree
+with training and produce a policy that scored well and flies badly:
+
+  * `ObsNormalizer` clips normalized observations at +-10 as well as centring them, so
+    hand-rolling `(v - mean) / std` would quietly widen the input distribution on
+    exactly the outlier steps that matter.
+  * `FrameStack` orders frames OLDEST FIRST and fills all k slots on the first push.
+    A reversed stack is a valid-looking tensor of the right shape and a different
+    policy.
+  * `policy_to_action` is the squash and the envelope training actually applied.
+  * `infer(deterministic=True)` returns the tanh of the MEAN, not a sample. Racing wants
+    the mode; sampling at race time adds variance for nothing.
+
+The statistics ship with the weights and are never recomputed here.
+
+torch and the sibling modules are imported lazily inside `__init__`, so `policies/`
+stays importable -- and `selfcheck.py` stays runnable -- on a machine with neither.
+Anything wrong with the environment surfaces as one clear exception at construction
+time rather than an AttributeError mid-flight.
+"""
+
+import json
+import os
+import sys
+
+import numpy as np
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from pilot import interface                                    # noqa: E402
+from pilot.control.policies.envelope import clamp_action       # noqa: E402
+
+CKPT_DIR = os.path.join(_ROOT, "pilot", "control", "train", "checkpoints")
+
+
+def _need(what, exc):
+    return RuntimeError(
+        "RLPolicy needs %s (%s: %s). The baseline in this package needs neither torch "
+        "nor the training sibling; if this is a machine that only has to fly the "
+        "baseline, use it." % (what, type(exc).__name__, exc))
+
+
+class RLPolicy(interface.Policy):
+    """A trained checkpoint, wrapped for the live stack and for `evalsuite`."""
+
+    def __init__(self, ckpt_path, device="cpu"):
+        try:
+            import torch  # noqa: F401
+        except ImportError as exc:
+            raise _need("pytorch", exc)
+        try:
+            from pilot.control.train.network import load_checkpoint
+            from pilot.control.train.framestack import FrameStack
+            from pilot.control.train.normalize import ObsNormalizer
+        except Exception as exc:
+            raise _need("pilot/control/train (network, framestack, normalize)", exc)
+        try:
+            from pilot.control.surrogate.actions import policy_to_action
+        except Exception as exc:
+            raise _need("surrogate/actions.py:policy_to_action, the exact action "
+                        "mapping training applied -- RLPolicy will not substitute its "
+                        "own", exc)
+
+        self.path = self._resolve(ckpt_path)
+        self.model, ckpt = load_checkpoint(self.path, map_location=device)
+        self.device = device
+        self.step = int(ckpt.get("step", -1))
+        self.env_config = ckpt.get("env_config")
+        self.k = int(ckpt["frame_stack"])
+        self.obs_dim = int(getattr(self.model, "obs_dim", interface.OBS_DIM))
+        if self.obs_dim != interface.OBS_DIM:
+            raise RuntimeError("checkpoint network takes %d-D observations, OBS_DIM is %d"
+                               % (self.obs_dim, interface.OBS_DIM))
+
+        self.norm = ObsNormalizer.from_arrays(ckpt["obs_mean"], ckpt["obs_std"])
+        self.stack = FrameStack(self.obs_dim, self.k, n_envs=1)
+        self._to_action = policy_to_action
+        self.info = ("ckpt %s | step %d | k=%d | hidden %s"
+                     % (os.path.basename(self.path), self.step, self.k,
+                        ckpt.get("net_config", {}).get("hidden")))
+        self.reset()
+
+    @staticmethod
+    def _resolve(p):
+        for cand in (p, str(p) + ".pt", os.path.join(CKPT_DIR, str(p)),
+                     os.path.join(CKPT_DIR, str(p) + ".pt")):
+            if os.path.isfile(cand):
+                return cand
+        raise FileNotFoundError("no checkpoint at %r (also looked in %s)" % (p, CKPT_DIR))
+
+    # -- interface.Policy -------------------------------------------------------
+    def reset(self):
+        """Drop the history. The next push refills all k slots from one observation."""
+        self.stack.clear()
+
+    def __call__(self, obs):
+        v = np.asarray(obs.to_vector(), dtype=np.float32)
+        v = np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0)
+        x = self.stack.push(self.norm(v[None, :]))
+        u = np.asarray(self.model.infer(x, deterministic=True),
+                       dtype=np.float64).reshape(-1)[:3]
+        phys = np.asarray(self._to_action(u), dtype=np.float64).reshape(-1)
+        if phys.size < 3:
+            raise RuntimeError("policy_to_action returned %d values, expected 3 "
+                               "(roll rate, pitch rate, thrust)" % phys.size)
+        return clamp_action(phys[0], phys[1], phys[2],
+                            yaw_rate=0.0, yaw_mode=interface.YawMode.AUTO_ATTENTION)
+
+
+def sidecar(path):
+    """The JSON twin of a checkpoint: everything but the weights, readable without torch."""
+    base = os.path.splitext(str(path))[0]
+    for cand in (base + ".json", str(path) + ".json",
+                 os.path.join(CKPT_DIR, os.path.basename(base) + ".json")):
+        if os.path.isfile(cand):
+            with open(cand) as fh:
+                return json.load(fh)
+    return {}

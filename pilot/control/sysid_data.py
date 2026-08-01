@@ -43,6 +43,7 @@ RESET_JUMP = -1.0    # s of device-clock regression that means SIM_RESET, not re
 MIN_EPOCH = 3.0      # s; shorter epochs are reset transients, not flying
 SETTLE = 0.5         # s dropped after each reset (pose is mid-transition -- NOTES.md)
 CONTACT_PAD = 0.25   # s cut either side of every COLLISION sample
+MIN_THRUST = 0.05    # default "not parked" gate; see Epoch.flying
 
 
 def load_csv(path):
@@ -151,11 +152,18 @@ class Epoch:
     def has_truth(self):
         return None not in (self.att, self.pos, self.odo)
 
-    def flying(self, t, min_speed=1.0):
+    def flying(self, t, min_speed=1.0, min_thrust=MIN_THRUST):
         """Mask over sim times t: thrust commanded, off the pad, past the reset settle.
 
         A parked drone satisfies any force model with thrust = drag = 0, so leaving it
         in inflates every R^2 while teaching the fit nothing.
+
+        `min_thrust` is the crude half of that test and card 2 flies straight through
+        it: the apex holds park at exactly 0.05 and the terminal descent at 0.00, so the
+        default gate discards the entire low-throttle measurement the card exists to
+        produce. Pass `min_thrust=0.0` to keep it. That is safe because the speed gate
+        is the half that actually excludes the pad -- a drone on the ground is not
+        moving at 1 m/s, whatever its throttle says.
 
         Deliberately does *not* gate on `cmd.armed`. That column carries the HEARTBEAT
         SAFETY_ARMED flag, and the VQ1 build leaves it at 0 through an entire flight --
@@ -165,8 +173,8 @@ class Epoch:
         """
         t = np.asarray(t)
         m = (t >= self.span()[0] + SETTLE)
-        if self.cmd is not None:
-            m &= zoh(t, self.cmd["t"], self.cmd["thrust"]) > 0.05
+        if self.cmd is not None and min_thrust > 0.0:
+            m &= zoh(t, self.cmd["t"], self.cmd["thrust"]) > min_thrust
         if self.pos is not None:
             m &= np.linalg.norm(interp_cols(t, self.pos["t"], self.pos["v"]), axis=1) \
                 > min_speed
@@ -189,8 +197,8 @@ class Epoch:
         near = np.minimum(near, np.abs(self.contacts[j] - t))
         return near > pad
 
-    def usable(self, t, min_speed=1.0):
-        return self.flying(t, min_speed) & self.quiet(t)
+    def usable(self, t, min_speed=1.0, min_thrust=MIN_THRUST):
+        return self.flying(t, min_speed, min_thrust) & self.quiet(t)
 
 
 def _split_tables(tables, bounds):
