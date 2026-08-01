@@ -23,6 +23,15 @@ measure a perception pipeline without grading it against itself.
 
 CONTROL: body rates only (SET_ATTITUDE_TARGET), like an acro quad.
 
+THROTTLE: an offset, not an absolute. Holding UP/DOWN slews thrust exactly as it
+always has; releasing them snaps thrust to the MEASURED hover point (THRUST_HOVER,
+provenance at the constant). ACRO is the only reachable flight mode, so the thrust
+channel is fully manual and there is exactly one correct setting for it - snapping
+to that setting is what makes a long lap flyable by hand. It is NOT an altitude
+hold and deliberately not a loop of any kind: VQ2 blocks position and velocity and
+integrated accelerometer height drifts, so there is no altitude measurement to
+close on. --no-thrust-snap restores the old hold-where-you-leave-it throttle.
+
 The sim ignores the coordinate_frame field on velocity setpoints - vx/vy are
 always world axes - so velocity control silently requires a heading, and VQ2
 blocks every message that carries one. Yaw cannot be recovered from the IMU
@@ -37,6 +46,7 @@ Usage
     python3 pilot/teleop.py --no-record     # fly only
     python3 pilot/teleop.py --no-view       # no cv2 window (lower jitter)
     python3 pilot/teleop.py --listen        # record only, send nothing
+    python3 pilot/teleop.py --no-thrust-snap  # old throttle: holds where you leave it
 
 Constraints worth knowing before you run it:
   * Nothing else may hold UDP 14550. An autonomous pilot and this script cannot
@@ -103,11 +113,26 @@ ACRO_YAW = 2.0
 # Two different jobs, previously conflated in one constant:
 #   THRUST_START  what the throttle sits at on arm / reset. 0.0 is the safe choice and
 #                 matches a real transmitter, where you arm with the stick down.
-#   THRUST_HOVER  the measured hover point. Used by the F10 snap and as the value
-#                 auto-takeoff settles to. Setting this to 0 disables auto-takeoff,
-#                 because "take off then settle to zero thrust" is just a drop.
+#   THRUST_HOVER  the measured hover point. Used by the F10 snap, by the release snap
+#                 below, and as the value auto-takeoff settles to. Setting this to 0
+#                 disables auto-takeoff, because "take off then settle to zero thrust"
+#                 is just a drop.
 THRUST_START = 0.0
-THRUST_HOVER = 0.27      # measured in flight; adjust if it drifts up or down
+
+# MEASURED, not assumed. An IMU sample is a hover sample when |a| is within 0.35 of g
+# (not accelerating) and gravity lies along body -z (not banked); at that instant thrust
+# is exactly balancing weight, so the thrust commanded alongside it IS the hover point.
+#
+#   Claire, session 20260731-222724: 221 such samples -> 0.266 (p10 0.20, p90 0.285).
+#
+# Re-measured independently here across all 24 sessions that carry both imu.csv and a
+# cmd.csv with a thrust column (pilot/hovercheck.py), adding two filters the first pass
+# did not have -- armed, and thrust >= 0.05, because a drone SITTING ON THE PAD also
+# reads steady and level at whatever thrust the stick is at, and that is what the 0.20
+# p10 above is: pad samples, not flight. Pooled n=17329, median 0.265; the four
+# longest sessions land on 0.265, 0.265, 0.267, 0.272. So 0.266 is confirmed rather
+# than replaced, and the honest spread is ~0.265-0.272, not 0.20-0.285.
+THRUST_HOVER = 0.266
 THRUST_SLEW = 0.5         # per second, while a throttle key is held
 
 BOOST = 2.0               # left ctrl
@@ -183,6 +208,61 @@ LEVEL_MAX_AGE = 0.25                   # s; older truth than this and the assist
 # to trim.
 TILT_COMP_MAX = 1.6            # ceiling on the 1/cos(tilt) factor (~51 deg of tilt)
 THRUST_STICK_EPS = 0.02        # |axis| below this counts as "let go"
+
+# --- snap to hover on release (plain acro, VQ2's only mode) ----------------------------
+# The same "throttle is an offset, not an absolute" behaviour as the levelling assist,
+# but with no attitude input at all, so it works under VQ2 where the assist cannot engage.
+# Hold a throttle key and thrust integrates exactly as it always did; release it and
+# thrust goes to THRUST_HOVER on the next tick.
+#
+# Why the whole feature is worth one line of code: in ACRO the thrust channel is fully
+# manual (NOTES.md -> Gotchas: no other flight mode is reachable in this build), so
+# holding altitude down a 17-gate course means continuously re-trimming a value that has
+# exactly one correct setting. This snaps to that setting.
+#
+# What it is NOT, and must not be mistaken for: an altitude hold. Nothing in VQ2 observes
+# altitude or vertical speed -- position and velocity are blocked and double-integrating
+# the accelerometer drifts -- so this returns to hover THRUST, not to a hover. Drift is
+# still the pilot's to trim, and that is deliberate: no altitude measurement means any
+# feedback loop here would be closing on a fiction, and a loop with no valid measurement
+# oscillates. A constant cannot.
+#
+# One timing detail worth knowing before it surprises someone: the throttle AXIS is
+# slew-limited by Sticks at SLEW_PER_S = 12/s, so after a physical key release the axis
+# takes ~80 ms to fall from 1.0 through THRUST_STICK_EPS. Thrust keeps integrating for
+# that ~80 ms and then snaps. That is inherited from the existing stick path, not added
+# here, and 80 ms of 0.5/s slew is 0.04 of thrust -- but it is why the snap looks like it
+# fires a frame or two late rather than instantly.
+#
+# Default ON (Claire, 2026-08-01: hand-holding thrust was blocking a full training lap).
+# --no-thrust-snap restores the old hold-where-you-leave-it throttle, which is what the
+# acro system-ID recordings were flown with.
+THRUST_SNAP_DEFAULT = True
+
+# --- optional: tilt compensation from the accelerometer, DEFAULT OFF -------------------
+# Hover thrust rises as hover / cos(tilt), and under VQ2 the accelerometer is the only
+# thing that sees tilt: with no linear acceleration the accel vector IS gravity, so
+# cos(tilt) = -az / |a|. The levelling assist already does this from truth attitude; this
+# would do it from a permitted stream.
+#
+# It is off by default because the measurement is unavailable exactly when it matters.
+# The estimate is only valid when the drone is not manoeuvring, which is the same
+# condition as "not banked":
+#
+#   accepted samples (||a| - g| <= 0.5) are 45% / 60% / 22% of frames in the three
+#   longest sessions, with gaps of up to 5.0 s between accepted samples; and among the
+#   accepted in-flight samples the implied tilt has median 2.0 deg and p90 4.5-5.8 deg.
+#
+# That last number is the killer: the gate passes near-level frames almost exclusively,
+# so the compensation it computes is ~1.00 nearly always and stale whenever a real bank
+# is on. It is shipped because it degrades to exactly the flat snap -- a rejected or
+# stale sample decays the factor back to 1.0 rather than holding a wrong one -- and
+# because that makes it cheap to A/B in flight. If it ever proves useful, the numbers
+# above are what it has to beat.
+TILT_IMU_ACCEL_TOL = 0.5       # m/s^2; ||a| - g| above this and the sample is not gravity
+TILT_IMU_TAU = 0.5             # s, low-pass on cos(tilt); slower than any real gust
+TILT_IMU_MAX_AGE = 0.5         # s without an accepted sample -> fall back to flat hover
+G = 9.81
 
 # Sign that converts a physical (NED) body rate into this sim's mirrored command
 # convention. Derived from the constants the stick path already uses rather than written
@@ -263,9 +343,15 @@ KEYMAP = """
   C     align nose to velocity     F11  levelling assist on/off (VQ1 only)
   LCTRL boost   LALT precision      F12  drop a marker
 
-  Throttle is a held value, not a stick position: it stays where you leave it.
-  It sits at 0 on arm and after a reset, like a real transmitter. Arming runs a
-  short takeoff burst and settles at hover thrust; throttle-down cancels it.
+  Throttle is an OFFSET, not an absolute: hold UP/DOWN to move it, let go and it
+  snaps to the measured hover point. It sits at 0 on arm and after a reset, like
+  a real transmitter. Arming runs a short takeoff burst and settles at hover
+  thrust; throttle-down cancels it. --no-thrust-snap gives back the old throttle
+  that stays where you leave it.
+
+  The snap is hover THRUST, not an altitude hold - nothing in VQ2 measures
+  height, so you will still drift and still have to trim.
+
   Release the other keys and the rates go to zero, which is not a hover - the
   drone keeps whatever attitude it had.
 
@@ -871,7 +957,8 @@ class Sticks:
 
 class Pilot:
     def __init__(self, conn, rec, boot_ms, listen_only=False,
-                 hover=THRUST_HOVER):
+                 hover=THRUST_HOVER, thrust_snap=THRUST_SNAP_DEFAULT,
+                 tilt_comp_imu=False):
         self.conn = conn
         self.rec = rec
         self.boot_ms = boot_ms
@@ -890,6 +977,11 @@ class Pilot:
         # needs a hover thrust reads self.hover; nothing re-states the number.
         self.hover = hover
         self.hover_ref = hover
+        self.thrust_snap = thrust_snap
+        self.tilt_comp_imu = tilt_comp_imu
+        self.snapped = False           # HUD: is thrust currently held at hover_ref?
+        self._cos_tilt = 1.0           # low-passed cos(tilt) from the accelerometer
+        self._cos_tilt_age = 1e9       # seconds since the last ACCEPTED accel sample
 
     # -- one-shot commands ------------------------------------------------------
     def arm(self, armed=True):
@@ -926,6 +1018,36 @@ class Pilot:
         # Argument order follows the vendor example: (tc1=client time, ts1=0).
         self.conn.mav.timesync_send(time.time_ns(), 0)
 
+    def _imu_tilt_comp(self, accel, dt):
+        """1/cos(tilt) from the accelerometer, or 1.0 when it cannot be trusted.
+
+        Returns 1.0 -- i.e. the plain flat hover point -- whenever no sample has been
+        ACCEPTED recently, so every failure mode of this estimator lands on the
+        behaviour we would have had without it. See TILT_IMU_* above for why that
+        matters: on this data the gate rejects most manoeuvring frames, which are
+        precisely the banked ones, so "no recent sample" is the common case and has to
+        be the safe one.
+        """
+        dt = max(0.0, dt)
+        # Age is accumulated from the loop's own dt rather than read off the wall
+        # clock, so the gate is tied to control ticks actually taken.
+        self._cos_tilt_age += dt
+        if accel is not None:
+            mag = math.sqrt(accel[0] ** 2 + accel[1] ** 2 + accel[2] ** 2)
+            if mag > 1e-6 and abs(mag - G) <= TILT_IMU_ACCEL_TOL:
+                # Gravity points along body -z when level, so -az/|a| is cos(tilt).
+                # (Confirmed against the parked drone: az ~ -9.34 with |a| = 9.81.)
+                ct = min(1.0, max(0.0, -accel[2] / mag))
+                alpha = 1.0 - math.exp(-dt / TILT_IMU_TAU)
+                self._cos_tilt += alpha * (ct - self._cos_tilt)
+                self._cos_tilt_age = 0.0
+        if self._cos_tilt_age > TILT_IMU_MAX_AGE:
+            self._cos_tilt = 1.0
+            return 1.0
+        if self._cos_tilt <= 1.0 / TILT_COMP_MAX:
+            return TILT_COMP_MAX
+        return 1.0 / self._cos_tilt
+
     # -- streamed setpoints -----------------------------------------------------
     def send(self, axes, scale, dt, armed, heading=0.0, align=False, accel=None,
              level=False, truth_att=None):
@@ -944,6 +1066,13 @@ class Pilot:
         # outer P loop turns the angle error into the body rate we were going to send
         # anyway. Yaw and throttle are untouched - yaw stays acro because levelling it
         # would mean holding a heading, and holding a heading means knowing one.
+        # Hover reference for THIS tick. Recomputed every tick rather than left where
+        # the last branch put it: hover_ref used to be written only inside the levelling
+        # block, so switching the assist off left a tilt-compensated value latched.
+        self.hover_ref = self.hover
+        if self.tilt_comp_imu:
+            self.hover_ref = min(1.0, self.hover * self._imu_tilt_comp(accel, dt))
+
         self.levelling = False
         if level and truth_att is not None:
             t_roll, t_pitch, t_stamp = truth_att
@@ -988,13 +1117,18 @@ class Pilot:
         # hover. Open loop - nothing here observes altitude. Any throttle-down
         # input cancels it, so it can never fight the pilot.
         if self.takeoff_until:
+            self.snapped = False
             if thr_ax < -0.05 or time.time() >= self.takeoff_until:
                 self.takeoff_until = 0.0
                 self.thrust = self.hover
             else:
                 self.thrust = TAKEOFF_THRUST
-        elif self.levelling and abs(thr_ax) < THRUST_STICK_EPS:
-            # Let go under the assist: snap straight to the tilt-compensated hover point.
+        elif ((self.levelling or self.thrust_snap)
+                and abs(thr_ax) < THRUST_STICK_EPS):
+            # Let go: snap straight to the hover point. Under the levelling assist that
+            # point is tilt-compensated from truth attitude; in plain acro (all of VQ2)
+            # it is the flat measured constant, or the accelerometer-derived one if
+            # --imu-tilt-comp is on.
             #
             # This used to ease back with a time constant. Flight-tested 2026-07-31: the
             # step is not felt, because thrust reaches velocity through mass and drag,
@@ -1007,10 +1141,21 @@ class Pilot:
             # and on thrust R^2 ~ 0.05). Sharp edges in cmd.csv are worth keeping.
             #
             # Nothing here observes altitude - this returns to hover THRUST, not to hover.
+            if not self.snapped:
+                # One event per release edge, not one per tick: the release instant is
+                # what a later reader of events.jsonl wants to line up against cmd.csv.
+                self.rec.event("thrust_snap", thrust=self.hover_ref,
+                               tilt_comp=self.hover_ref / self.hover
+                               if self.hover > 0 else 1.0,
+                               source="level" if self.levelling else "acro")
+            self.snapped = True
             self.thrust = min(1.0, max(0.0, self.hover_ref))
         else:
             # Throttle is a held value, not a stick deflection - it integrates
-            # while a key is down and stays put when released.
+            # while a key is down and stays put when released. UNCHANGED by the snap:
+            # while a key is down this is the only branch that runs, so held-key
+            # behaviour is exactly what it has always been.
+            self.snapped = False
             self.thrust = min(1.0, max(0.0,
                                        self.thrust + thr_ax * THRUST_SLEW * dt))
 
@@ -1053,7 +1198,8 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     a, b, c, d = pilot.last_cmd
     line1 = "RATES r%+.2f p%+.2f y%+.2f  THR %.2f%s%s  hdg %+4.0f%s" % (
         a, b, c, d,
-        (" LEVEL hov%.2f" % pilot.hover_ref) if pilot.levelling else "",
+        (" LEVEL hov%.2f" % pilot.hover_ref) if pilot.levelling
+        else (" HOV%.2f" % pilot.hover_ref) if pilot.snapped else "",
         " TAKEOFF" if pilot.takeoff_until else "",
         math.degrees(heading_now),
         "" if tel["gyro_live"] else " (no gyro!)")
@@ -1130,6 +1276,16 @@ def main():
                     help="measured hover thrust 0..1 (default %(default)s). F10 snaps "
                          "to it, auto-takeoff settles to it, and the levelling assist "
                          "returns to it tilt-compensated.")
+    ap.add_argument("--no-thrust-snap", action="store_true",
+                    help="restore the old throttle: a held value that stays where you "
+                         "leave it. By default, releasing the throttle keys snaps thrust "
+                         "to the hover point. Use this for acro system-ID recordings, "
+                         "which were flown with the old behaviour.")
+    ap.add_argument("--imu-tilt-comp", action="store_true",
+                    help="EXPERIMENTAL, off by default: raise the snap target by "
+                         "1/cos(tilt) read from the accelerometer. The reading is only "
+                         "valid when not manoeuvring, i.e. mostly when not banked, so it "
+                         "reads ~1.00 almost always; it falls back to flat hover.")
     ap.add_argument("--listen", action="store_true",
                     help="record only: send no setpoints, no arm/disarm, no reset. "
                          "Safe to attach to a flight already in progress.")
@@ -1154,12 +1310,14 @@ def main():
     tel = Telemetry(conn, rec)
     vision = VisionRX(rec, decode=not args.no_view)
     pilot = Pilot(conn, rec, boot_ms, listen_only=args.listen,
-                  hover=args.hover)
+                  hover=args.hover, thrust_snap=not args.no_thrust_snap,
+                  tilt_comp_imu=args.imu_tilt_comp)
     sticks = Sticks()
     heading = HeadingReadout()
 
     rec.event("session_start", control="body_rates", ip=args.ip, port=args.port,
-              listen_only=args.listen)
+              listen_only=args.listen, hover=pilot.hover,
+              thrust_snap=pilot.thrust_snap, imu_tilt_comp=pilot.tilt_comp_imu)
     if args.listen:
         print("\nLISTEN ONLY - recording; no commands will be sent.\n")
     else:
@@ -1169,7 +1327,17 @@ def main():
         print("Body-rate control only. This flies like an acro quad: the drone holds\n"
               "whatever attitude you leave it in, so it will NOT self-level and\n"
               "releasing the keys is not a hover. Throttle starts at %.2f.\n"
-              % pilot.hover)
+              % THRUST_START)
+        if pilot.thrust_snap:
+            print("Throttle SNAP is on: release UP/DOWN and thrust goes to %.3f (the\n"
+                  "measured hover point). That is hover THRUST, not an altitude hold -\n"
+                  "nothing in VQ2 observes height, so drift is still yours to trim.%s\n"
+                  % (pilot.hover,
+                     "\nIMU tilt compensation is ON (experimental)."
+                     if pilot.tilt_comp_imu else ""))
+        else:
+            print("Throttle snap DISABLED: throttle is a held value that stays where\n"
+                  "you leave it.\n")
         print("Press %s to arm, %s to cut and quit.\n"
               % (KEYS_COMMAND["arm"].upper(), KEYS_COMMAND["quit"].upper()))
 

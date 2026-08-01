@@ -26,3 +26,10 @@ __pycache__/
 # from the recordings in one command. The filled-in labels.json IS worth keeping -- copy it
 # to pilot/perception/ and commit it there, since it is hand-made and cannot be regenerated.
 label-*/
+
+# Derived perception outputs, regenerable from tracked inputs:
+#   autolabels_vq1.json  <- autolabel.py + the tracked VQ1 telemetry CSVs + gate truth
+#                           (projection needs pose and gate centres, NOT the JPEGs)
+#   verify_autolabel/    <- overlay sheets, rendered on demand
+pilot/perception/autolabels_vq1.json
+pilot/perception/verify_autolabel/
