@@ -21,3 +21,8 @@ __pycache__/
 
 # Fork/worktree scratch space — never part of the project tree
 .claude/worktrees/
+
+# Frame-labelling working dirs from perception/labelgates.py: annotated PNGs regenerable
+# from the recordings in one command. The filled-in labels.json IS worth keeping -- copy it
+# to pilot/perception/ and commit it there, since it is hand-made and cannot be regenerated.
+label-*/
