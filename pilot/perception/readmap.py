@@ -109,7 +109,8 @@ def build(map_png, first_left):
         across = (g['px'] - x_left) / (x_right - x_left)
         gates.append({'along_station': round(along, 3), 'across': round(across, 3),
                       'plane_deg': round(g['plane_deg'], 1),
-                      'span_px': round(g['len_px'], 1)})
+                      'span_px': round(g['len_px'], 1),
+                      'px': round(g['px'], 1), 'py': round(g['py'], 1)})
     return {
         'source': os.path.basename(map_png),
         'frame': {'along': 'station number, interpolated', 'across': '0 = left row, 1 = right row',
@@ -120,8 +121,76 @@ def build(map_png, first_left):
         'stations': {'left': dict(zip(map(str, left_ids), [round(p[1], 1) for p in left])),
                      'right': dict(zip(map(str, right_ids), [round(p[1], 1) for p in right]))},
         'n_gates': len(gates),
+        # Claire's own caveat, kept with the data rather than in a commit message: the ORDER
+        # and the overall curve are certain (cross-referenced against video of a completed
+        # lap), the positions and plane angles are rough, and there is NO vertical component
+        # at all -- this is a top-down sketch. Treat it as a prior for pre-turning and
+        # attention, never as terminal guidance.
+        'accuracy': {'order': 'certain', 'topology': 'certain',
+                     'positions': 'approximate', 'plane_angles': 'approximate',
+                     'vertical': 'ABSENT — the sketch is top-down only'},
+        'n_gates': len(gates),
         'gates': gates,
     }
+
+
+def race_order(map_png, gates):
+    """Race order, by arc length along the drawn course line.
+
+    Claire added the flown path to the sketch (`approx_map_path.png`), cross-referenced
+    against video of a completed lap. That line is the only statement of race order we have,
+    and it is authoritative in ORDER even though she is explicit that positions and angles
+    are rough and vertical height is absent entirely.
+
+    Order comes from a GEODESIC distance along the line, not from sorting by y and not from
+    chaining nearest neighbours. Both of those break on this course: it doubles back on
+    itself around the Station 22 and 26 loops, so two points that are close in the image can
+    be far apart along the path, and a y-sort would interleave the two halves of a loop.
+    A breadth-first flood from the start end measures distance THROUGH the line, which is
+    exactly the quantity that orders gates.
+    """
+    import heapq
+
+    img = cv2.imread(map_png)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    line = ((h > 95) & (h < 130) & (s > 80) & (v > 80))
+    ys, xs = np.where(line)
+    if ys.size < 100:
+        raise SystemExit('no course line found')
+    # Start at the BOTTOM end: the lap enters low (past Station 20/21) and exits top.
+    start = (int(ys.max()), int(xs[np.argmax(ys)]))
+
+    INF = np.inf
+    dist = np.full(line.shape, INF)
+    dist[start] = 0.0
+    pq = [(0.0, start[0], start[1])]
+    nbr = [(-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0),
+           (-1, -1, 1.4142), (-1, 1, 1.4142), (1, -1, 1.4142), (1, 1, 1.4142)]
+    H, W = line.shape
+    while pq:
+        d, y, x = heapq.heappop(pq)
+        if d > dist[y, x]:
+            continue
+        for dy, dx, w in nbr:
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < H and 0 <= nx < W and line[ny, nx] and d + w < dist[ny, nx]:
+                dist[ny, nx] = d + w
+                heapq.heappush(pq, (d + w, ny, nx))
+    reached = np.isfinite(dist) & line
+    if reached.sum() < 0.9 * line.sum():
+        raise SystemExit(f'course line is broken: flood reached {reached.sum()} of '
+                         f'{line.sum()} pixels. Order would be wrong -- fix the drawing.')
+
+    pts = np.column_stack(np.where(reached))          # (y, x)
+    dvals = dist[reached]
+    arcs = []
+    for i, g in enumerate(gates):
+        d2 = (pts[:, 0] - g['py']) ** 2 + (pts[:, 1] - g['px']) ** 2
+        j = int(np.argmin(d2))
+        arcs.append((float(dvals[j]), float(np.sqrt(d2[j])), i))
+    arcs.sort()
+    return arcs, float(dist[reached].max())
 
 
 def map_pair_distances(m):
@@ -184,6 +253,10 @@ def main():
     ap.add_argument('--first-left', type=int, default=12,
                     help='station number of the TOPMOST left-row box')
     ap.add_argument('--expect', type=int, default=17)
+    ap.add_argument('--path', default='',
+                    help='sketch WITH the flown course line drawn on it; supplies race order. '
+                         'Gates are still read from --map, because the line crosses each bar '
+                         'and splits it into two components (30 "gates" instead of 17).')
     ap.add_argument('--fit-scale', default='', help='edges JSON from mapbuild cache')
     ap.add_argument('--out', default='')
     args = ap.parse_args()
@@ -197,6 +270,29 @@ def main():
     for g in m['gates']:
         print('  along %6.2f  across %5.2f  plane %5.1f deg' %
               (g['along_station'], g['across'], g['plane_deg']))
+    if args.path:
+        arcs, total = race_order(args.path, m['gates'])
+        far = [(r, off) for r, (_a, off, _i) in enumerate(arcs) if off > 25]
+        print(f'\nrace order from {os.path.basename(args.path)}  (path {total:.0f} px)')
+        print('  race  arc   off    along  across  plane')
+        for r, (a, off, i) in enumerate(arcs):
+            g = m['gates'][i]
+            m['gates'][i]['race_index'] = r
+            m['gates'][i]['arc_px'] = round(a, 1)
+            print('  %4d %5.0f %5.0f   %6.2f %6.2f  %5.1f'
+                  % (r, a, off, g['along_station'], g['across'], g['plane_deg']))
+        if far:
+            print(f'  NOTE gates sitting >25 px off the line: {far} '
+                  '— their place in the order is the least certain')
+        m['gates'] = sorted(m['gates'], key=lambda g: g['race_index'])
+        m['race_order'] = {
+            'source': os.path.basename(args.path),
+            'derived': 'geodesic arc length along the drawn course line, flooded from the '
+                       'bottom (entry) end. Not a y-sort: the course doubles back around the '
+                       'Station 22 and 26 loops, which a y-sort would interleave.',
+            'confirmed_landmarks': 'loop around 22, then 16+17, then 26, then 13, then exit',
+        }
+
     if args.fit_scale:
         f = fit_scale(m, args.fit_scale)
         scales, cost = f['scales'], f['cost']

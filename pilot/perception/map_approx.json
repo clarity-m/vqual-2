@@ -1,7 +1,7 @@
 {
  "source": "approx_map.png",
  "frame": {
-  "along": "station number in LEFT-ROW numbering, interpolated. A RIGHT-row column numbered N is level with along = 41 - N (the sum invariant), so 29 sits at along 12. Mixing the two numbering directions is the easy mistake here.",
+  "along": "station number, interpolated",
   "across": "0 = left row, 1 = right row",
   "plane_deg": "gate plane bearing in the hangar plane, 0..180"
  },
@@ -33,110 +33,190 @@
   }
  },
  "n_gates": 17,
+ "accuracy": {
+  "order": "certain",
+  "topology": "certain",
+  "positions": "approximate",
+  "plane_angles": "approximate",
+  "vertical": "ABSENT \u2014 the sketch is top-down only"
+ },
  "gates": [
   {
-   "along_station": 11.623,
-   "across": 0.501,
+   "along_station": 20.299,
+   "across": 0.682,
    "plane_deg": 0.0,
-   "span_px": 27.5
-  },
-  {
-   "along_station": 12.199,
-   "across": 0.553,
-   "plane_deg": 18.2,
-   "span_px": 26.3
-  },
-  {
-   "along_station": 12.559,
-   "across": 0.225,
-   "plane_deg": 52.7,
-   "span_px": 21.1
-  },
-  {
-   "along_station": 13.037,
-   "across": -0.299,
-   "plane_deg": 3.2,
-   "span_px": 18.3
-  },
-  {
-   "along_station": 13.483,
-   "across": 0.314,
-   "plane_deg": 135.0,
-   "span_px": 20.0
-  },
-  {
-   "along_station": 14.234,
-   "across": 0.764,
-   "plane_deg": 142.1,
-   "span_px": 19.8
-  },
-  {
-   "along_station": 14.6,
-   "across": 1.171,
-   "plane_deg": 135.0,
-   "span_px": 20.0
-  },
-  {
-   "along_station": 15.12,
-   "across": 1.376,
-   "plane_deg": 20.6,
-   "span_px": 21.1
-  },
-  {
-   "along_station": 15.488,
-   "across": 0.606,
-   "plane_deg": 49.5,
-   "span_px": 20.5
-  },
-  {
-   "along_station": 15.548,
-   "across": 0.093,
-   "plane_deg": 82.8,
-   "span_px": 18.3
-  },
-  {
-   "along_station": 16.323,
-   "across": -0.349,
-   "plane_deg": 0.0,
-   "span_px": 17.7
-  },
-  {
-   "along_station": 17.037,
-   "across": -0.32,
-   "plane_deg": 0.0,
-   "span_px": 17.1
-  },
-  {
-   "along_station": 17.759,
-   "across": 0.303,
-   "plane_deg": 138.5,
-   "span_px": 20.2
-  },
-  {
-   "along_station": 18.502,
-   "across": 0.658,
-   "plane_deg": 127.9,
-   "span_px": 19.8
-  },
-  {
-   "along_station": 18.748,
-   "across": 1.245,
-   "plane_deg": 15.8,
-   "span_px": 16.9
+   "span_px": 17.7,
+   "px": 466.0,
+   "py": 1480.0,
+   "race_index": 0,
+   "arc_px": 35.8
   },
   {
    "along_station": 19.351,
    "across": 1.155,
    "plane_deg": 28.4,
-   "span_px": 18.6
+   "span_px": 18.6,
+   "px": 556.0,
+   "py": 1320.5,
+   "race_index": 1,
+   "arc_px": 250.9
   },
   {
-   "along_station": 20.299,
-   "across": 0.682,
+   "along_station": 18.748,
+   "across": 1.245,
+   "plane_deg": 15.8,
+   "span_px": 16.9,
+   "px": 573.0,
+   "py": 1219.0,
+   "race_index": 2,
+   "arc_px": 372.3
+  },
+  {
+   "along_station": 18.502,
+   "across": 0.658,
+   "plane_deg": 127.9,
+   "span_px": 19.8,
+   "px": 461.5,
+   "py": 1177.5,
+   "race_index": 3,
+   "arc_px": 522.4
+  },
+  {
+   "along_station": 17.759,
+   "across": 0.303,
+   "plane_deg": 138.5,
+   "span_px": 20.2,
+   "px": 394.0,
+   "py": 1052.5,
+   "race_index": 4,
+   "arc_px": 649.3
+  },
+  {
+   "along_station": 17.037,
+   "across": -0.32,
    "plane_deg": 0.0,
-   "span_px": 17.7
+   "span_px": 17.1,
+   "px": 275.5,
+   "py": 931.0,
+   "race_index": 5,
+   "arc_px": 826.6
+  },
+  {
+   "along_station": 16.323,
+   "across": -0.349,
+   "plane_deg": 0.0,
+   "span_px": 17.7,
+   "px": 270.0,
+   "py": 811.0,
+   "race_index": 6,
+   "arc_px": 953.3
+  },
+  {
+   "along_station": 15.548,
+   "across": 0.093,
+   "plane_deg": 82.8,
+   "span_px": 18.3,
+   "px": 354.0,
+   "py": 680.5,
+   "race_index": 7,
+   "arc_px": 1140.8
+  },
+  {
+   "along_station": 15.488,
+   "across": 0.606,
+   "plane_deg": 49.5,
+   "span_px": 20.5,
+   "px": 451.5,
+   "py": 670.5,
+   "race_index": 8,
+   "arc_px": 1242.3
+  },
+  {
+   "along_station": 15.12,
+   "across": 1.376,
+   "plane_deg": 20.6,
+   "span_px": 21.1,
+   "px": 598.0,
+   "py": 608.5,
+   "race_index": 9,
+   "arc_px": 1471.2
+  },
+  {
+   "along_station": 14.6,
+   "across": 1.171,
+   "plane_deg": 135.0,
+   "span_px": 20.0,
+   "px": 559.0,
+   "py": 521.0,
+   "race_index": 10,
+   "arc_px": 1573.7
+  },
+  {
+   "along_station": 14.234,
+   "across": 0.764,
+   "plane_deg": 142.1,
+   "span_px": 19.8,
+   "px": 481.5,
+   "py": 459.5,
+   "race_index": 11,
+   "arc_px": 1680.4
+  },
+  {
+   "along_station": 13.483,
+   "across": 0.314,
+   "plane_deg": 135.0,
+   "span_px": 20.0,
+   "px": 396.0,
+   "py": 333.0,
+   "race_index": 12,
+   "arc_px": 1853.2
+  },
+  {
+   "along_station": 13.037,
+   "across": -0.299,
+   "plane_deg": 3.2,
+   "span_px": 18.3,
+   "px": 279.5,
+   "py": 258.0,
+   "race_index": 13,
+   "arc_px": 2015.6
+  },
+  {
+   "along_station": 12.559,
+   "across": 0.225,
+   "plane_deg": 52.7,
+   "span_px": 21.1,
+   "px": 379.0,
+   "py": 177.5,
+   "race_index": 14,
+   "arc_px": 2168.2
+  },
+  {
+   "along_station": 12.199,
+   "across": 0.553,
+   "plane_deg": 18.2,
+   "span_px": 26.3,
+   "px": 441.5,
+   "py": 117.0,
+   "race_index": 15,
+   "arc_px": 2268.2
+  },
+  {
+   "along_station": 11.623,
+   "across": 0.501,
+   "plane_deg": 0.0,
+   "span_px": 27.5,
+   "px": 431.5,
+   "py": 20.0,
+   "race_index": 16,
+   "arc_px": 2372.5
   }
  ],
+ "race_order": {
+  "source": "approx_map_path.png",
+  "derived": "geodesic arc length along the drawn course line, flooded from the bottom (entry) end. Not a y-sort: the course doubles back around the Station 22 and 26 loops, which a y-sort would interleave.",
+  "confirmed_landmarks": "loop around 22, then 16+17, then 26, then 13, then exit"
+ },
  "scale_fit": {
   "degenerate": true,
   "n_edges": 172,

@@ -148,8 +148,24 @@ mistake; the first render of the map made it.
   bar is the 1500 mm inner width) or 22.7 m (if the 2700 mm outer) — both inside the
   degenerate plateau, so they corroborate nothing. Scale only matters for fusing the map with
   PnP ranges; guidance in station units does not need it.
-* **Race order is unknown.** The gate index in the JSON is order *along the hangar*, not race
-  order. The map is geometry; the sequence still has to come from `active_gate_index`.
+* **Vertical is ABSENT.** The sketch is top-down only, so the map says nothing about gate
+  height. Claire's own caveat, kept in the JSON under `accuracy`: order and topology are
+  certain, positions and plane angles are approximate, vertical does not exist.
+
+**RACE ORDER IS RESOLVED** (2026-08-01). Claire drew the flown course line onto the sketch
+(`map-aerial/approx_map_path.png`), cross-referenced against video of a completed lap.
+`race_order()` floods the line geodesically from the entry end and orders gates by arc
+length. Not a y-sort — the course doubles back around the Station 22 and 26 loops, which a
+y-sort would interleave. All four of Claire's landmarks come out in sequence: gates 1–3 loop
+right around **22**, gates 5–6 run far left past **17** then **16**, gate 9 is the far-right
+excursion at **26**, gate 13 the far-left one at **13**, then 15–16 exit past 12.
+
+Gates must be read from `approx_map.png`, not from the path image: the drawn line crosses
+each red bar and splits it into two components, giving 30 "gates" instead of 17. Both images
+share one canvas, so coordinates align.
+
+Least-certain entry is race index **3** (along 18.50), which sits 40 px off the line where
+every other gate is within 17 px.
 
 ## THE DATA WALL — why the map is not finished
 
