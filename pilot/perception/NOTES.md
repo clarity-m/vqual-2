@@ -139,15 +139,17 @@ mistake; the first render of the map made it.
 **Two things the sketch does not carry:**
 
 * **Metric scale: ~15 m/station, but the sketch is LOCALLY INCONSISTENT** (2026-08-01,
-  21 labelled pairs across 19 frames from 9 sessions). Grouped by which gates a pair joins,
-  the implied scale splits: pair **0-1 says 10.25 m/station** (n=7), every pair among gates
-  **1-4 says 17.50** (n=8) - a ratio of **1.71**, with within-pair scatter far smaller than
+  21 labelled pairs over 19 frames from 9 sessions; `labels_all.json` merges both sets). Grouped by which gates a pair joins,
+  the implied scale splits: pair **0-1 says 10.46 m/station** (n=8), every pair among gates
+  **1-4 says 17.31** (n=11) - a ratio of **1.65**, with within-pair scatter far smaller than
   the gap between groups. So it is not noise and not a global mis-scale: gates 0 and 1 are
   drawn about 1.7x too far apart relative to the 1-4 spacing. Measured, 0->1 and 2->3 are
   nearly the same distance (~10-11 m) while the sketch has them at 1.09 and 0.71 station
   units. Until that is reconciled a single global `metres_per_station` is not meaningful;
   the local ratios are the usable product.
-  **HEIGHTS** (gravity-referenced, no pose stream): 0-1 +1.17 m (n=7, spread 2.49), 2-3
+  Per-pair medians: 0-1 10.46 (n=8), 1-2 14.94 (n=3), 2-3 16.36 (n=4), 3-4 18.18 (n=3),
+  2-4 18.62 (n=1), 8-9 13.45 (n=2).
+  **HEIGHTS** (gravity-referenced, no pose stream): 0-1 +1.19 m (n=8, spread 2.72), 2-3
   -1.12 (n=4, spread 1.06), 3-4 +0.66 (n=2), 1-2 -1.37, 2-4 +1.07, 8-9 -2.24 (n=1 each).
   Gate-to-gate height changes are of order a metre or two.
   A position refit is NOT yet possible: 6 distinct pairs over 7 gates is underdetermined
