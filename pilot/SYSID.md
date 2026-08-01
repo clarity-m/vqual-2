@@ -143,20 +143,26 @@ and `|w|` under 1 m/s. This maneuver manufactures them on purpose.
 
 The whole maneuver is: **climb, then park the throttle low and coast over the top.**
 
-    hover -> hold UP to ~0.50 -> immediately hold DOWN to the test throttle
-          -> LET GO and leave it alone for 3 s
+    hover -> hold UP ~0.5 s (to 0.50) -> hold DOWN to the test throttle
+          -> hands off 1.5 s -> F10 back to hover
 
-| test throttle | throttle parks | `w = 0` after | parked and still before it | room |
-|---|---|---|---|---|
-| 0.05 | 1.4 s | 1.7 s | 0.3 s | 6 m |
-| 0.10 | 1.3 s | 1.7 s | 0.4 s | 6 m |
-| 0.15 | 1.2 s | 1.9 s | 0.7 s | 6 m |
-| 0.20 | 1.1 s | 2.4 s | 1.3 s | 7 m |
-| 0.00 | 1.9 s | 2.4 s | 0.6 s | 14 m |
+| test throttle | UP key | DOWN key | `w = 0` at | still throttle first | envelope | recover at |
+|---|---|---|---|---|---|---|
+| 0.05 | 0.5 s | 0.9 s | 1.7 s | 0.3 s | 6.4 m | 10.0 m/s |
+| 0.10 | 0.5 s | 0.8 s | 1.7 s | 0.4 s | 5.5 m | 9.4 m/s |
+| 0.15 | 0.5 s | 0.7 s | 1.9 s | 0.7 s | 5.9 m | 5.3 m/s |
+| 0.20 | 0.5 s | 0.6 s | 2.4 s | 1.3 s | 7.2 m | 0.8 m/s |
+| 0.00 | 0.7 s (to 0.60) | 1.2 s | 2.4 s | 0.6 s | 14.1 m | 8.3 m/s |
 
-Two reps each. Throttle 0.00 needs a taller pop (0.60) to leave any margin, so fly it only
-if you have the height; the model currently predicts *identical* zero thrust for 0.00, 0.05
-and 0.10, and disproving that at 0.05 is just as good.
+Two reps each. Times are from the throttle *stopping*, and the envelope is the full
+climb-plus-fall excursion, so start each arc that much clear of both floor and ceiling.
+
+**1.5 s of hold, not more.** The measurement is finished the instant `w` crosses zero;
+holding 3 s instead turns a 6 m excursion into 26 m and recovers at 15 m/s for no extra data.
+
+Throttle 0.00 needs a taller pop to leave any margin, so fly it only if you have the height.
+The model currently predicts *identical* zero thrust for 0.00, 0.05 and 0.10, so disproving
+that at 0.05 is just as good.
 
 **Fly this with the levelling assist OFF.** Under the assist the throttle keys slew *away*
 from hover and snap back the moment you release, so parking at 0.05 is impossible. In plain
@@ -239,7 +245,7 @@ discriminates between candidate conventions using attitude variety, so a straigh
 sample can pass on too thin a margin to mean anything. Read the margin it prints, not just
 the verdict.
 
-`F12` between every maneuver *and* between reps — the arcs are about 5 s each and markers are
+`F12` between every maneuver *and* between reps — the arcs are about 4 s each and markers are
 the only thing that makes twenty of them findable afterwards. Mid-session `SIM_RESET`s are
 fine now: `sysid_data.py` detects the boot-clock restart and splits on it, so do not reflow
 the card around them. Ignore the `armed` flag; it reads 0 through whole flights on this build.
