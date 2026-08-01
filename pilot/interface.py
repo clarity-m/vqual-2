@@ -86,7 +86,7 @@ N_RIBBON = 6
 
 OBS_DIM = 73
 
-HOVER_THRUST = 0.25  # measured in flight, NOT the 0.55 originally guessed
+HOVER_THRUST = 0.27  # measured in flight (0.25 was an earlier, low estimate; 0.55 a guess)
 MAX_RATE_RPS = 6.0
 GATE_INNER_M = 1.5
 FOCAL_PX = 320.0

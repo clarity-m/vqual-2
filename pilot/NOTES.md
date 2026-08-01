@@ -83,16 +83,31 @@ Refereed against gravity in `HIGHRES_IMU` on a parked drone (session 20260731-13
 
     truth_roll  =  ATTITUDE.roll      # == -ODOMETRY.roll
     truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
+    truth_yaw   = -ATTITUDE.yaw       # settled 2026-07-31, see below
 
 Independently reproduces vqual-1's "ATTITUDE pitch and ODOMETRY roll are sign-inverted",
 re-derived rather than inherited. **Anything using these as ground truth must apply the
 per-field correction first** — a fit refereed against raw `ODOMETRY` roll or raw
 `ATTITUDE` pitch is mirrored, and mirrored silently.
 
-**Yaw is NOT settled and cannot be settled from a parked recording.** Both streams read
-−179.9°, which is the degenerate point where a sign flip is invisible — the same trap that
-hid vqual-1's yaw error for three sessions (fine at the 180° start heading, growing with
-every degree of turn). Needs data at a heading well away from 180°.
+**Yaw SETTLED 2026-07-31** (this section previously said it could not be, which was true
+of the parked recording it was written from). Three referees, all outside the telemetry:
+
+* **The pilot.** `e` sends `yaw_rate` +2.00 (`KEYS_AXIS`, `ACRO_YAW`=+2.0, no sign applied
+  on the way out) and `e` turns the nose **left** — Claire's keybinds are inverted versus
+  what the letters suggest, and always have been. Nose left is *decreasing* NED yaw, but
+  session `20260731-203428` shows that tap moving `ATTITUDE.yaw` by **+1.094**.
+* **The camera.** The original `E` tap read `dx +55 px ⇒ yawed LEFT`. Correct all along.
+* **The image.** Projecting gates under both hypotheses and scoring against the orange
+  pixel mask, on frames where the two predictions differ by >80 px: `-ATTITUDE.yaw` lands
+  18.0 px median (79% within 40 px), `+ATTITUDE.yaw` lands 169.6 px (2%). Two sessions,
+  267 frames. `pilot/perception/label.py` carries this as a regression test.
+
+**Do not attempt to settle a yaw sign near the 180° start heading.** +180 and −180 are the
+same number, so body-right resolves identically under either hypothesis and every check
+passes. That degeneracy hid vqual-1's yaw error for three sessions and, in 2026-07-31's
+session, produced a confident *wrong* answer here from three separate lines of reasoning
+that were all telemetry-versus-telemetry and structurally unable to see it.
 
 Also measured, and real rather than an offset: **the launch pad is inclined 17.8°
 nose-down** (roll 0.01°, so a clean pitch incline).
@@ -157,8 +172,30 @@ write-up" applies to our own files.
 For system ID none of this corrupts data: `cmd.csv` records what was commanded and the
 truth streams record what happened, so a fit recovers the true sign on its own. **Where a
 sign error is actually dangerous is the surrogate fit** — the only place a world frame
-appears, and so the only place the error is silent. `YAW_GYRO_SIGN` is unverified but
-feeds only the HUD readout.
+appears, and so the only place the error is silent. `YAW_GYRO_SIGN` is now verified too
+(same three referees as `truth_yaw` above); it still only feeds the HUD readout.
+
+### The mirror covers RATES AND ATTITUDE. It does NOT cover position. (2026-07-31)
+
+**`LOCAL_POSITION_NED` is plain canonical NED.** Read off the HUD against motion a human
+could watch: forward, right and up all report **negative**, and the VQ1 course descends,
+which matches `z` counting up as you go down. Nothing to correct.
+
+So the streams disagree with each other, and "the sim is mirrored" is not a statement you
+can apply blanket:
+
+| stream | mirrored? |
+|---|---|
+| commanded body rates | **yes** |
+| `HIGHRES_IMU` gyro | **yes** |
+| `ATTITUDE` roll / pitch / yaw | **yes** (per-axis table above) |
+| `LOCAL_POSITION_NED` x, y, z, vx, vy, vz | **no — canonical NED** |
+| `ODOMETRY` velocity | **unknown, avoid.** Its horizontal frame appears to be built on the mirrored yaw. Use `LOCAL_POSITION_NED` velocities, which are confirmed. |
+
+This is exactly where a surrogate fit goes wrong: mixing a corrected attitude with an
+uncorrected position, or vice versa, produces a plausible model that is mirrored in one
+term only. `pilot/perception/label.py` needs the yaw negation for precisely this reason —
+its position input is clean and its yaw input is not, so nothing cancels.
 
 ## Control architecture — decided
 
@@ -222,6 +259,13 @@ Consequence: `ATTITUDE_IGNORE` stays set. Do not reopen for a smoother inner loo
 Indoor hangar — dark, lit signage, ceiling light strips, support columns. Not visually
 hostile; detection looks no harder than VQ1.
 
+**VQ1 and VQ2 look nothing alike.** VQ1 is a dark city/blocks environment; VQ2 is the
+hangar. The *gates* are visually identical — same orange `AI-GP` frames, same 1500 mm
+aperture — so VQ1 recordings teach gate appearance, which transfers. They teach nothing
+about hangar clutter or the white-ceiling-light false positive, which do not. Any detector
+trained only on VQ1 must be pseudo-labelled onto VQ2 frames before it is trusted there;
+that step is load-bearing, not polish.
+
 * **~20 gates** (Claire-observed, unconfirmed), bright orange/red and glowing against dark.
 * **Cyan guidance corridor** showing roughly the next 5 gates. Present in submission mode,
   not just training. **Absent from long stretches of real flight** — hence not load-bearing.
@@ -254,6 +298,19 @@ trusting a filled mask.
   pak is evidence the code exists, not that we can reach it.** The `F11` levelling assist
   exists because of this.
 * **Only one client can hold UDP 14550** — teleop and the pilot cannot run together.
+* **The `F11` levelling assist changes what a session is good for.** `cmd.csv` still holds
+  exactly what went out over MAVLink (`teleop.py:1018` records post-assist rates), so the
+  data is *valid* — but the commands are generated from the state by the outer loop, and
+  `LEVEL_MAX_RATE` clamps it at 3.0 rad/s, so the excitation is smoother and smaller than
+  it looks. Assist ON: `20260731-195307`, `20260731-204841`. Assist OFF: `143025`,
+  `144815`, `150712` — those three stay the primary rate-loop identification data. Yaw is
+  never touched by the assist on any of them.
+* **Frame/telemetry alignment: use `frames.csv sim_time_ns`, not `t_recv_wall_ns`.** The
+  receive stamp trails capture by ~38 ms of JPEG encode plus UDP, which at racing rates is
+  tens of pixels. Both are on the same wall epoch as the telemetry timestamps.
+* **Every VQ1 gate shares one normal, along world x** (Claire, 2026-07-31), so its aperture
+  lies in the world y-z plane. That is what makes labelling possible from gate centres
+  alone — orientation needs no estimation. Do not assume it carries to VQ2, whose path winds.
 * The example client's `main.py` calls `get_thread_for_join()` on a `TimeSync` built via
   its constructor rather than `create_timesync()`, so `.thread` is `None` and the join
   raises on exit. Don't copy that shutdown path.
@@ -264,10 +321,19 @@ trusting a filled mask.
 
 * **`R_COMMIT`** (attention handoff range) unset — needs a real approach measurement.
   Measurable from VQ1 flying, since gate dimensions are identical.
-* **The VQ2 course cannot be mapped at all.** §9.3 blocks gate geometry *and* both pose
-  streams, and world-frame mapping needs position and attitude. So gate count (~20,
-  Claire-observed) and the vertical profile are not "unconfirmed pending a measurement" —
-  there is no measurement available. VQ1's map is a different course (6 gates, ~167 m).
-  Anything downstream that wants a course must randomise over it rather than know it.
+* **The VQ2 course cannot be mapped FROM TELEMETRY.** §9.3 blocks gate geometry *and* both
+  pose streams, and world-frame mapping needs position and attitude. So gate count (~20,
+  Claire-observed) and the vertical profile have no telemetry measurement available. VQ1's
+  map is a different course (6 gates, ~167 m).
+  **It can be mapped from vision, and that is in bounds** — the camera is permitted, so
+  anything derived from it is fair game, unlike absolute yaw which came from a blocked
+  stream via the actuator. Training mode is free and unlimited and the course is fixed, so:
+  fly slow laps, run SfM offline over gates plus background (the Station columns are
+  uniquely numbered, which solves data association), and relocalise against the result at
+  race time. Scale is free from the known 1500 mm aperture. Build it **relative** — only
+  ever query "where is gate k+1 relative to gate k" — and global drift stops mattering.
+  Not started. Until it exists, downstream must randomise over the course rather than know
+  it, and even once it exists the map is a prior for pre-turning and attention, never
+  terminal guidance: live vision must always be able to override it.
 * Frames are still backed up nowhere — gigabytes of JPEG, excluded from git, one laptop.
   The telemetry CSVs are now tracked, so the plant fit no longer depends on that laptop.

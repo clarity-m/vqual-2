@@ -497,6 +497,8 @@ class Telemetry:
         # (roll, pitch, t_wall) with the per-axis sign correction already applied.
         # None under VQ2, which is what gates the levelling assist off there.
         self.truth_att = None
+        # (x, y, z) world position exactly as reported. VQ1 only. See the HUD note.
+        self.truth_pos = None
         self._last_imu_us = None
 
         self._track_chunks = {}
@@ -567,6 +569,12 @@ class Telemetry:
                 self.truth_seen = True
                 self.rec.row("position", time.time_ns(), msg.time_boot_ms,
                              msg.x, msg.y, msg.z, msg.vx, msg.vy, msg.vz)
+                # Held for the HUD as well as the recorder. Shown RAW, exactly as the
+                # sim reports it, with no sign applied -- the whole point of the readout
+                # is to let a human compare a reported number against a motion they can
+                # see, and a "helpful" correction here would destroy that.
+                with self.lock:
+                    self.truth_pos = (msg.x, msg.y, msg.z)
 
             elif t == "ODOMETRY":
                 self.truth_seen = True
@@ -684,7 +692,8 @@ class Telemetry:
                         last_collision=self.last_collision,
                         imu_count=self.imu_count,
                         heading_gyro=self.heading_gyro, gyro_live=self.gyro_live,
-                        truth_seen=self.truth_seen, truth_att=self.truth_att)
+                        truth_seen=self.truth_seen, truth_att=self.truth_att,
+                        truth_pos=self.truth_pos)
 
 
 # --------------------------------------------------------------------------------------
@@ -1060,6 +1069,10 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
         "ARMED" if tel["armed"] else "disarmed",
         tel["active_gate"] if tel["active_gate"] >= 0 else "-",
         tel["race_time_s"], tel["collisions"], vision.fps)
+    # World position, RAW. VQ1 only -- under VQ2 there is no pose stream and this stays
+    # blank, which is itself the correct readout.
+    if tel.get("truth_pos") is not None:
+        line2 += "  NED %+.1f %+.1f %+.1f" % tel["truth_pos"]
 
     colour = (0, 200, 255) if tel["armed"] else (160, 160, 160)
     cv2.putText(view, line1, (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour, 1,
