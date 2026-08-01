@@ -161,6 +161,7 @@ def score_frames(session, npick, stride):
     requires both gates be near enough for PnP to be trusted.
     """
     frames = [r for r in L.load_csv(os.path.join(session, 'frames.csv')) if r['file']]
+    imu = list(L.load_csv(os.path.join(session, 'imu.csv')))
     out = []
     for r in frames[::stride]:
         img = cv2.imread(os.path.join(session, 'frames', r['file']))
@@ -173,9 +174,16 @@ def score_frames(session, npick, stride):
         P = np.array([d['pos_body'] for d in det])
         sep = float(np.max(np.linalg.norm(P[:, None] - P[None, :], axis=2)))
         small = float(min(d['size_px'] for d in det))
+        # STEADINESS. Height differences are the inter-gate vector projected onto gravity,
+        # and the accelerometer only reads gravity when the aircraft is not manoeuvring.
+        # Measured on the first labelled set: 4 of 5 frames read 4.96-12.66 m/s^2 and had to
+        # be thrown away for height. Picking for steadiness up front means a labelled frame
+        # buys BOTH a scale sample and a height sample instead of only a scale one.
+        _g, gmag, _dt = gravity_at(imu, float(r['t_recv_wall_ns']))
+        steady = max(0.0, 1.0 - abs(gmag - 9.81) / 1.5)
         out.append({'file': r['file'], 't_ns': float(r['t_recv_wall_ns']),
-                    'n': len(det), 'sep_m': sep, 'min_size_px': small,
-                    'score': sep * np.sqrt(small)})
+                    'n': len(det), 'sep_m': sep, 'min_size_px': small, 'gmag': gmag,
+                    'score': sep * np.sqrt(small) * (0.4 + 0.6 * steady)})
     out.sort(key=lambda x: -x['score'])
     return out[:npick]
 
@@ -200,8 +208,9 @@ def pick(session, npick, stride, outdir):
         cv2.imwrite(os.path.join(outdir, p['file'].replace('.jpg', '.png')),
                     cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_NEAREST))
         stub[p['file']] = {str(k): None for k in range(len(det))}
-        print('%s  %d gates, baseline %.1f m, smallest %.0f px'
-              % (p['file'], p['n'], p['sep_m'], p['min_size_px']))
+        print('%s  %d gates, baseline %.1f m, smallest %.0f px, |a| %.2f%s'
+              % (p['file'], p['n'], p['sep_m'], p['min_size_px'], p['gmag'],
+                 '' if abs(p['gmag'] - 9.81) < 1.5 else '  (too dynamic for height)'))
     # NEVER CLOBBER HAND WORK. An earlier version overwrote labels.json on every --pick,
     # and re-running the picker destroyed labels Claire had already entered -- the one file
     # here that cannot be regenerated from the recordings. Existing entries win over the

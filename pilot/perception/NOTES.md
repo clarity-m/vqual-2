@@ -138,7 +138,19 @@ mistake; the first render of the map made it.
 
 **Two things the sketch does not carry:**
 
-* **Metric scale is UNRESOLVED and the code refuses to guess.** `fit_scale()` matches vision's
+* **Metric scale: ~15 m/station**, from 5 hand-labelled gate pairs (`labelgates.py`,
+  `labels_222724.json`, 2026-08-01). Median **14.94 m/station**, p10 13.43, p90 19.30 — the
+  spread across pairs IS the error bar, since these are independent measurements of one
+  constant. Two things it exposes: gates 1–2 were measured twice and disagreed by 18%
+  (9.1 m vs 7.6 m), which bounds PnP distance repeatability independently of any sketch
+  error; and the 21.74 m outlier is the pair 3–4, where gate 3 is the entry already flagged
+  as least certain for sitting 40 px off the drawn line. **First vertical number too:**
+  gate 1 is **+4.28 m** above gate 0, from gravity alone, no pose stream.
+  Height is the data-limited half — 4 of 5 labelled frames read |a| between 4.96 and 12.66
+  m/s², too dynamic for the accelerometer to be reading gravity, so `score_frames()` now
+  weights steadiness. `20260731-222724` is a straight-fly test and rarely steady; a calmer
+  session is the place to get heights.
+* **The superseded assignment-free fit, kept because the lesson generalises.** `fit_scale()` matches vision's
   measured metre distances against the sketch's station-unit distances over a swept scale —
   assignment-free, so it never needs to know which gate is which. It is **degenerate**: every
   scale from **4.7 to 18.2 m/station** sits within 2× of the best cost, 23% of the swept
