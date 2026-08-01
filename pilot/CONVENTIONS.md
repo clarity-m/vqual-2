@@ -28,6 +28,12 @@ Referees that actually work, cheapest first:
 | **the camera** (image motion vs commanded rotation) | any axis | needs care with the image-shift sign convention itself |
 | **orange pixel mask** vs projected gates | projection/frame maths | nothing, but needs gates in view |
 | **a closed loop that flies** (the levelling assist) | roll, pitch | yaw — the assist never touches it |
+| **the kinematic identity** `R_wb·a_body + g == dv_world/dt` (`control/sysid_frames.py`) | all three axes at once, *and* the sign of world gravity | needs flight covering a wide range of headings; degenerate if the drone never turns |
+
+The kinematic identity is the only referee in this table that works **in fast flight** —
+gravity is swamped there, and it is precisely where a plant fit lives. It spans three
+independent streams (`HIGHRES_IMU`, `ATTITUDE`, `LOCAL_POSITION_NED`), so no shared mirror
+can satisfy it, which is the property the three failed arguments above all lacked.
 
 Reading the source is **not** a referee. `KEYS_AXIS` says which key is positive; it can
 never say which physical direction that is.
@@ -168,6 +174,8 @@ Both of these have already cost this project multiple sessions. They are not hyp
 | roll, pitch rates mirrored | camera taps + gravity + assist flies stable | `camreferee.py`, `20260731-144815` |
 | yaw rate mirrored | pilot's keybinds; camera `E` tap; orange mask | `20260731-203428` |
 | `truth_yaw = -ATTITUDE.yaw` | orange mask, 18.0 px vs 169.6 px, 267 frames, 2 sessions | `perception/label.py` regression test |
+| same, independently | kinematic identity, 0.050 m/s² median vs 0.110 for `+yaw`, 6x on the tail, 26 321 samples | `control/sysid_frames.py`, re-runs per session |
+| `g_z = +9.81`, i.e. world z really is down | same sweep — flipping gravity is the worst of the sixteen candidates at 19.6 m/s² | `control/sysid_frames.py` |
 | `LOCAL_POSITION_NED` canonical | HUD readout vs motion a human watched | forward/right/up all negative; VQ1 descends |
 | camera tilt negative | derivation + convention sweep | `perception/label.py` |
 | PnP winding | PnP range −18.6 m vs size range −0.64 m on the same quad | `perception/detect.py` `score()` |
@@ -184,7 +192,11 @@ Both of these have already cost this project multiple sessions. They are not hyp
   but "should be" is not a measurement. Needs high angular rate to observe at all
   (observability scales with `ω·t_d`), obtainable hovering with sharp taps.
 * **`ODOMETRY` velocity frame.** Appears to be built on the mirrored yaw. Avoid.
-* **`HIGHRES_IMU` accelerometer axis signs.** Never independently refereed.
+* **`HIGHRES_IMU` accelerometer axis signs.** Never refereed *on their own*. The kinematic
+  identity constrains them jointly with attitude — it could not close to 0.050 m/s² if the
+  accelerometer axes disagreed with the attitude convention — but the sweep varied attitude
+  and gravity signs, not accelerometer signs, so a compensating flip in both would survive
+  it. Treat as constrained, not verified.
 * **Everything was measured on the VQ1 build.** Commands traverse the same MAVLink path and
   the spec diff says only §4.5 Telemetry changed, so it should carry to VQ2 — an inference,
   not a measurement.

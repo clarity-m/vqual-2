@@ -3,6 +3,10 @@
 Fly this to produce the data the plant fit and surrogate are built from. ~6 minutes
 of flying. **Use the VQ1 build** (`AIGP_VQ1_3391`) — the VQ2 build sends no pose.
 
+This card was flown on 2026-07-31 and the plant fit came out of it. **Card 2 at the bottom
+of this file is the follow-up** — three minutes aimed at the specific holes the fit exposed.
+If you have sim time and are choosing, fly card 2; card 1's data is already banked.
+
 Why not just fly a lap: a lap has correlated inputs and a narrow envelope, so a model
 fitted to it only knows how to fly that lap. These maneuvers excite one thing at a time.
 
@@ -63,10 +67,13 @@ gravity — see NOTES.md). Apply this first, or every downstream fit is mirrored
 
     truth_roll  =  ATTITUDE.roll      # == -ODOMETRY.roll
     truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
+    truth_yaw   = -ATTITUDE.yaw
 
-Yaw is unresolved: parked, both streams sit at −179.9°, the degenerate heading where a
-sign flip is invisible. **Maneuver 4 is what settles it** — the first data at a heading
-well away from 180°. Do not skip it.
+Yaw was unresolved when this card was written — parked, both streams sit at −179.9°, the
+degenerate heading where a sign flip is invisible. It is now **settled**: the flying data
+covers the full −180..+180° range, and `pilot/control/sysid_frames.py` scores all sixteen
+candidate conventions against `R_wb·a_body + g == dv_world/dt`. `-ATTITUDE.yaw` wins with a
+6x margin on the residual tail. Re-run that script rather than re-deriving it by hand.
 
 ## After
 
@@ -80,7 +87,167 @@ silent instead of self-announcing.
 
 ## Note on rates
 
-`HIGHRES_IMU` runs slower on the VQ1 build (47.7 Hz) than on VQ2 (62.9 Hz) because of the
-extra pose streams, and neither is fixed. Weight everything by actual `time_usec` deltas;
-never assume a nominal period. Truth arrives at 72–114 Hz, well above the IMU, so the fit
-should be driven by truth and the IMU treated as the noisy sensor it will be in VQ2.
+`HIGHRES_IMU` runs slower on the VQ1 build (47.7 Hz when this was written) than on VQ2
+(62.9 Hz) because of the extra pose streams, and neither is fixed. Weight everything by
+actual `time_usec` deltas; never assume a nominal period. Truth arrives at 72–114 Hz, well
+above the IMU, so the fit should be driven by truth and the IMU treated as the noisy sensor
+it will be in VQ2.
+
+**How un-fixed it is, measured 2026-07-31:** across the eight recorded sessions the IMU rate
+is 31.8–34.6 Hz for the four flown in the morning and 60.6–61.6 Hz for the four flown that
+afternoon — a factor of two, with `ATTITUDE` and `ODOMETRY` steady at ~112 and ~71 Hz
+throughout. 47.7 Hz is neither tier. Nothing in `teleop.py` requests a message interval, so
+whatever changed is not recorded. Details and why it matters for the referee:
+`sessions/README.md`.
+
+---
+
+# Card 2 — the three gaps card 1 left, 2026-07-31
+
+**~3 minutes of flying, ~10 on the clock.** Written *after* the plant fit closed
+(`pilot/control/plant.json`), so unlike card 1 every maneuver here is aimed at a weakness
+that has been measured rather than anticipated. Same build, same recorder flags — except for
+maneuver C, which wants the frames kept.
+
+Card 1 worked: drag fits to R² 0.99 and the rate loops to 0.98–1.00 on held-out data. But
+adding more terms to the model no longer helps — every physically plausible extra term
+tested buys ≤0.015 held out and two of them make it *worse*. The model is at the ceiling of
+**this data**, and the data has three specific holes. More flying is the only thing left
+that moves it.
+
+## The gaps, with the numbers that motivate them
+
+1. **The low-throttle thrust curve rests on 74 samples.** 65% of the training data sits in
+   throttle 0.25–0.30 and 0.4% sits below 0.10. The fitted curve `T/m = −6.08 + 59.59·thr`
+   crosses zero at throttle 0.102 and goes *negative* below it, so `plant.py` clamps it at
+   zero by hand. That clamp is the only unmeasured hack in the model, and it is exactly
+   what a policy hits every time it chops throttle into a descent.
+2. **`kz = 0.0364` is the least independent number in `plant.json`.** It is the one
+   coefficient fitted jointly with another, because in racing flight throttle rises exactly
+   when body-z speed does. That collinearity is what held the first attempt at this fit to
+   R² 0.04; it is now *modelled* rather than *broken*, which is not the same thing.
+3. **No lap has ever been completed.** `race_finish_time_ns` is −1 in all eight sessions
+   and `active_gate_index` never got past 1 — one gate, twice, ever. Card 1's maneuver 8
+   was never flown to a finish, so the held-out set is "ordinary flying", not "a lap", and
+   there is no data at all on what passing a gate looks like.
+
+## A. Apex reads — the one to fly
+
+**~60 s. Do not skip this even if you skip the rest.**
+
+At the top of a vertical arc the body-z velocity `w` passes through zero, and there the
+vertical drag term `kz·w|w|` vanishes *identically*. So at that instant `−a_z = T/m` — a
+direct read of the thrust curve with no regression, no drag model, and nothing for the
+throttle to trade against. In the entire training set, 17 samples have throttle below 0.10
+and `|w|` under 1 m/s. This maneuver manufactures them on purpose.
+
+The whole maneuver is: **climb, then park the throttle low and coast over the top.**
+
+    hover -> hold UP to ~0.50 -> immediately hold DOWN to the test throttle
+          -> LET GO and leave it alone for 3 s
+
+| test throttle | throttle parks | `w = 0` after | parked and still before it | room |
+|---|---|---|---|---|
+| 0.05 | 1.4 s | 1.7 s | 0.3 s | 6 m |
+| 0.10 | 1.3 s | 1.7 s | 0.4 s | 6 m |
+| 0.15 | 1.2 s | 1.9 s | 0.7 s | 6 m |
+| 0.20 | 1.1 s | 2.4 s | 1.3 s | 7 m |
+| 0.00 | 1.9 s | 2.4 s | 0.6 s | 14 m |
+
+Two reps each. Throttle 0.00 needs a taller pop (0.60) to leave any margin, so fly it only
+if you have the height; the model currently predicts *identical* zero thrust for 0.00, 0.05
+and 0.10, and disproving that at 0.05 is just as good.
+
+**Fly this with the levelling assist OFF.** Under the assist the throttle keys slew *away*
+from hover and snap back the moment you release, so parking at 0.05 is impossible. In plain
+acro the throttle is a held absolute that stays exactly where you leave it, which is the one
+thing this maneuver needs. Use `F11` to level the drone first if you like, then toggle it off
+before the arc.
+
+**You do not need to hit the throttle numbers.** `cmd.csv` records what you actually sent,
+and the analysis reads whatever value you were parked at. What matters is that the throttle
+is **stopped and untouched** before `w` crosses zero — the last column above is how much
+still time you get, and it is 0.3 s at worst. A throttle still moving through the crossing
+re-introduces the exact correlation the maneuver exists to break, and the sample becomes
+worth no more than the 16 939 already recorded.
+
+Throttle slews at 0.5/s (`THRUST_SLEW`), so "snap" is not available and the table accounts
+for that — the entry is deliberately a ramp. Nothing here is timing-critical: get low, let
+go, wait.
+
+Two gaps for the price of one: each arc sweeps `w` from about +6 m/s to −10 m/s at a *fixed*
+throttle, so fitting `−a_z` against `w|w|` **within a single arc** reads `kz` with thrust as
+a plain constant offset and no throttle correlation at all (gap 2). Covering both signs of
+`w` also isolates the climb/descent drag asymmetry, which was the only extra term that
+improved held-out fit.
+
+Those timings come from the model being tested, so treat them as a starting point, not a
+spec. The measurement is valid wherever the apex actually lands.
+
+## B. Vertical terminal runs — only if the hangar is tall enough
+
+**~30 s.** Level, straight up at full throttle until vertical speed stops rising, then zero
+throttle straight down until the descent stops accelerating. Predicted 34.7 m/s up and 16.4
+m/s down, which takes **27 m of clear run to reach 90% of the climb** (36 m for 95%) and 23 m
+for 90% of the descent — ramp included, so those are honest numbers for the real throttle.
+
+If the ceiling will not allow it, **skip it** — maneuver A already gives `kz`. But if you
+fly it, report the height you had and whether the speed visibly plateaued. A run that never
+reached terminal, recorded as though it did, is worse than no run: it biases `kz` low and
+nothing downstream can tell.
+
+## C. One completed lap
+
+**~60–90 s.** Fly it conservatively. The artifact is a *finished* lap, not a fast one — if
+it ends in a collision or a reset, press `F12` and go again.
+
+Record this one **with the JPEGs kept** (keep `--no-view`, drop `--no-frames`). A finished lap
+with pose telemetry attached is the only labelled perception data this project would have,
+and it costs little: `--no-frames` only skips the *disk write*. Reassembly of the frame
+stream happens either way — every one of the eight existing sessions reassembled ~30 fps
+regardless of the flag — so dropping it adds a write, not a new load on the control loop.
+
+## D. Worth ten minutes: reproduce the session that does not close
+
+Re-fly 20 s of what `20260731-130744` was doing — early free flight, no card, up to 30 m/s —
+and run the referee on it. That session is the only one where the kinematic identity fails
+(median residual 1.45 m/s²) and the cause is still unknown, but writing this card narrowed
+it. **The IMU ran at half rate for the four morning sessions** (31.8–34.6 Hz) and at
+60.6–61.6 Hz for the four afternoon ones, with `ATTITUDE` and `ODOMETRY` unchanged at ~112
+and ~71 Hz throughout — and referee residuals split on exactly that line: 0.110–0.216
+morning versus 0.029–0.091 afternoon. Frame rate was ~30 fps in all of them, so frames are
+not the discriminator, and nothing in `teleop.py` requests a message interval.
+
+So `130744` is the extreme of a systematic tier difference, not a lone mystery. That is not
+a complete explanation — at 34.6 Hz `131305` still reaches 30 m/s and closes fine, so rate
+alone does not produce a 1.45 — but it does mean the re-fly is a real test rather than a
+shot in the dark: fly the same thing at today's 61 Hz. If it closes, the morning rate was
+implicated and the exclusion can be retired. If it still fails, the cause is in the flying
+or the sim, and that is worth knowing before VQ2 depends on it.
+
+## Before flying
+
+Card 1's pre-flight check was "the CSVs are non-empty". That passes on data the referee
+later rejects, which is how `20260731-130744` got recorded. Record 20 s, stop, and run:
+
+    python3 pilot/control/sysid_frames.py pilot/sessions/<new-session>/
+
+Require **PASS** before flying the rest. Verified both ways: it passes on `143025` in under a
+second and it *fails* on `130744`, so this is the check that would have caught the bad session
+at the pad instead of a day later. **Roll, pitch and turn during those 20 s** — the referee
+discriminates between candidate conventions using attitude variety, so a straight-and-level
+sample can pass on too thin a margin to mean anything. Read the margin it prints, not just
+the verdict.
+
+`F12` between every maneuver *and* between reps — the arcs are about 5 s each and markers are
+the only thing that makes twenty of them findable afterwards. Mid-session `SIM_RESET`s are
+fine now: `sysid_data.py` detects the boot-clock restart and splits on it, so do not reflow
+the card around them. Ignore the `armed` flag; it reads 0 through whole flights on this build.
+
+## After
+
+Refit. The apex samples should let `sysid_fit.py` replace the hand clamp with a measured
+low-throttle curve and refit `kz` from the arcs instead of jointly with thrust, then
+`sysid_replay.py` gets a real lap to be validated against. If the apex reads disagree with
+the current curve near hover — where the existing data is thick and the fit is trustworthy —
+suspect the new data, not the fit, and check the throttle was actually still.
