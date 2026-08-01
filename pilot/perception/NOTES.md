@@ -158,7 +158,22 @@ mistake; the first render of the map made it.
   -1.12 (n=4, spread 1.06), 3-4 +0.66 (n=2), 1-2 -1.37, 2-4 +1.07, 8-9 -2.24 (n=1 each).
   Gate-to-gate height changes are of order a metre or two. These have NOT been recomputed
   with the overlap frames excluded.
-  **NEW DETECTOR FAILURE MODE — merged gates.** Two gates aligned on the view axis merge into
+  **DETECTOR FAILURE MODE — the guidance ribbon occludes the aperture edge** (Claire,
+  2026-08-01, `20260730-184043/00023248`). The cyan ribbon is drawn OVER the gate's inner
+  edge, so the aperture contour follows the ribbon's silhouette instead of the orange frame.
+  Measured on that detection: 17.3% of the quad interior is ribbon-cyan and the fitted quad
+  has edges 68.3 / 69.4 / **47.0** / 65.5 px — the contaminated side pulled ~30% short.
+  **Resolution is NOT the fix.** The gate spans 69 px at 8.4 m, so it is not sampling-limited;
+  more pixels image the same occlusion more sharply. The spec also fixes the camera at
+  640×360, fx = fy = 320, so a detector tuned higher would not transfer to race time — it
+  would be legitimate for offline mapping only, and would still not help here.
+  What would: treat dilated cyan as UNKNOWN rather than background and drop those contour
+  segments from the quad fit (the cyan class is already characterised and separates cleanly
+  from orange); or fit lines to the clean sides and intersect, which is the partial-quad
+  work already queued for clipped gates. This matters more than one frame — the ribbon marks
+  the racing line, so it passes through the aperture of exactly the gate being flown at, and
+  preferentially corrupts the nearest and most important gate.
+    **NEW DETECTOR FAILURE MODE — merged gates.** Two gates aligned on the view axis merge into
   a single orange blob; the fallback then measures the pair as one gate. Distinct from the
   decoration and clipping failures. Not yet detected automatically; `quality()` does not catch
   it, because nothing about the blob is individually anomalous.
