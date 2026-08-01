@@ -2,6 +2,10 @@
 
 Everything **above** the measurement vector: fill an `interface.Observation` each frame.
 
+This file is the **design**: what this half owns and how it is meant to work. `NOTES.md`
+next to it is the **record**: what has actually been measured, what currently works, and
+the traps that cost a build. Vision facts go there, not into `../NOTES.md`.
+
 ## What this half owns
 
 1. **Gate detection + PnP.** Red/orange segmentation → contour → quadrilateral fit →

@@ -181,37 +181,14 @@ Consequence: `ATTITUDE_IGNORE` stays set. Do not reopen for a smoother inner loo
 
 ## The course
 
-Indoor hangar — dark, lit signage, ceiling light strips, support columns. Not visually
-hostile; detection looks no harder than VQ1.
+Indoor hangar. **17 gates** (Claire-observed 2026-07-31, superseding an earlier "~20,
+unconfirmed"). **The path winds** far more than VQ1's near-straight line — this is the real
+difficulty. Support columns are numbered "Station N" and serve as a position ruler: 7
+stations in 19.29 s (2.76 s/station, constant cruise after ~10 s of acceleration).
 
-**VQ1 and VQ2 look nothing alike.** VQ1 is a dark city/blocks environment; VQ2 is the
-hangar. The *gates* are visually identical — same orange `AI-GP` frames, same 1500 mm
-aperture — so VQ1 recordings teach gate appearance, which transfers. They teach nothing
-about hangar clutter or the white-ceiling-light false positive, which do not. Any detector
-trained only on VQ1 must be pseudo-labelled onto VQ2 frames before it is trusted there;
-that step is load-bearing, not polish.
-
-* **~20 gates** (Claire-observed, unconfirmed), bright orange/red and glowing against dark.
-* **Cyan guidance corridor** showing roughly the next 5 gates. Present in submission mode,
-  not just training. **Absent from long stretches of real flight** — hence not load-bearing.
-* **The path winds** far more than VQ1's near-straight line. This is the real difficulty.
-* **White ceiling lights** are the main false-positive risk; the **first gate blooms**.
-* Columns are labelled "Station N", left row counting down and right row up, sum invariant
-  at 40–41 — two position rulers that error-check each other. 7 stations in 19.29 s
-  (2.76 s/station, constant cruise after ~10 s of acceleration).
-
-Measured on the parked start frame (`evidence/2026-07-30-startview.jpg`, OpenCV HSV, hue 0..179):
-
-| class | mask | share | mean S | mean V |
-|---|---|---|---|---|
-| orange gate | `(H<=12 or H>=170) & S>110 & V>110` | 2.0% | 202 | 241 |
-| cyan path | `85<=H<=100 & S>110 & V>110` | 1.5% | 197 | 169 |
-| white lights | `S<50 & V>200` | 0.9% | 3 | 238 |
-
-66.5% of the frame is V<40; the three classes separate on saturation alone (202/197/3), and
-the lights are additionally separated by position (centroid y=66). Bloom cost only 1.7% of
-the gate bounding box, so the orange mask is near-solid — but fill contours rather than
-trusting a filled mask.
+**How the course LOOKS — appearance, colour masks, signage, the lit active gate, and the
+station numbering — lives in `perception/NOTES.md`.** It is not restated here; two copies
+of a measurement drift, and the vision file is the one that gets updated.
 
 ## Gotchas
 
@@ -247,9 +224,9 @@ trusting a filled mask.
 * **`R_COMMIT`** (attention handoff range) unset — needs a real approach measurement.
   Measurable from VQ1 flying, since gate dimensions are identical.
 * **The VQ2 course cannot be mapped FROM TELEMETRY.** §9.3 blocks gate geometry *and* both
-  pose streams, and world-frame mapping needs position and attitude. So gate count (~20,
-  Claire-observed) and the vertical profile have no telemetry measurement available. VQ1's
-  map is a different course (6 gates, ~167 m).
+  pose streams, and world-frame mapping needs position and attitude. So gate count and the
+  vertical profile have no telemetry measurement available. VQ1's map is a different course
+  (6 gates, ~167 m).
   **It can be mapped from vision, and that is in bounds** — the camera is permitted, so
   anything derived from it is fair game, unlike absolute yaw which came from a blocked
   stream via the actuator. Training mode is free and unlimited and the course is fixed, so:
@@ -257,8 +234,10 @@ trusting a filled mask.
   uniquely numbered, which solves data association), and relocalise against the result at
   race time. Scale is free from the known 1500 mm aperture. Build it **relative** — only
   ever query "where is gate k+1 relative to gate k" — and global drift stops mattering.
-  Not started. Until it exists, downstream must randomise over the course rather than know
-  it, and even once it exists the map is a prior for pre-turning and attention, never
-  terminal guidance: live vision must always be able to override it.
+  **Started 2026-07-31** (`perception/mapbuild.py`, `perception/stations.py`); it builds but
+  is not yet usable geometry — status, measurements and the current failure mode are in
+  `perception/NOTES.md`. Until it is trustworthy, downstream must randomise over the course
+  rather than know it, and even once it exists the map is a prior for pre-turning and
+  attention, never terminal guidance: live vision must always be able to override it.
 * Frames are still backed up nowhere — gigabytes of JPEG, excluded from git, one laptop.
   The telemetry CSVs are now tracked, so the plant fit no longer depends on that laptop.
