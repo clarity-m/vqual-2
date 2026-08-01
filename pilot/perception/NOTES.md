@@ -118,6 +118,39 @@ presents its vertical text (frame 900 of `20260731-222724`: `12` breaks into fou
 of 4–8 px); and reads with counts of 1–2 in a session (`7`, `15`, `30`) should be treated as
 probable misreads until a second channel confirms them.
 
+## THE MAP — `map_approx.json`
+
+**There is a functional gate map, in station units.** Claire built a top-down sketch by hand
+from aerial captures (`map-aerial/`, 2026-08-01): two rows of numbered columns and one red
+bar per gate giving position *and* plane orientation. `readmap.py` extracts it — 17 bars
+found, matching the gate count, with the station rows read from the sketch and cross-checked
+by the sum-to-41 invariant and a rows-are-level test.
+
+This is the piece vision could not supply, and the two halves are exactly complementary:
+`mapbuild.py` measures inter-gate distances well but cannot say which gate is which;
+the sketch knows which gate is which but has no scale.
+
+**Coordinates are in station units, deliberately** — `stations.py` reads station numbers off
+the camera, so a gate at `along=17.04` is directly comparable to a live reading with no
+conversion. `along` is in **LEFT-ROW numbering**: a right-row column numbered N is level with
+`along = 41 - N`, so Station 29 sits at along 12. Mixing the two directions is the easy
+mistake; the first render of the map made it.
+
+**Two things the sketch does not carry:**
+
+* **Metric scale is UNRESOLVED and the code refuses to guess.** `fit_scale()` matches vision's
+  measured metre distances against the sketch's station-unit distances over a swept scale —
+  assignment-free, so it never needs to know which gate is which. It is **degenerate**: every
+  scale from **4.7 to 18.2 m/station** sits within 2× of the best cost, 23% of the swept
+  range. 17 gates give 136 pair distances, a near-continuum, so any measured distance matches
+  *some* pair at almost any scale. The apparent optimum of 10.9 m is noise, and
+  `metres_per_station` stays `null`. The drawn bar lengths would imply 12.6 m/station (if a
+  bar is the 1500 mm inner width) or 22.7 m (if the 2700 mm outer) — both inside the
+  degenerate plateau, so they corroborate nothing. Scale only matters for fusing the map with
+  PnP ranges; guidance in station units does not need it.
+* **Race order is unknown.** The gate index in the JSON is order *along the hangar*, not race
+  order. The map is geometry; the sequence still has to come from `active_gate_index`.
+
 ## THE DATA WALL — why the map is not finished
 
 **No VQ2 recording covers the course.** Checked every session with a `race.csv`
@@ -129,13 +162,19 @@ The station reads say the same thing geometrically: across the three largest VQ2
 every confident read falls in **stations 22–28**, a handful of bays in a hangar that runs to
 at least station 30 and probably ~40.
 
-Three consequences, and they are the reason to stop rather than tune:
+**Correction, 2026-08-01.** An earlier version of this section said the recordings "cover only
+the opening" of the course. That was too strong, and measurement contradicts it: one frame of
+`20260731-222724` carries **15 gate detections**, and detection range runs to **75 m** with a
+median of 35 m. Much of the course is *visible* from where the aircraft flew. **The wall is
+ORDER, not coverage** — a functional map answers "where is gate k+1 relative to gate k", and
+only `active_gate_index` says which detection is gate k. It advances only on a crossing.
 
-* **A map of a 17-gate course cannot be built from recordings of its opening.** The 35-node
-  reconstruction is gates near the start, seen repeatedly from a small region — which is
-  also why it looks like a dense blob with a thin arm rather than a course. Merging
-  duplicates and reading stations both make it *cleaner*; neither can add the gates that
-  were never flown past.
+Consequences, and they are the reason to stop rather than tune:
+
+* **The 35-node reconstruction cannot be repaired into a course.** Merging duplicates and
+  reading stations both make it *cleaner*, but nothing in it assigns race order. The sketch
+  now supplies the geometry that reconstruction was trying to recover, which makes this a
+  cross-check rather than the critical path.
 * **The strongest identity channel is unusable on existing data.** Lit-gate + `active_gate_index`
   gives sim-supplied absolute identity, but the index never advances, so there is nothing to
   key on. The channel is sound; the recordings do not exercise it.
@@ -143,6 +182,10 @@ Three consequences, and they are the reason to stop rather than tune:
   serves both problems.
 
 **What is needed: one VQ2 training session that flies the whole course slowly, recording.**
+It resolves both open items at once — crossings give race order, and identified gates give
+the metric scale the assignment-free fit cannot. Run `checksession.py` on it before building
+anything: it fails a recording whose `active_gate_index` never advances, which is the exact
+defect that went unnoticed until a map had already been built on one.
 Training is free and unlimited, the course is fixed, and `teleop.py` already records
 everything. Slow matters more than clean — coverage is 38× better slow than fast, a wobbly
 lap that visits all 17 gates beats a tidy one that visits two, and gate crossings are what
