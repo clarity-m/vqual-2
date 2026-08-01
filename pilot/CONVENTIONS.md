@@ -63,7 +63,7 @@ mirrored" as a blanket fact is how a half-corrected model gets built.
 | `ATTITUDE` yaw | **yes** | `truth_yaw = -ATTITUDE.yaw` |
 | `LOCAL_POSITION_NED` x,y,z,vx,vy,vz | **no — canonical NED** | none |
 | `ODOMETRY` velocity | **unknown — avoid** | use `LOCAL_POSITION_NED` velocities |
-| `HIGHRES_IMU` accelerometer | **not established** | see Unverified |
+| `HIGHRES_IMU` accelerometer | **no — canonical** | none (settled 2026-08-01, below) |
 
 ### VQ1 truth streams are each wrong on a different axis
 
@@ -171,6 +171,33 @@ Both of these have already cost this project multiple sessions. They are not hyp
 | `LOCAL_POSITION_NED` canonical | HUD readout vs motion a human watched | forward/right/up all negative; VQ1 descends |
 | camera tilt negative | derivation + convention sweep | `perception/label.py` |
 | PnP winding | PnP range −18.6 m vs size range −0.64 m on the same quad | `perception/detect.py` `score()` |
+| accelerometer canonical | complementary filter on `HIGHRES_IMU` scored against VQ1 truth pose over 5 sessions; flipping the accel sign is **75×** worse | `test_imu_level.py` |
+
+### The accelerometer is NOT mirrored — measured 2026-08-01
+
+The gyro carries the −1 mirror; the accelerometer does not. Sweeping both signs and
+scoring a gyro+accel complementary filter against VQ1 truth (`truth_roll = ATTITUDE.roll`,
+`truth_pitch = ODOMETRY.pitch`) over 55 000 IMU samples separates them:
+
+| gyro | accel | roll median | pitch median |
+|---|---|---|---|
+| −1 | **+1** | **1.12°** | **1.54°** |
+| +1 | +1 | 8.11° | 3.01° |
+| −1 | −1 | 178.9° | 21.8° |
+| +1 | −1 | 171.9° | 21.9° |
+
+So at rest, level, the accelerometer reads `(0, 0, −g)` and
+
+    roll  = atan2(−ay, −az)        pitch = atan2(ax, hypot(ay, az))
+
+This is an **outside** referee in the sense the standing rule demands: VQ1's truth pose is
+not derived from `HIGHRES_IMU`. Two honest limits — the two signs are not settled equally
+(flipping the accel is 75× worse, flipping the gyro only 4.2×, because the accel trim drags
+a wrong-signed integration back toward truth), and it was measured on the VQ1 build, like
+everything else here.
+
+**Consequence:** roll and pitch are observable under VQ2 from a permitted stream, which is
+what `teleop.py --imu-level` uses. Yaw is not, and is not estimated.
 
 ---
 
@@ -184,7 +211,6 @@ Both of these have already cost this project multiple sessions. They are not hyp
   but "should be" is not a measurement. Needs high angular rate to observe at all
   (observability scales with `ω·t_d`), obtainable hovering with sharp taps.
 * **`ODOMETRY` velocity frame.** Appears to be built on the mirrored yaw. Avoid.
-* **`HIGHRES_IMU` accelerometer axis signs.** Never independently refereed.
 * **Everything was measured on the VQ1 build.** Commands traverse the same MAVLink path and
   the spec diff says only §4.5 Telemetry changed, so it should carry to VQ2 — an inference,
   not a measurement.

@@ -37,3 +37,7 @@ pilot/perception/verify_autolabel/
 # Training checkpoints: ~38 MB of .pt per run, regenerable from gatenet.py + autolabel.py.
 # The RESULTS live in perception/TRAINING.md, which is tracked; the weights are not.
 pilot/perception/gatenet_runs/
+
+# Pre-rendered crop cache for gatenet training (packcrops.py). 4.4 GB of uint8 tiles,
+# rebuildable in ~45 s from the frames + autolabels_vq1.json. Never in git.
+pilot/perception/crop_cache*/

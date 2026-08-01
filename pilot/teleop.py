@@ -41,8 +41,17 @@ a roll rate is a roll rate regardless of where north is. Velocity mode was
 removed rather than left as a trap, so what is hand-flown here matches what the
 autonomous pilot will command.
 
+INPUT SHAPING: a keyboard axis is 0 or 1, so without shaping every input is full
+deflection and a gentle correction can only be spelled as a tap. --slow-lap adds
+expo, a hard rate cap and a softer stick ramp, which is what a map-building lap
+wants; the default --shaping full is arithmetically identical to every session
+recorded before shaping existed. Whichever is used is written to events.jsonl,
+because cmd.csv feeds a plant fit and a run flown under different shaping is a
+different experiment.
+
 Usage
     python3 pilot/teleop.py                 # fly, record, live camera view
+    python3 pilot/teleop.py --slow-lap      # gentler handling for a mapping lap
     python3 pilot/teleop.py --no-record     # fly only
     python3 pilot/teleop.py --no-view       # no cv2 window (lower jitter)
     python3 pilot/teleop.py --listen        # record only, send nothing
@@ -188,6 +197,54 @@ LEVEL_GAIN = 4.0                       # rad/s of body rate per rad of angle err
 LEVEL_MAX_RATE = 3.0                   # rad/s, clamp on the outer loop's output
 LEVEL_MAX_AGE = 0.25                   # s; older truth than this and the assist drops out
 
+# --- roll/pitch from the IMU, so the assist works under VQ2 (--imu-level) --------------
+# The assist above needs an attitude, and VQ2 sends none. But roll and pitch ARE
+# observable under VQ2: gravity is a vector the accelerometer can see, and CONVENTIONS.md
+# lists gravity-near-stationary as a valid referee for exactly those two axes. NOTES.md
+# already ruled this in bounds when it rejected absolute yaw -- "Roll/pitch self-levelling
+# -- no [it does not give information no permitted stream provides]; gravity is observable;
+# quality gain, not capability gain". Yaw stays out, and is untouched here as everywhere.
+#
+# The accelerometer alone is not enough, and --imu-tilt-comp is the evidence: gravity is
+# only readable when not accelerating, which rejects 40-78% of frames with gaps up to 5 s,
+# and rejects them preferentially when banked. So this is a complementary filter -- the
+# gyro carries attitude through the manoeuvre, the accelerometer trims the drift out
+# whenever it is trustworthy. Textbook, and the same structure a real flight controller
+# uses.
+#
+# MEASURED against VQ1 truth (roll = ATTITUDE.roll, pitch = ODOMETRY.pitch), replaying
+# six sessions' imu.csv through this exact filter (pilot/test_imu_level.py, 2026-08-01).
+# Median |error| / p90, degrees, at LEVEL_IMU_TAU = 2.0:
+#
+#     20260731-204841-vq1-lap-slow   roll 1.36 / 3.71    pitch 1.34 / 3.96
+#     20260731-195307 (lap, resets)  roll 0.67 / 3.12    pitch 1.12 / 4.86
+#     20260731-131305 (mixed)        roll 0.03 / 6.53    pitch 0.22 / 6.62
+#     20260731-150712 (excursions)   roll 0.03 / 17.4    pitch 1.08 / 9.72
+#     20260731-143025 (rate doublets)roll 3.56 / 29.8    pitch 3.93 / 11.7
+#
+# ACCURACY IS A FUNCTION OF HOW HARD YOU FLY, and that is the whole story: on the two
+# lap-like sessions -- the profile a slow mapping lap actually is -- it holds 1-2 deg
+# median and better than 5 deg at p90. On the deliberate rate-doublet card it degrades to
+# p90 30 deg, because sustained high rate is precisely when the accelerometer has nothing
+# to say. Fly it slowly, as intended, and it is a good attitude; throw it around and it is
+# not. It is opt-in for that reason.
+#
+# THE SIGNS ARE MEASURED, not assumed. Sweeping both hypotheses against truth is decisive
+# by two orders of magnitude: gyro -1 with accel +1 gives roll median 0.11 deg, and every
+# other combination gives 180 deg (roll) or 26-31 deg (pitch). So the gyro carries the
+# mirror CONVENTIONS.md documents, and THE ACCELEROMETER AXES ARE CANONICAL -- which
+# CONVENTIONS.md lists under "Still unverified". This is the referee it was missing, and
+# it is an outside one: VQ1 truth pose is not derived from HIGHRES_IMU.
+#
+# Nothing extra is recorded. imu.csv already holds every input, so any estimate this makes
+# is reproducible offline from the recording, and cmd.csv keeps its existing columns.
+LEVEL_IMU_TAU = 2.0            # s; accelerometer trim rate. Measured, see the table.
+LEVEL_IMU_ACCEL_TOL = 1.0      # m/s^2 of ||a| - g| before a sample counts as gravity.
+                               # Looser than TILT_IMU_ACCEL_TOL (0.5) on purpose: a slow
+                               # complementary trim can average a noisier gate, and 1.0
+                               # is the value every number in the table was measured at.
+LEVEL_IMU_MAX_TILT = 1.4       # rad; tan() blows up at 90 deg, so clamp before it does
+
 # --- throttle behaviour under the levelling assist -------------------------------------
 # Two separate fixes, both only active while levelling (plain acro is untouched):
 #
@@ -280,6 +337,88 @@ TAKEOFF_S = 1.0
 
 SLEW_PER_S = 12.0         # command ramp, in units of the per-axis limit per second
 
+# --- input shaping --------------------------------------------------------------------
+# A keyboard has no stick travel: a key is 0 or 1, so every input is full deflection and
+# the only way to ask for a small correction is to tap. On a 17-gate winding course that
+# is the whole workload. Three knobs, all FEEDFORWARD - nothing here reads a measurement,
+# so nothing here can oscillate:
+#
+#   expo        soft centre. out = (1-e)*x + e*x^3. Only bites while the axis is between
+#               0 and 1, which on a keyboard is exactly the slew ramp after a keypress -
+#               so a tap becomes gentle and a held key still reaches full rate.
+#   max_rate    hard clamp in rad/s on every rate that goes on the wire, applied AFTER
+#               boost, align and the levelling assist. A clamp is used rather than a
+#               scale on ACRO_* so that LCTRL boost cannot defeat it, and so that the
+#               recorded limit is one number rather than a product of four.
+#   stick_slew  replaces SLEW_PER_S for this run: how fast the axis itself ramps.
+#
+# THE PRESET GOES IN events.jsonl. cmd.csv feeds a plant fit, and a session flown under
+# different shaping is a different experiment - identical stick work produces a different
+# command trace. `full` is arithmetically identical to the pre-shaping code (expo 0 is an
+# early return, max_rate 0 disables the clamp, stick_slew == SLEW_PER_S), which
+# test_shaping.py asserts tick by tick against the old algebra.
+#
+# `slow` numbers, and why: max_rate 1.4 rad/s is 80 deg/s against acro's 143, which is
+# still far more than a lap needs - the VQ1 slow lap (20260731-204841) was flown at a true
+# median 2.9 m/s and its p99 commanded rate is well under this. expo 0.55 puts half stick
+# at 59% of linear. Neither is tuned in flight; they are starting points chosen to be
+# obviously gentler, and the cap is the part that matters.
+SHAPING_PRESETS = {
+    "full": dict(expo=0.0, max_rate=0.0, stick_slew=SLEW_PER_S),
+    "slow": dict(expo=0.55, max_rate=1.4, stick_slew=5.0),
+}
+
+# --- ground speed from drag (VQ2 has no velocity telemetry at all) ---------------------
+# Same algebra the align-to-velocity code uses for DIRECTION, read for MAGNITUDE. Thrust
+# is along body -z, so the horizontal accelerometer components carry only drag, and drag
+# grows with airspeed:
+#
+#     |(ax, ay)| = DRAG_K * v^2      =>     v = sqrt(|(ax,ay)| / DRAG_K)
+#
+# MEASURED against LOCAL_POSITION_NED on the VQ1 build, which has identical physics and
+# does stream truth velocity: 35 203 in-flight IMU samples across 9 sessions, binned by
+# true horizontal speed (pilot/_scratch_measure.py, 2026-08-01).
+#
+#     v m/s     2     3     4     5     6     7     8    12    15
+#     |a| p50  0.19  0.38  0.68  1.04  1.65  1.99  2.60  4.46  8.04
+#     |a|/v^2  .048  .042  .043  .042  .046  .041  .041  .031  .036
+#
+# So 0.041 holds to ~10% from 2 to 8 m/s, which is the entire slow-lap regime; it reads
+# low above 10 m/s, i.e. it UNDER-reports exactly when you are already too fast, which is
+# the safe direction for a warning. Inverting the calibration reproduces the truth
+# medians: |a| 0.5 -> 3.5 m/s (measured 3.3), 1.2 -> 5.4 (4.9), 2.0 -> 7.0 (7.0).
+#
+# TWO REAL LIMITS. It is AIRspeed (the sim appears windless), and ON THE GROUND it reads
+# the pad reaction instead of drag - the launch pad is inclined 17.8 deg, so a parked
+# drone shows a rock-steady |(ax,ay)| = g*sin(17.8) = 3.00, which inverts to a wholly
+# fictional 8.6 m/s. Hence the readout is gated on armed-and-flying.
+DRAG_K = 0.041
+
+# Advisory only, nothing acts on these. Cruise on this course is 5.8 m/s (the station
+# ruler: 2.76 s/station x 15.97 m/station, NOTES.md + perception/NOTES.md), so 6 is
+# "you are at race pace, not map pace".
+#
+# HONEST GAP: no recording pairs a measured speed with a station-read coverage figure.
+# 20260731-222724 is the 38%-coverage session and its cmd.csv never shows armed, so its
+# IMU cannot be gated to flight; 20260730-174527 (1%) is dominated by pad samples. The
+# 38-vs-1% coverage split is real and speed is the stated cause, but the NUMBER below is
+# chosen from the cruise pace, not fitted to coverage.
+SPEED_MAP_OK = 6.0        # m/s; above this the HUD goes amber
+SPEED_MAP_BAD = 9.0       # m/s; red
+
+# --- steadiness (this is what a gate HEIGHT costs) -------------------------------------
+# With no pose stream, gate height comes from gravity in the accelerometer, and the
+# accelerometer only reads gravity when the aircraft is not accelerating. Same gate the
+# hover measurement uses: ||a| - g| <= 0.35. perception/NOTES.md reports 4 of 5 labelled
+# frames unusable for height on 20260731-222724 for exactly this reason ("a calmer session
+# is the place to get heights"), so the pilot needs to see it WHILE flying, not afterwards.
+#
+# Measured in-flight acceptance at this tolerance: 39% on the slow VQ1 lap with a worst
+# gap of 3.7 s, 61% on 20260730-215221. So a few seconds without a steady sample is
+# normal; ten is a stretch of course that will yield no heights.
+STEADY_TOL = 0.35         # m/s^2 of ||a| - g|
+STEADY_WARN_S = 10.0      # seconds without a steady sample before the HUD complains
+
 # --- heading (diagnostic only) --------------------------------------------------------
 # Body rates are body-referenced by construction, so flying needs no heading at all.
 # We still integrate zgyro and record it, because it is the only orientation signal
@@ -315,8 +454,13 @@ RATES_MASK = (
 # --------------------------------------------------------------------------------------
 
 KEYS_AXIS = {                     # axis: (positive key, negative key)
-    "pitch":    ("w", "s"),       # w = nose down = forward
-    "roll":     ("d", "a"),
+    # W is nose UP, not nose down. The old comment here said "w = nose down = forward"
+    # and was simply wrong -- CONVENTIONS.md settled it against the pilot, the strongest
+    # referee there is. The SIGNS are deliberately left alone: flipping them changes the
+    # feel of every session ever recorded and wants doing on purpose, not hours before a
+    # lap. Only the labels are corrected, here and in KEYMAP.
+    "pitch":    ("w", "s"),       # w = nose UP (flies backward), s = nose down
+    "roll":     ("d", "a"),       # d = roll right, a = roll left
     "throttle": ("up", "down"),
     "yaw":      ("e", "q"),
 }
@@ -334,14 +478,19 @@ KEYS_COMMAND = {                  # action: key
 
 KEYMAP = """
   sticks (body rates)              commands (function keys)
-  W/S   pitch fwd / back           F5   arm
-  A/D   roll right / left          F6   disarm
-  Q/E   yaw left / right           F7   zero heading readout
-  UP    throttle up                F8   quit (disarms)
-  DOWN  throttle down              F9   sim reset
-                                   F10  throttle back to hover
+  W     nose UP  (flies BACKWARD)  F5   arm
+  S     nose down (flies forward)  F6   disarm
+  A/D   roll left / roll right     F7   zero heading readout
+  Q/E   yaw RIGHT / yaw LEFT       F8   quit (disarms)
+  UP    throttle up                F9   sim reset
+  DOWN  throttle down              F10  throttle back to hover
   C     align nose to velocity     F11  levelling assist on/off (VQ1 only)
-  LCTRL boost   LALT precision      F12  drop a marker
+  LCTRL boost   LALT precision     F12  drop a marker
+
+  Q/E and W/S read backwards from the letters, and always have. That is the sim's
+  mirrored rate convention, measured against the pilot, not a typo (CONVENTIONS.md).
+  The keys are NOT being flipped hours before a lap - the labels above are what
+  they actually do.
 
   Throttle is an OFFSET, not an absolute: hold UP/DOWN to move it, let go and it
   snaps to the measured hover point. It sits at 0 on arm and after a reset, like
@@ -359,9 +508,15 @@ KEYMAP = """
   accelerometer. It is gated near hover, where there is no drag to read.
 
   F11 toggles the levelling assist: the sticks command a bank ANGLE instead of a
-  rate, and releasing them returns to level instead of holding the attitude. It
-  needs the VQ1 truth stream, so under VQ2 the key does nothing and says so. Body
-  rates are still what goes on the wire, so recordings stay ordinary acro data.
+  rate, and releasing them returns to level instead of holding the attitude - so
+  A/D and W/S become strafe and forward/back that recover on their own. Body rates
+  are still what goes on the wire, so recordings stay ordinary acro data.
+
+  The assist needs an attitude. On VQ1 it uses the truth stream. On VQ2 there is
+  none, so start with --imu-level and it estimates roll and pitch from gravity in
+  the IMU instead (1-2 deg on lap-like flying, worse the harder you fly - so fly
+  it slowly). Yaw is not estimated and never levelled. Without that flag F11 says
+  so and does nothing, exactly as before.
 
   Keys reach the simulator too. Commands sit on F-keys because the sim binds
   SPACE to restart; axes sit on letters because an echoed letter is harmless.
@@ -371,6 +526,143 @@ KEYMAP = """
 def wrap_pi(a):
     """Wrap an angle to (-pi, pi]."""
     return (a + math.pi) % (2.0 * math.pi) - math.pi
+
+
+class Shaping:
+    """How a keypress becomes a rate command. Feedforward only - it reads no
+    measurement, so it cannot oscillate.
+
+    Exists because a keyboard axis is 0 or 1: without shaping every input is full
+    deflection, and a small correction can only be spelled as a tap. See
+    SHAPING_PRESETS for what the three knobs do and why `full` must stay
+    arithmetically identical to the pre-shaping code.
+    """
+
+    def __init__(self, name, expo=0.0, max_rate=0.0, stick_slew=SLEW_PER_S):
+        self.name = name
+        self.expo = float(expo)
+        self.max_rate = float(max_rate)      # rad/s; 0 = no cap
+        self.stick_slew = float(stick_slew)
+
+    @classmethod
+    def preset(cls, name):
+        return cls(name, **SHAPING_PRESETS[name])
+
+    def curve(self, x):
+        """Soft centre. Identity when expo is 0 -- an early return, not a
+        multiply by one, so `full` is bit-for-bit the old arithmetic."""
+        if self.expo <= 0.0:
+            return x
+        return (1.0 - self.expo) * x + self.expo * x * x * x
+
+    def clamp(self, rate):
+        """Cap on what goes on the wire. Applied last, so LCTRL boost, the
+        align loop and the levelling assist are all inside it."""
+        if self.max_rate <= 0.0:
+            return rate
+        return max(-self.max_rate, min(self.max_rate, rate))
+
+    def as_dict(self):
+        """Recorded verbatim in events.jsonl. cmd.csv feeds a plant fit, and a
+        run flown under different shaping is a different experiment, so the
+        limits that produced a command trace travel with it."""
+        return dict(preset=self.name, expo=self.expo,
+                    max_rate_rad_s=self.max_rate,
+                    stick_slew_per_s=self.stick_slew,
+                    acro_roll=ACRO_ROLL, acro_pitch=ACRO_PITCH,
+                    acro_yaw=ACRO_YAW, boost=BOOST, precision=PRECISION)
+
+    def describe(self):
+        if self.expo <= 0.0 and self.max_rate <= 0.0 \
+                and self.stick_slew == SLEW_PER_S:
+            return "shaping: %s (unshaped - identical to every earlier session)" % self.name
+        return ("shaping: %s   expo %.2f   max rate %s   stick ramp %.1f/s"
+                % (self.name, self.expo,
+                   ("%.2f rad/s (%.0f deg/s)"
+                    % (self.max_rate, math.degrees(self.max_rate)))
+                   if self.max_rate > 0 else "uncapped",
+                   self.stick_slew))
+
+
+class TiltEstimator:
+    """Roll and pitch from HIGHRES_IMU alone, in PHYSICAL NED (not the sim's
+    mirrored command convention). Yaw is deliberately absent - it is not
+    observable from gravity and is out of bounds besides.
+
+    Complementary filter: integrate the gyro for the fast path, trim toward the
+    accelerometer's gravity direction whenever the accelerometer is actually
+    reading gravity. See LEVEL_IMU_TAU above for the measured error against VQ1
+    truth, and for why the signs applied here are measured rather than assumed.
+
+    Feeds the levelling assist, which is a P loop on the result - so the one thing
+    that would make this dangerous is lag inside the loop. There is none on the
+    fast path: the gyro term is instantaneous and the accelerometer trim runs at
+    tau = 2 s, far slower than any airframe mode. That ordering is what keeps a
+    complementary filter from oscillating, and it is why this is not a PID.
+    """
+
+    def __init__(self, tau=LEVEL_IMU_TAU, accel_tol=LEVEL_IMU_ACCEL_TOL):
+        self.tau = tau
+        self.accel_tol = accel_tol
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.seeded = False        # False until the first trustworthy accel sample
+        self.accepted = 0
+        self.samples = 0
+
+    def update(self, gyro, accel, dt):
+        """gyro/accel exactly as HIGHRES_IMU reports them. Returns (roll, pitch)."""
+        self.samples += 1
+        # The gyro is mirrored (CONVENTIONS.md); the accelerometer is not. Both
+        # settled by the sweep against VQ1 truth documented at LEVEL_IMU_TAU.
+        p, q, r = (-gyro[0], -gyro[1], -gyro[2])
+        if dt > 0.0:
+            tt = math.tan(max(-LEVEL_IMU_MAX_TILT,
+                              min(LEVEL_IMU_MAX_TILT, self.pitch)))
+            self.roll += dt * (p + q * math.sin(self.roll) * tt
+                               + r * math.cos(self.roll) * tt)
+            self.pitch += dt * (q * math.cos(self.roll) - r * math.sin(self.roll))
+
+        ax, ay, az = accel
+        mag = math.sqrt(ax * ax + ay * ay + az * az)
+        if mag > 1e-6 and abs(mag - G) <= self.accel_tol:
+            self.accepted += 1
+            roll_a = math.atan2(-ay, -az)
+            pitch_a = math.atan2(ax, math.hypot(ay, az))
+            if not self.seeded:
+                # Seed rather than blend, so the estimate starts correct instead of
+                # walking to the truth from zero. It matters on the pad, which is
+                # inclined 17.8 deg nose-down (NOTES.md) - starting from level would
+                # mean starting 17.8 deg wrong.
+                self.roll, self.pitch, self.seeded = roll_a, pitch_a, True
+            elif dt > 0.0:
+                alpha = 1.0 - math.exp(-dt / self.tau)
+                self.roll += alpha * wrap_pi(roll_a - self.roll)
+                self.pitch += alpha * wrap_pi(pitch_a - self.pitch)
+        return self.roll, self.pitch
+
+
+def speed_from_drag(accel):
+    """Airspeed estimate in m/s from horizontal specific force, or None.
+
+    VQ2 blocks every velocity stream, so this is the only speed number available
+    at all. Calibration and its error bars are at DRAG_K. Returns None when there
+    is no accelerometer sample; the caller is responsible for not showing it on
+    the ground, where the inclined pad reads a fictional 8.6 m/s.
+    """
+    if accel is None:
+        return None
+    return math.sqrt(math.hypot(accel[0], accel[1]) / DRAG_K)
+
+
+def is_steady(accel, tol=STEADY_TOL):
+    """True when the accelerometer is reading gravity and nothing else, i.e. when
+    this instant could yield a gravity-referenced gate height. Same test the
+    hover measurement uses."""
+    if accel is None:
+        return False
+    mag = math.sqrt(accel[0] ** 2 + accel[1] ** 2 + accel[2] ** 2)
+    return abs(mag - G) <= tol
 
 
 def velocity_bearing(accel):
@@ -586,6 +878,12 @@ class Telemetry:
         # (x, y, z) world position exactly as reported. VQ1 only. See the HUD note.
         self.truth_pos = None
         self._last_imu_us = None
+        # (roll, pitch, t_wall) estimated from the IMU, in the same physical NED
+        # convention as truth_att, so the levelling assist can consume either. Runs
+        # unconditionally and costs a few flops per IMU sample; whether the assist is
+        # ALLOWED to use it is --imu-level's business, not this class's.
+        self.tilt = TiltEstimator()
+        self.imu_att = None
 
         self._track_chunks = {}
         self._expected_chunks = {}
@@ -689,11 +987,19 @@ class Telemetry:
                 self.gyro_live = True
             last = self._last_imu_us
             self._last_imu_us = msg.time_usec
+            dt = 0.0
             if last is not None and msg.time_usec > last:
                 dt = (msg.time_usec - last) / 1e6
                 if dt <= HEADING_MAX_GAP_S:
                     self.heading_gyro = wrap_pi(
                         self.heading_gyro + YAW_GYRO_SIGN * msg.zgyro * dt)
+                else:
+                    dt = 0.0     # stall or reconnect: do not integrate across it
+            # Updated here rather than on the control tick so it runs at the IMU's own
+            # rate (61 Hz on the VM) with the sim's own dt, which is what the offline
+            # validation against VQ1 truth replayed.
+            roll, pitch = self.tilt.update(self.gyro, self.accel, dt)
+            self.imu_att = (roll, pitch, time.time())
         self.rec.row("imu", time.time_ns(), msg.time_usec,
                      msg.xacc, msg.yacc, msg.zacc,
                      msg.xgyro, msg.ygyro, msg.zgyro,
@@ -779,7 +1085,8 @@ class Telemetry:
                         imu_count=self.imu_count,
                         heading_gyro=self.heading_gyro, gyro_live=self.gyro_live,
                         truth_seen=self.truth_seen, truth_att=self.truth_att,
-                        truth_pos=self.truth_pos)
+                        truth_pos=self.truth_pos, imu_att=self.imu_att,
+                        tilt_seeded=self.tilt.seeded)
 
 
 # --------------------------------------------------------------------------------------
@@ -901,9 +1208,18 @@ class Sticks:
     """Keyboard -> four axes, slew limited so a keypress is a ramp rather than a
     step. Axes are normalized -1..1; the flight mode decides what they mean."""
 
-    def __init__(self):
+    def __init__(self, slew=SLEW_PER_S):
         self.axes = [0.0, 0.0, 0.0, 0.0]   # pitch, roll, throttle, yaw
         self.align = False                 # align-to-velocity key held?
+        # Per-run, because the slow-lap preset softens it -- but on the THREE RATE
+        # AXES ONLY. The throttle axis keeps SLEW_PER_S no matter what the preset
+        # says, because the snap-to-hover release edge is timed off it: the axis has
+        # to fall through THRUST_STICK_EPS before the snap fires, and thrust keeps
+        # integrating meanwhile (~80 ms, 0.04 of thrust, documented at
+        # THRUST_SNAP_DEFAULT). A 5/s ramp would stretch that to 200 ms and 0.1 of
+        # thrust. The snap is measured and not yet flight-tested; shaping has no
+        # business changing its timing as a side effect.
+        self.slew = float(slew)
         self._prev_edges = {a: False for a in KEYS_COMMAND}
 
     @staticmethod
@@ -926,8 +1242,8 @@ class Sticks:
             self._axis(*KEYS_AXIS["throttle"]),
             self._axis(*KEYS_AXIS["yaw"]),
         ]
-        step = SLEW_PER_S * dt
         for i, want in enumerate(target):
+            step = (SLEW_PER_S if i == 2 else self.slew) * dt   # i == 2 is throttle
             delta = want - self.axes[i]
             if delta > step:
                 delta = step
@@ -958,7 +1274,8 @@ class Sticks:
 class Pilot:
     def __init__(self, conn, rec, boot_ms, listen_only=False,
                  hover=THRUST_HOVER, thrust_snap=THRUST_SNAP_DEFAULT,
-                 tilt_comp_imu=False):
+                 tilt_comp_imu=False, shaping=None):
+        self.shaping = shaping if shaping is not None else Shaping.preset("full")
         self.conn = conn
         self.rec = rec
         self.boot_ms = boot_ms
@@ -971,6 +1288,7 @@ class Pilot:
         self.align_mag = 0.0
         self.auto_takeoff = True
         self.levelling = False
+        self.level_source = "truth"    # or "imu" when running off the tilt estimator
         self.level_err = (0.0, 0.0)
         # The hover point is a MEASURED quantity, so it lives on the instance and is
         # settable with --hover. THRUST_HOVER is only its default. Everything that
@@ -1050,13 +1368,20 @@ class Pilot:
 
     # -- streamed setpoints -----------------------------------------------------
     def send(self, axes, scale, dt, armed, heading=0.0, align=False, accel=None,
-             level=False, truth_att=None):
+             level=False, truth_att=None, att_source="truth"):
         """Body rates + collective thrust. No frame, no heading, no rotation:
         a roll rate is a roll rate regardless of where north is, which is the
         whole reason this is the only control path teleop offers."""
         if self.listen_only:
             return
         pitch_ax, roll_ax, thr_ax, yaw_ax = axes
+
+        # Expo on the three RATE axes. Throttle is deliberately left raw: it is not a
+        # deflection, it is an integrator with a measured snap target, and softening its
+        # centre would change the hover behaviour rather than the feel.
+        pitch_ax = self.shaping.curve(pitch_ax)
+        roll_ax = self.shaping.curve(roll_ax)
+        yaw_ax = self.shaping.curve(yaw_ax)
 
         roll = roll_ax * ACRO_ROLL * scale
         pitch = -pitch_ax * ACRO_PITCH * scale   # NED: nose down is negative
@@ -1078,6 +1403,7 @@ class Pilot:
             t_roll, t_pitch, t_stamp = truth_att
             if time.time() - t_stamp <= LEVEL_MAX_AGE:
                 self.levelling = True
+                self.level_source = att_source
                 # Stick deflection is a target ANGLE now, not a rate. `scale` still
                 # applies, so precision/boost trim how much bank a full deflection asks
                 # for, which is the same thing they meant before.
@@ -1096,6 +1422,11 @@ class Pilot:
                 # Thrust needed to hold altitude at this tilt. Uses the ACHIEVED
                 # attitude, not the demanded one, so it compensates the bank you are
                 # actually at rather than the one you asked for.
+                #
+                # Under --imu-level this is where tilt compensation finally works on
+                # VQ2, and it is strictly better than --imu-tilt-comp: that one reads
+                # the raw accelerometer, which goes stale exactly when banked, whereas
+                # the estimator carries attitude through the manoeuvre on the gyro.
                 ctilt = math.cos(t_roll) * math.cos(t_pitch)
                 comp = TILT_COMP_MAX if ctilt <= 1.0 / TILT_COMP_MAX else 1.0 / ctilt
                 self.hover_ref = min(1.0, self.hover * comp)
@@ -1159,6 +1490,14 @@ class Pilot:
             self.thrust = min(1.0, max(0.0,
                                        self.thrust + thr_ax * THRUST_SLEW * dt))
 
+        # The cap is applied LAST, on its way to the wire, so nothing upstream can get
+        # around it: boost, the align loop and the levelling assist are all inside it.
+        # With max_rate 0 (the `full` preset) this is an early return and the value is
+        # untouched.
+        roll = self.shaping.clamp(roll)
+        pitch = self.shaping.clamp(pitch)
+        yaw = self.shaping.clamp(yaw)
+
         self._send_rates(roll, pitch, yaw, self.thrust)
         self.last_cmd = (roll, pitch, yaw, self.thrust)
         self.rec.row("cmd", time.time_ns(), int(armed), "%.4f" % heading,
@@ -1189,7 +1528,36 @@ class Pilot:
 WINDOW = "AI-GP teleop"
 
 
-def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
+def flight_quality(tel, steady_age):
+    """The two things that silently spoil a mapping recording, as display strings.
+
+    SPEED, because station-number reads are a function of how fast the columns go
+    past (38% of frames on a slow session, 1% on a fast one -- perception/NOTES.md),
+    and VQ2 has no velocity telemetry, so the drag estimate at DRAG_K is the only
+    speed number that exists. Blank while disarmed: on the ground the accelerometer
+    reads the 17.8 deg pad incline, which inverts to a fictional 8.6 m/s.
+
+    STEADY, because a gate height comes from gravity in the accelerometer, which is
+    only readable when the aircraft is not accelerating.
+
+    Advisory. Nothing acts on either value.
+    """
+    if not tel["armed"]:
+        return "", ""
+    v = speed_from_drag(tel["accel"])
+    spd = "" if v is None else "  v~%.1f%s" % (
+        v, "!!" if v > SPEED_MAP_BAD else "!" if v > SPEED_MAP_OK else "")
+    if steady_age is None:
+        stead = "  steady --"
+    elif steady_age < 0.5:
+        stead = "  STEADY"
+    else:
+        stead = "  steady %.0fs%s" % (steady_age,
+                                      " !" if steady_age > STEADY_WARN_S else "")
+    return spd, stead
+
+
+def draw_hud(img, pilot, tel, vision, marker_count, heading_now, steady_age=None):
     view = img.copy()
     h, w = view.shape[:2]
     cv2.rectangle(view, (0, 0), (w, 58), (0, 0, 0), -1)
@@ -1198,7 +1566,8 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     a, b, c, d = pilot.last_cmd
     line1 = "RATES r%+.2f p%+.2f y%+.2f  THR %.2f%s%s  hdg %+4.0f%s" % (
         a, b, c, d,
-        (" LEVEL hov%.2f" % pilot.hover_ref) if pilot.levelling
+        (" LEVEL[%s] hov%.2f" % (pilot.level_source, pilot.hover_ref))
+        if pilot.levelling
         else (" HOV%.2f" % pilot.hover_ref) if pilot.snapped else "",
         " TAKEOFF" if pilot.takeoff_until else "",
         math.degrees(heading_now),
@@ -1219,6 +1588,8 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     # blank, which is itself the correct readout.
     if tel.get("truth_pos") is not None:
         line2 += "  NED %+.1f %+.1f %+.1f" % tel["truth_pos"]
+    spd, stead = flight_quality(tel, steady_age)
+    line2 += spd + stead
 
     colour = (0, 200, 255) if tel["armed"] else (160, 160, 160)
     cv2.putText(view, line1, (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colour, 1,
@@ -1237,20 +1608,23 @@ def draw_hud(img, pilot, tel, vision, marker_count, heading_now):
     return view
 
 
-def console_line(pilot, tel, vision, heading_now):
+def console_line(pilot, tel, vision, heading_now, steady_age=None):
     a, b, c, d = pilot.last_cmd
     vel = ("%+4.0f" % math.degrees(pilot.align_bearing)
            if pilot.align_bearing is not None else "  --")
+    spd, stead = flight_quality(tel, steady_age)
     sys.stdout.write(
         "\r%-8s r%+.2f p%+.2f y%+.2f thr%.2f%-8s hdg%+4.0f vel%s%-6s gate %-3s "
-        "t%6.1f contact %-3d cam %4.1f fps imu %-6d " % (
+        "t%6.1f contact %-3d cam %4.1f fps imu %-6d%-9s%-12s " % (
             "ARMED" if tel["armed"] else "disarmed",
             a, b, c, d,
             " TAKEOFF" if pilot.takeoff_until else "",
             math.degrees(heading_now), vel,
-            " ALIGN" if pilot.aligning else "",
+            (" LEVEL" if pilot.levelling else
+             " ALIGN" if pilot.aligning else ""),
             tel["active_gate"] if tel["active_gate"] >= 0 else "-",
-            tel["race_time_s"], tel["collisions"], vision.fps, tel["imu_count"]))
+            tel["race_time_s"], tel["collisions"], vision.fps, tel["imu_count"],
+            spd, stead))
     sys.stdout.flush()
 
 
@@ -1286,10 +1660,50 @@ def main():
                          "1/cos(tilt) read from the accelerometer. The reading is only "
                          "valid when not manoeuvring, i.e. mostly when not banked, so it "
                          "reads ~1.00 almost always; it falls back to flat hover.")
+    ap.add_argument("--imu-level", action="store_true",
+                    help="let the F11 levelling assist run on roll/pitch estimated from "
+                         "HIGHRES_IMU, so it works under VQ2 where there is no ATTITUDE "
+                         "stream. Roll/pitch from gravity is in bounds (NOTES.md); yaw is "
+                         "not estimated and not touched. Measured against VQ1 truth at "
+                         "1-2 deg median on lap-like flying, worse the harder you fly.")
+    ap.add_argument("--shaping", choices=sorted(SHAPING_PRESETS), default="full",
+                    help="how a keypress becomes a rate command (default %(default)s). "
+                         "'full' is exactly the pre-shaping behaviour every earlier "
+                         "session was flown with. 'slow' adds expo, a hard rate cap and "
+                         "a softer stick ramp for map-building laps. The preset is "
+                         "written to events.jsonl either way.")
+    ap.add_argument("--slow-lap", action="store_true",
+                    help="the one flag for a slow mapping lap: --shaping slow plus "
+                         "--imu-level. It ARMS the levelling assist; F11 still has to "
+                         "engage it, so this cannot change how the aircraft flies "
+                         "without a deliberate keypress.")
+    ap.add_argument("--expo", type=float, default=None,
+                    help="override the preset's expo, 0..1 (0 = linear)")
+    ap.add_argument("--max-rate", type=float, default=None,
+                    help="override the preset's rate cap in rad/s (0 = uncapped). "
+                         "Applied after boost and after any assist.")
+    ap.add_argument("--stick-slew", type=float, default=None,
+                    help="override the preset's stick ramp, in units of full "
+                         "deflection per second. Rate axes only; throttle keeps %.1f."
+                         % SLEW_PER_S)
     ap.add_argument("--listen", action="store_true",
                     help="record only: send no setpoints, no arm/disarm, no reset. "
                          "Safe to attach to a flight already in progress.")
     args = ap.parse_args()
+
+    if args.slow_lap:
+        args.imu_level = True
+    shaping = Shaping.preset("slow" if args.slow_lap else args.shaping)
+    if args.expo is not None:
+        shaping.expo = args.expo
+    if args.max_rate is not None:
+        shaping.max_rate = args.max_rate
+    if args.stick_slew is not None:
+        shaping.stick_slew = args.stick_slew
+    if (args.expo, args.max_rate, args.stick_slew) != (None, None, None):
+        # A hand-tuned run is not the preset it started from, and events.jsonl must not
+        # imply otherwise -- the preset name is what a later reader will group sessions by.
+        shaping.name = shaping.name + "+custom"
 
     rec = NullRecorder() if args.no_record else Recorder(args.sessions,
                                                          save_frames=not args.no_frames)
@@ -1311,17 +1725,29 @@ def main():
     vision = VisionRX(rec, decode=not args.no_view)
     pilot = Pilot(conn, rec, boot_ms, listen_only=args.listen,
                   hover=args.hover, thrust_snap=not args.no_thrust_snap,
-                  tilt_comp_imu=args.imu_tilt_comp)
-    sticks = Sticks()
+                  tilt_comp_imu=args.imu_tilt_comp, shaping=shaping)
+    sticks = Sticks(slew=shaping.stick_slew)
     heading = HeadingReadout()
 
     rec.event("session_start", control="body_rates", ip=args.ip, port=args.port,
               listen_only=args.listen, hover=pilot.hover,
-              thrust_snap=pilot.thrust_snap, imu_tilt_comp=pilot.tilt_comp_imu)
+              thrust_snap=pilot.thrust_snap, imu_tilt_comp=pilot.tilt_comp_imu,
+              imu_level=args.imu_level, shaping=shaping.as_dict())
+    # Written a SECOND time under its own kind as well as inside session_start, so that
+    # anything scanning events.jsonl for what shaped the commands finds it by name
+    # without having to know that session_start carries a nested dict.
+    rec.event("input_shaping", **shaping.as_dict())
     if args.listen:
         print("\nLISTEN ONLY - recording; no commands will be sent.\n")
     else:
         print(KEYMAP)
+    print(shaping.describe())
+    if args.imu_level and not args.listen:
+        print("IMU levelling is ARMED: press %s to engage the assist off gravity-\n"
+              "estimated roll/pitch. Fly it slowly - the estimate degrades with how\n"
+              "hard you fly (1-2 deg on lap-like flying, p90 30 deg on rate doublets).\n"
+              "Yaw is not estimated and is never levelled."
+              % KEYS_COMMAND["level"].upper())
     print("recording to: %s" % rec.dir)
     if not args.listen:
         print("Body-rate control only. This flies like an acro quad: the drone holds\n"
@@ -1352,6 +1778,7 @@ def main():
     last_console = 0.0
     last_loop = time.perf_counter()
     markers = 0
+    last_steady = None        # wall time of the last gravity-only accelerometer sample
     level_on = False
     running = True
     deadline = time.perf_counter() + args.duration if args.duration else None
@@ -1389,13 +1816,18 @@ def main():
                     rec.event("heading_zeroed")
                     print("\n[heading zeroed]")
                 elif action == "level":
-                    if snap["truth_att"] is None:
-                        print("\n[level] unavailable: no ATTITUDE stream "
-                              "(VQ2 blocks it - this needs the VQ1 build)")
+                    src = ("truth" if snap["truth_att"] is not None
+                           else "imu" if (args.imu_level and snap["imu_att"] is not None
+                                          and snap["tilt_seeded"]) else None)
+                    if src is None:
+                        print("\n[level] unavailable: no ATTITUDE stream (VQ2 blocks "
+                              "it). Restart with --imu-level to estimate roll/pitch "
+                              "from the IMU instead.")
                     else:
                         level_on = not level_on
-                        rec.event("level_assist", on=level_on)
-                        print("\n[level] %s" % ("ON" if level_on else "OFF"))
+                        rec.event("level_assist", on=level_on, source=src)
+                        print("\n[level] %s (%s attitude)"
+                              % ("ON" if level_on else "OFF", src))
                 elif action == "marker":
                     markers += 1
                     rec.event("marker", index=markers,
@@ -1406,12 +1838,24 @@ def main():
                 elif action == "quit":
                     running = False
 
+            # Which attitude the levelling assist is allowed to close on. VQ1 truth
+            # always wins when it exists - it is a measurement, not an estimate - and the
+            # IMU estimate is only offered when --imu-level says so, so the assist's
+            # behaviour on every previously recorded session is unchanged.
+            level_att, level_src = snap["truth_att"], "truth"
+            if level_att is None and args.imu_level and snap["imu_att"] is not None:
+                level_att, level_src = snap["imu_att"], "imu"
+
             head_now = heading.value(snap["heading_gyro"])
             pilot.send(axes, scale, dt, snap["armed"], head_now,
                        align=sticks.align, accel=snap["accel"],
-                       level=level_on, truth_att=snap["truth_att"])
+                       level=level_on, truth_att=level_att, att_source=level_src)
 
             wall = time.time()
+            if is_steady(snap["accel"]):
+                last_steady = wall
+            steady_age = None if last_steady is None else wall - last_steady
+
             if args.listen:
                 pass          # truly silent: not even heartbeat or timesync
             elif wall - last_hb >= 1.0 / HEARTBEAT_HZ:
@@ -1425,12 +1869,12 @@ def main():
                 latest = vision.take()
                 if latest is not None:
                     cv2.imshow(WINDOW, draw_hud(latest[2], pilot, snap, vision,
-                                                markers, head_now))
+                                                markers, head_now, steady_age))
                 if cv2.waitKey(1) & 0xFF == 27:
                     running = False
 
             if wall - last_console >= 0.25:
-                console_line(pilot, snap, vision, head_now)
+                console_line(pilot, snap, vision, head_now, steady_age)
                 last_console = wall
 
             next_tick += period
