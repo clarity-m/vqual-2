@@ -80,6 +80,7 @@ class VecPointMass:
         self.info_return = np.zeros(n, dtype=np.float64)
         self.info_length = np.zeros(n, dtype=np.float64)
         self.info_completed = np.zeros(n, dtype=bool)
+        self.info_timeout = np.zeros(n, dtype=bool)
 
     # --- helpers -----------------------------------------------------------------------
 
@@ -147,6 +148,7 @@ class VecPointMass:
         self.info_return[:] = 0.0
         self.info_length[:] = 0.0
         self.info_completed[:] = False
+        self.info_timeout[:] = False
         return self._obs()
 
     def step(self, actions: np.ndarray):
@@ -181,11 +183,17 @@ class VecPointMass:
         self.ep_return += reward
         self.prev_dist = self._dist()
 
+        # Captured before `_spawn` overwrites the state, so this is genuinely the ending
+        # observation. Meaningful only where `done`, exactly as in VecSurrogate — a PPO
+        # harness needs it to bootstrap a time-limit truncation from V(s_T) rather than 0.
+        terminal_obs = self._obs()
+
         if done.any():
             d = np.flatnonzero(done)
             self.info_gates[d] = self.gates[d]
             self.info_collision[d] = collision[d]
             self.info_completed[d] = completed[d]
+            self.info_timeout[d] = timeout[d]
             self.info_return[d] = self.ep_return[d]
             self.info_length[d] = self.steps[d]
             self._spawn(d)
@@ -196,6 +204,8 @@ class VecPointMass:
             "episode_return": self.info_return.copy(),
             "episode_length": self.info_length.copy(),
             "completed": self.info_completed.copy(),
+            "timeout": self.info_timeout.copy(),
+            "terminal_obs": terminal_obs,
             "n_gates": np.full(self.n_envs, self.n_targets, dtype=np.float64),
         }
         return self._obs(), reward.astype(np.float32), done, info

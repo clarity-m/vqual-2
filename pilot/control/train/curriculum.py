@@ -241,6 +241,58 @@ class Curriculum:
             )
         return changed
 
+    # --- resume ------------------------------------------------------------------------
+
+    _STATE_FIELDS = (
+        "difficulty", "speed_cap", "_difficulty_floor", "_speed_floor",
+        "enable_time_penalty", "progress_gate_scale",
+        "_since_change", "_since_promote",
+        "n_episodes", "n_promotions", "n_demotions", "n_stalls",
+    )
+
+    def state_dict(self) -> dict:
+        """Everything `__post_init__` sets, so a resumed run continues one schedule.
+
+        The counters matter as much as the levels: `_since_promote` drives the stall
+        detector, and a run resumed with it zeroed would wait a fresh `stall_updates`
+        before backing off again. The window is stored as a plain list; `cfg` is not
+        stored, because it comes from the CLI and a resume must be able to change it.
+        """
+        out = {k: getattr(self, k) for k in self._STATE_FIELDS}
+        out["window"] = [bool(c) for c in self._window]
+        return out
+
+    def seed_from(self, **levels) -> dict:
+        """Start the schedule at levels recovered from elsewhere, e.g. a checkpoint's
+        `env_config` when no resume sidecar exists.
+
+        Sets the demotion floors to the seeded values, matching `__post_init__`: the run
+        must not be able to demote below the point it was resumed at. Returns what was
+        actually applied, for the caller to report. Counters are deliberately untouched —
+        this recovers levels, not history, and pretending otherwise would let the stall
+        detector fire on a window that does not exist.
+        """
+        applied = {}
+        for name in ("difficulty", "speed_cap", "progress_gate_scale", "enable_time_penalty"):
+            if levels.get(name) is None:
+                continue
+            v = levels[name]
+            setattr(self, name, bool(v) if name == "enable_time_penalty" else float(v))
+            applied[name] = getattr(self, name)
+        self._difficulty_floor = self.difficulty
+        self._speed_floor = max(self.speed_cap, self.cfg.speed_cap_min)
+        return applied
+
+    def load_state_dict(self, d: dict) -> None:
+        for k in self._STATE_FIELDS:
+            if k not in d:
+                continue
+            cur = getattr(self, k)
+            setattr(self, k, type(cur)(d[k]) if isinstance(cur, (bool, int)) else float(d[k]))
+        self._window = deque(
+            (bool(c) for c in d.get("window", ())), maxlen=self.cfg.window
+        )
+
     # --- what the env should be built with ---------------------------------------------
 
     def env_spec(self) -> dict:

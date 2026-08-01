@@ -111,11 +111,19 @@ comes back as a plain dict, so `EnvConfig(**d)` alone would leave `noise` un-typ
 * **Pre-tanh log-probabilities.** The sampled pre-tanh value is stored and scored, so PPO
   ratios are plain Gaussian ones; the tanh Jacobian cancels in the ratio and the entropy
   bonus uses the Gaussian entropy. Standard practice and numerically well-behaved.
-* **Every `done` bootstraps at zero.** The env auto-resets and reports no truncation flag,
-  and the pre-reset terminal observation is not recoverable through the contract, so
-  time-limit truncations are treated as terminal. Mild value bias, uniform across gates,
-  no sign effects. If the surrogate later exposes `truncated` in `info`, that is a
-  five-line improvement in `ppo._gae`.
+* **Time-limit truncations bootstrap from `V(s_T)`; genuine terminals bootstrap at zero.**
+  The env auto-resets, but the ending observation is not lost — it arrives as
+  `info['terminal_obs']`, which `surrogate/env.py` emits for exactly this purpose.
+  `ppo._truncation_values` reconstructs the terminal frame stack from the pre-step stack
+  plus that observation and adds `gamma * V(s_T)` to the TD error at `info['timeout']`
+  steps. A collision, corridor exit or finish still bootstraps at zero and wins when it
+  coincides with a timeout, since `env.py` ORs the flags. An env that publishes neither
+  key falls back to bootstrapping every `done` at zero.
+
+  This README previously recorded the terminal observation as unrecoverable and accepted
+  the bias. It was recoverable the whole time; the note is why nobody looked. Scale, so
+  the fix is not oversold: at `run1`'s ~0.94 collision rate, truncations are at most ~6%
+  of endings, and this is a correctness fix rather than a completion fix.
 * **Curriculum changes rebuild the env** (config is a constructor argument; mutating it in
   place would not be guaranteed to reach precomputed internal state). Rebuilds are rate
   limited by `--curriculum-hold` updates and reseeded each time so courses stay fresh.
