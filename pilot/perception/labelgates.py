@@ -202,7 +202,29 @@ def pick(session, npick, stride, outdir):
         stub[p['file']] = {str(k): None for k in range(len(det))}
         print('%s  %d gates, baseline %.1f m, smallest %.0f px'
               % (p['file'], p['n'], p['sep_m'], p['min_size_px']))
+    # NEVER CLOBBER HAND WORK. An earlier version overwrote labels.json on every --pick,
+    # and re-running the picker destroyed labels Claire had already entered -- the one file
+    # here that cannot be regenerated from the recordings. Existing entries win over the
+    # fresh stub, always, and anything already labelled survives even if the frame is no
+    # longer among the picks.
     path = os.path.join(outdir, 'labels.json')
+    if os.path.exists(path):
+        try:
+            old = json.load(open(path))
+        except Exception as e:
+            backup = path + '.corrupt'
+            os.replace(path, backup)
+            print(f'existing {path} is not valid JSON ({e}); moved to {backup} rather than '
+                  'overwriting it')
+            old = {}
+        for fname, mapping in old.items():
+            kept = {k: v for k, v in mapping.items() if v is not None}
+            if not kept:
+                continue
+            stub.setdefault(fname, {})
+            stub[fname].update(kept)
+        n = sum(len(v) for v in old.values() if isinstance(v, dict))
+        print(f'merged {n} existing entries from {path}')
     json.dump(stub, open(path, 'w'), indent=1)
     print(f'\n{len(picks)} frames -> {outdir}')
     print(f'fill {path}: map each detection index to its RACE INDEX (0-16), null to skip.')
