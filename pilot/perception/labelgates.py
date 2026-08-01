@@ -37,8 +37,71 @@ import detect as D  # noqa: E402
 MIN_SIZE_PX = 26.0   # below this the PnP range is too soft to anchor a scale
 
 
+def drop_decorations_by_parent(img, det, range_ratio=1.6):
+    """Reject decoration false positives using the ORANGE BLOB each hole sits in.
+
+    Supersedes drop_decorations(), which compared a detection against other DETECTIONS and
+    so needed the near gate to have been detected. It often is not: a gate clipped by the
+    image edge has a broken orange ring, its aperture stops being an enclosed hole, and
+    detect.py rejects it as 'not-a-hole' -- leaving the decorations with no near anchor to
+    be measured against. That is exactly the frame Claire flagged.
+
+    The parent blob is always there, detected or not. A hole's implied range comes from its
+    own size; the parent's comes from the parent's, via the 2700 mm outer boundary
+    (range = 864 / parent_px). A checkerboard square implying 68 m inside a blob implying
+    5 m is decoration, and the contradiction does not care whether the gate itself passed.
+    """
+    m = D.orange_mask(img)
+    cnts, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hier is None:
+        return det
+    hier = hier[0]
+    parents = [(c, i) for i, c in enumerate(cnts) if hier[i][3] < 0]
+    children = {}
+    for i, c in enumerate(cnts):
+        if hier[i][3] >= 0:
+            children.setdefault(hier[i][3], []).append(c)
+    keep = []
+    for d in det:
+        r = float(np.linalg.norm(d['pos_body']))
+        pt = (float(d['centre'][0]), float(d['centre'][1]))
+        drop = False
+        for c, i in parents:
+            if cv2.pointPolygonTest(c, pt, False) < 0:
+                continue
+            x, y, w, h = cv2.boundingRect(c)
+            p_px = float(max(w, h))
+            if p_px < 1:
+                continue
+            r_parent = 864.0 / p_px       # 480 * (2700/1500), the outer-boundary range
+            if r <= r_parent * range_ratio:
+                continue
+            # SEEN THROUGH THE APERTURE, not painted on the frame. A far gate visible
+            # through a near gate is geometrically inside that gate's OUTER contour, so the
+            # range contradiction fires on it too -- and those are precisely the
+            # long-baseline pairs worth labelling. A hole big enough to contain the
+            # detection, and not the detection itself, means we are looking through.
+            through = False
+            for ch in children.get(i, []):
+                if cv2.pointPolygonTest(ch, pt, False) < 0:
+                    continue
+                _cx, _cy, cw, chh = cv2.boundingRect(ch)
+                if max(cw, chh) > 1.8 * d['size_px']:
+                    through = True
+                    break
+            if not through:
+                drop = True
+                break
+        if not drop:
+            keep.append(d)
+    return keep
+
+
 def drop_decorations(det, range_ratio=1.25):
     """Reject false positives raised by a near gate's own graphics.
+
+    SUPERSEDED by drop_decorations_by_parent(); kept because it is the cheaper test and
+    still correct when the near gate was itself detected.
 
     A gate filling the frame shows white-on-orange decoration -- the AI-GP wordmark, the
     checkerboard strips -- whose contours pass the quad fit. They are small, so `range =
@@ -103,7 +166,8 @@ def score_frames(session, npick, stride):
         img = cv2.imread(os.path.join(session, 'frames', r['file']))
         if img is None:
             continue
-        det = drop_decorations([d for d in D.detections(img) if d['size_px'] >= MIN_SIZE_PX])
+        det = drop_decorations_by_parent(img, [d for d in D.detections(img)
+                                             if d['size_px'] >= MIN_SIZE_PX])
         if len(det) < 2:
             continue
         P = np.array([d['pos_body'] for d in det])
@@ -122,7 +186,8 @@ def pick(session, npick, stride, outdir):
     stub = {}
     for p in picks:
         img = cv2.imread(os.path.join(session, 'frames', p['file']))
-        det = drop_decorations([d for d in D.detections(img) if d['size_px'] >= MIN_SIZE_PX])
+        det = drop_decorations_by_parent(img, [d for d in D.detections(img)
+                                             if d['size_px'] >= MIN_SIZE_PX])
         det.sort(key=lambda d: -d['size_px'])
         for k, d in enumerate(det):
             c = d['centre'].astype(int)
@@ -166,7 +231,8 @@ def solve(session, labels_json, map_json):
         img = cv2.imread(os.path.join(session, 'frames', fname))
         if img is None:
             continue
-        det = drop_decorations([d for d in D.detections(img) if d['size_px'] >= MIN_SIZE_PX])
+        det = drop_decorations_by_parent(img, [d for d in D.detections(img)
+                                             if d['size_px'] >= MIN_SIZE_PX])
         det.sort(key=lambda d: -d['size_px'])
         frow = next((r for r in L.load_csv(os.path.join(session, 'frames.csv'))
                      if r['file'] == fname), None)
