@@ -7,7 +7,7 @@
  },
  "station_pitch_px": 168.27,
  "row_separation_px": 190.14,
- "metres_per_station": null,
+ "metres_per_station": 15.97,
  "stations": {
   "left": {
    "12": 83.5,
@@ -218,12 +218,10 @@
   "confirmed_landmarks": "loop around 22, then 16+17, then 26, then 13, then exit"
  },
  "scale_fit": {
-  "degenerate": true,
-  "n_edges": 172,
-  "apparent_best": 10.91,
-  "plateau": [
-   4.7,
-   18.2
-  ]
+  "method": "hand-labelled gate pairs (labelgates.py), 15 rows over 6 gate pairs",
+  "median": 15.97,
+  "p10": 13.38,
+  "p90": 18.49,
+  "note": "6 frames excluded: overlapping gates merge into one orange blob, the outer-boundary fallback reads it too big and calls the far gate too close. Including them drags pair 0-1 to 10.5 m/station and fakes a local sketch inconsistency."
  }
 }

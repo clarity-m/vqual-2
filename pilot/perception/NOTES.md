@@ -138,23 +138,30 @@ mistake; the first render of the map made it.
 
 **Two things the sketch does not carry:**
 
-* **Metric scale: ~15 m/station, but the sketch is LOCALLY INCONSISTENT** (2026-08-01,
-  21 labelled pairs over 19 frames from 9 sessions; `labels_all.json` merges both sets). Grouped by which gates a pair joins,
-  the implied scale splits: pair **0-1 says 10.46 m/station** (n=8), every pair among gates
-  **1-4 says 17.31** (n=11) - a ratio of **1.65**, with within-pair scatter far smaller than
-  the gap between groups. So it is not noise and not a global mis-scale: gates 0 and 1 are
-  drawn about 1.7x too far apart relative to the 1-4 spacing. Measured, 0->1 and 2->3 are
-  nearly the same distance (~10-11 m) while the sketch has them at 1.09 and 0.71 station
-  units. Until that is reconciled a single global `metres_per_station` is not meaningful;
-  the local ratios are the usable product.
-  Per-pair medians: 0-1 10.46 (n=8), 1-2 14.94 (n=3), 2-3 16.36 (n=4), 3-4 18.18 (n=3),
-  2-4 18.62 (n=1), 8-9 13.45 (n=2).
+* **Metric scale: 15.97 m/station** (p10 13.38, p90 18.49, n=15 labelled pairs over 6 gate
+  pairs). Per-pair medians 0-1 15.62, 1-2 14.88, 2-3 16.33, 3-4 18.24, 2-4 18.65, 8-9 13.44 —
+  no systematic structure left, so the residual spread is measurement noise.
+  **RETRACTED: "the sketch is locally inconsistent by 1.65x".** I reported that pair 0-1
+  implied 10.46 m/station against 17.31 for pairs among 1-4 and concluded Claire's drawing was
+  locally wrong. It was my measurement. Claire spotted that in those frames **gates 1 and 2
+  overlap in the image**, and confirmed independently — from flying VQ2 repeatedly and knowing
+  the reset position — that the near gate really is gate 0. Two merged gates form one orange
+  blob LARGER than a single gate's outer boundary, so the outer-boundary fallback reads it too
+  big and places the far gate too close: 20 m where geometry demands ~26 m. That compresses
+  0->1 from ~17 m to ~10.5 m. Dropping the 6 affected frames moves pair 0-1 to 15.62 and the
+  overall spread ratio from 1.89 to 1.38.
+  The tell was visible in the data and I missed it: gate 0's range varied 4.7 -> 9.6 m across
+  the frames while the far gate stayed at 20-21 m in all of them. Two static gates cannot do
+  that. **A pair of static objects whose measured separation changes with viewpoint is a
+  measurement fault, and that check costs nothing.**
   **HEIGHTS** (gravity-referenced, no pose stream): 0-1 +1.19 m (n=8, spread 2.72), 2-3
   -1.12 (n=4, spread 1.06), 3-4 +0.66 (n=2), 1-2 -1.37, 2-4 +1.07, 8-9 -2.24 (n=1 each).
-  Gate-to-gate height changes are of order a metre or two.
-  A position refit is NOT yet possible: 6 distinct pairs over 7 gates is underdetermined
-  (7 gates = 14 DoF, minus 4 for similarity, leaves 10). More DISTINCT pairs, not more
-  repeats of the same pair, is what would unlock it.
+  Gate-to-gate height changes are of order a metre or two. These have NOT been recomputed
+  with the overlap frames excluded.
+  **NEW DETECTOR FAILURE MODE — merged gates.** Two gates aligned on the view axis merge into
+  a single orange blob; the fallback then measures the pair as one gate. Distinct from the
+  decoration and clipping failures. Not yet detected automatically; `quality()` does not catch
+  it, because nothing about the blob is individually anomalous.
 * **Superseded: metric scale from 5 pairs** (`labelgates.py`,
   `labels_222724.json`, 2026-08-01). Median **14.94 m/station**, p10 13.43, p90 19.30 â€” the
   spread across pairs IS the error bar, since these are independent measurements of one
