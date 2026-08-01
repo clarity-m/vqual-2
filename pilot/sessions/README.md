@@ -58,12 +58,11 @@ parked drone:
     truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
     truth_yaw   = -ATTITUDE.yaw       # CONFIRMED 2026-07-31, three external referees
 
-`truth_yaw` was asserted here before it had been demonstrated; it has since been confirmed
-(NOTES.md, "Yaw SETTLED"). **`LOCAL_POSITION_NED` is NOT mirrored** — position and velocity
-are plain canonical NED and need no correction. Mixing a corrected attitude with an
-uncorrected position is the specific way a surrogate fit goes silently wrong; `ODOMETRY`
-velocity looks like it is built on the mirrored yaw, so prefer `LOCAL_POSITION_NED`
-velocities, which are confirmed.
+**`pilot/CONVENTIONS.md` is the single source** — per-stream mirror table, provenance, and
+what is still unverified. Two things before you fit anything: `truth_yaw` was asserted here
+before it had been demonstrated and has since been confirmed; and **`LOCAL_POSITION_NED` is
+NOT mirrored**, so the failure mode is a half-correction, not a missing one. Prefer its
+velocities over `ODOMETRY`'s, which appear to be built on the mirrored yaw.
 
 Fit against raw `ODOMETRY.roll` or raw `ATTITUDE.pitch` and the model is mirrored, silently.
 

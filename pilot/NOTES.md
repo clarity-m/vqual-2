@@ -72,44 +72,12 @@ now tracked in `sessions/` — see `sessions/README.md`.
 
 ### The VQ1 truth streams are each wrong on a different axis (2026-07-31)
 
-Refereed against gravity in `HIGHRES_IMU` on a parked drone (session 20260731-135735,
-`|a|` = 9.8100 so genuinely at rest). Magnitudes agree to five decimals; only signs differ:
+Moved to **`CONVENTIONS.md`** — the per-field corrections, the gravity referee that
+established them, and the yaw settlement all live there now. In one line:
 
-| | gravity (referee) | `ATTITUDE` | `ODOMETRY` (from quaternion) |
-|---|---|---|---|
-| roll | **+0.00025** | +0.00025 ✓ | −0.000247 ✗ |
-| pitch | **−0.31068** | +0.31068 ✗ | −0.31066 ✓ |
-| yaw | — | −3.140550 | −3.140550 |
+    truth_roll = ATTITUDE.roll     truth_pitch = ODOMETRY.pitch     truth_yaw = -ATTITUDE.yaw
 
-    truth_roll  =  ATTITUDE.roll      # == -ODOMETRY.roll
-    truth_pitch =  ODOMETRY.pitch     # == -ATTITUDE.pitch
-    truth_yaw   = -ATTITUDE.yaw       # settled 2026-07-31, see below
-
-Independently reproduces vqual-1's "ATTITUDE pitch and ODOMETRY roll are sign-inverted",
-re-derived rather than inherited. **Anything using these as ground truth must apply the
-per-field correction first** — a fit refereed against raw `ODOMETRY` roll or raw
-`ATTITUDE` pitch is mirrored, and mirrored silently.
-
-**Yaw SETTLED 2026-07-31** (this section previously said it could not be, which was true
-of the parked recording it was written from). Three referees, all outside the telemetry:
-
-* **The pilot.** `e` sends `yaw_rate` +2.00 (`KEYS_AXIS`, `ACRO_YAW`=+2.0, no sign applied
-  on the way out) and `e` turns the nose **left** — Claire's keybinds are inverted versus
-  what the letters suggest, and always have been. Nose left is *decreasing* NED yaw, but
-  session `20260731-203428` shows that tap moving `ATTITUDE.yaw` by **+1.094**.
-* **The camera.** The original `E` tap read `dx +55 px ⇒ yawed LEFT`. Correct all along.
-* **The image.** Projecting gates under both hypotheses and scoring against the orange
-  pixel mask, on frames where the two predictions differ by >80 px: `-ATTITUDE.yaw` lands
-  18.0 px median (79% within 40 px), `+ATTITUDE.yaw` lands 169.6 px (2%). Two sessions,
-  267 frames. `pilot/perception/label.py` carries this as a regression test.
-
-**Do not attempt to settle a yaw sign near the 180° start heading.** +180 and −180 are the
-same number, so body-right resolves identically under either hypothesis and every check
-passes. That degeneracy hid vqual-1's yaw error for three sessions and, in 2026-07-31's
-session, produced a confident *wrong* answer here from three separate lines of reasoning
-that were all telemetry-versus-telemetry and structurally unable to see it.
-
-Also measured, and real rather than an offset: **the launch pad is inclined 17.8°
+Also measured here, and real rather than an offset: **the launch pad is inclined 17.8°
 nose-down** (roll 0.01°, so a clean pitch incline).
 
 ### Two sim builds ship side by side (measured with `msgscan.py`, 2026-07-31)
@@ -138,64 +106,21 @@ Three consequences:
   is the highest-rate signal we are allowed and reflects what the FC did with our rate
   command — the best available observable for fitting the inner loop.
 
-## Sign conventions — SETTLED 2026-07-31 by camera referee
+## Sign conventions
 
-**The sim's entire body-rate convention is mirrored relative to MAVLink body NED —
-commands AND gyro, on all three axes.** One sentence, no per-axis exceptions.
+**`CONVENTIONS.md` is the single source for every sign, frame and axis fact.** It carries
+the per-stream mirror table, the keyboard-to-airframe mapping, the camera geometry, the
+provenance of each fact, and the list of what is still unverified.
 
-Session 20260731-144815, nine isolated taps (D W E × 3). Rotation was cleanly
-single-axis: roll taps show `int_y`, `int_z` = 0.000. Two independent referees:
+The two things worth knowing before you open it:
 
-| tap | commanded | `xyz` gyro | camera says | gravity-validated angle |
-|---|---|---|---|---|
-| `D` | −2.50 | −0.29 | rotation −16.5° ⇒ **rolled RIGHT** | `ATTITUDE.roll` +0.291 ⇒ RIGHT |
-| `W` | −2.50 | −0.30 | dy +96 px ⇒ **pitched UP** | `ODOMETRY.pitch` +0.281 ⇒ UP |
-| `E` | +2.00 | +0.18 | dx +55 px ⇒ **yawed LEFT** | (gravity cannot see yaw) |
-
-Every magnitude agrees: 96 px ⇒ 16.7° vs gyro 16.6°; 55 px ⇒ 9.8° vs gyro 10.3°.
-
-So a **negative** commanded rate produces a **positive** NED rotation, and the gyro
-reports the same (mirrored) sign as the command — which is exactly why comparing
-command against gyro looks perfectly consistent and proves nothing.
-
-`camreferee.py` re-runs this against any session. Key-mapping consequences are in
-`TELEOP-NOTES.md`.
-
-**A convention must be refereed against an independent observation, never against an
-assumption about what a key or a comment means.** Learned by getting it wrong here: an
-earlier version of this section declared all three axes settled by reading `KEYS_AXIS`,
-which says only which key is *positive*, never which physical direction that is. The gap
-was filled with an assumed convention, recorded as if it were a trace, and then used to
-retire a caveat that had been correct all along. "Re-derive rather than trust the
-write-up" applies to our own files.
-
-For system ID none of this corrupts data: `cmd.csv` records what was commanded and the
-truth streams record what happened, so a fit recovers the true sign on its own. **Where a
-sign error is actually dangerous is the surrogate fit** — the only place a world frame
-appears, and so the only place the error is silent. `YAW_GYRO_SIGN` is now verified too
-(same three referees as `truth_yaw` above); it still only feeds the HUD readout.
-
-### The mirror covers RATES AND ATTITUDE. It does NOT cover position. (2026-07-31)
-
-**`LOCAL_POSITION_NED` is plain canonical NED.** Read off the HUD against motion a human
-could watch: forward, right and up all report **negative**, and the VQ1 course descends,
-which matches `z` counting up as you go down. Nothing to correct.
-
-So the streams disagree with each other, and "the sim is mirrored" is not a statement you
-can apply blanket:
-
-| stream | mirrored? |
-|---|---|
-| commanded body rates | **yes** |
-| `HIGHRES_IMU` gyro | **yes** |
-| `ATTITUDE` roll / pitch / yaw | **yes** (per-axis table above) |
-| `LOCAL_POSITION_NED` x, y, z, vx, vy, vz | **no — canonical NED** |
-| `ODOMETRY` velocity | **unknown, avoid.** Its horizontal frame appears to be built on the mirrored yaw. Use `LOCAL_POSITION_NED` velocities, which are confirmed. |
-
-This is exactly where a surrogate fit goes wrong: mixing a corrected attitude with an
-uncorrected position, or vice versa, produces a plausible model that is mirrored in one
-term only. `pilot/perception/label.py` needs the yaw negation for precisely this reason —
-its position input is clean and its yaw input is not, so nothing cancels.
+* **The mirror covers rates and attitude. It does NOT cover position.**
+  `LOCAL_POSITION_NED` is plain canonical NED. "The sim is mirrored" as a blanket
+  statement is how a half-corrected surrogate gets built.
+* **A convention is settled only by a referee outside the simulator.** Commanded rate
+  against measured gyro correlates at +0.96 and proves nothing. On 2026-07-31 three
+  telemetry-versus-telemetry arguments agreed on a yaw sign that was wrong; the pilot's
+  keybinds settled it in one sentence.
 
 ## Control architecture — decided
 

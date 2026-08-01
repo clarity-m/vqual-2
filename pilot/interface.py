@@ -22,11 +22,22 @@ Canonical body NED, textbook:  x forward,  y right,  z down.
     bearing    > 0  ->  target is RIGHT of the nose
     elevation  > 0  ->  target is ABOVE the nose
 
-THE SIMULATOR'S ENTIRE BODY-RATE CONVENTION IS MIRRORED vs the above -- commands AND
-gyro, all three axes. Settled 2026-07-31 against the camera (pilot/camreferee.py) and
-corroborated by the gravity-validated attitude streams.
+*** pilot/CONVENTIONS.md IS THE SINGLE SOURCE for every sign, frame and axis fact. ***
+What follows is the operative summary for this interface; the per-stream table, the
+provenance of each fact and the list of what is still unverified live there. Fix a sign
+there first.
+
+THE SIMULATOR'S BODY-RATE CONVENTION IS MIRRORED vs the above -- commands AND gyro, all
+three axes. Roll and pitch settled against the camera (pilot/camreferee.py) and gravity;
+yaw settled 2026-07-31 by the pilot's keybinds, after three telemetry-versus-telemetry
+arguments had confidently concluded the opposite.
 
     SIGN_ROLL = SIGN_PITCH = SIGN_YAW = -1
+
+THE MIRROR DOES NOT COVER POSITION. LOCAL_POSITION_NED is plain canonical NED and needs
+no correction, while ATTITUDE yaw does (truth_yaw = -ATTITUDE.yaw). So the failure mode
+below is NOT "forgot to apply the mirror" -- it is applying it to attitude and not to
+position, or the reverse, which leaves a model mirrored in exactly one term.
 
 Applied in the link layer ONLY, when encoding a MAVLink message, and correspondingly
 when reading HIGHRES_IMU's gyro. No file above the link layer may contain a sign flip.
