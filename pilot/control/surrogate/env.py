@@ -233,6 +233,7 @@ class VecSurrogate:
         self.kx = np.full(n, self.plant.kx)
         self.ky = np.full(n, self.plant.ky)
         self.kz = np.full(n, self.plant.kz)
+        self.c_lift = np.full(n, self.plant.c_lift)
         # Thrust is randomised as a GAIN on `plant.thrust()` rather than by perturbing the
         # curve's coefficients, so the surrogate depends only on the plant's public API.
         # The curve has already changed shape once (affine -> quadratic -> measured knot
@@ -313,6 +314,7 @@ class VecSurrogate:
             self.kx[mask] = self.plant.kx * j(cfg.drag_jitter)
             self.ky[mask] = self.plant.ky * j(cfg.drag_jitter)
             self.kz[mask] = self.plant.kz * j(cfg.drag_jitter)
+            self.c_lift[mask] = self.plant.c_lift * j(cfg.drag_jitter)
             self.thrust_gain[mask] = j(cfg.thrust_jitter)
             self.rgain[mask] = (np.asarray(self.plant.rate_gain)[None, :]
                                 * rng.uniform(1 - cfg.rate_gain_jitter,
@@ -327,6 +329,7 @@ class VecSurrogate:
             self.kx[mask] = self.plant.kx
             self.ky[mask] = self.plant.ky
             self.kz[mask] = self.plant.kz
+            self.c_lift[mask] = self.plant.c_lift
             self.thrust_gain[mask] = 1.0
             self.rgain[mask] = np.asarray(self.plant.rate_gain)[None, :]
             rd = np.full(m, self.plant.rate_delay)
@@ -559,7 +562,11 @@ class VecSurrogate:
         v_body = vmath.rot_apply_t(r_wb, self.v)
         k = np.stack([self.kx, self.ky, self.kz], axis=1)
         f_body = -k * v_body * np.abs(v_body)
-        f_body[:, 2] -= self.thrust_gain * self.plant.thrust(t_use)
+        # Thrust and body lift both act along body -z. Lift is `c_lift * u^2` and is not
+        # scaled by `thrust_gain`: it is an airframe property, not a motor one, so the
+        # two randomise independently even though they add here.
+        f_body[:, 2] -= (self.thrust_gain * self.plant.thrust(t_use)
+                         + self.c_lift * v_body[:, 0] ** 2)
         a_world = vmath.rot_apply(r_wb, f_body)
         a_world[:, 2] += G
 

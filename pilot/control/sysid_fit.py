@@ -49,14 +49,33 @@ rate cmd -> gyro +10 ms) and those are what go into `plant.json`.
 
 ## The split
 
-Fit on the deliberate system-ID cards -- card 1's three sessions plus card 2's apex and
-terminal runs -- and hold out `20260731-131305`, nine minutes of ordinary flying, so it
-tests generalisation past the excitation the fit was built from. The held-out session is
-unchanged from the first fit so the two are comparable.
+The fit set is **discovered, not listed**: every session directory on disk that is not
+held out and not explicitly excluded. Recordings land in `pilot/sessions` and a hardcoded
+list is one more thing to forget to update. What gets *removed* stays explicit, because
+removing data is a judgement that has to be written down and defended; adding it is not.
+
+`20260731-131305` is held out -- nine minutes of ordinary flying, so it tests
+generalisation past the excitation the fit was built from. It is unchanged across all
+three fits so their numbers are directly comparable.
 
 Only one of the two terminal sessions is in the fit. They are the same open-loop script
 run twice from the same reset and they agree to 0.1 m/s on every read, so the second is
 a repeatability check, not a second sample.
+
+## Ordering, which is the whole argument
+
+Each stage is fitted only where the previous stage's parameter cannot hide in it:
+
+    kx, ky   body x and y, where thrust and lift contribute nothing at all
+    kz       the apex arcs -- near-vertical, so |u| ~ 0 and lift is not there to absorb
+    T/m      samples chosen for having no drag term in the way (`thrust_mask`)
+    c_lift   what body z has left over once the curve and kz are both fixed
+    T/m      again, with lift now removed from the residual
+
+Fitted jointly instead, these trade against each other and the estimate returns whatever
+the collinearity happens to be: `corr(throttle, w|w|)` is -0.91 over the pooled set, and
+the joint fit's `kz` comes out 22% low as a result. That is not a hypothetical -- it is
+what the superseded fit did, and `main` still prints it for comparison.
 
 `20260731-130744` and `20260731-233219` are excluded from both. They are the two epochs
 where the kinematic referee does not close (median residual 1.45 and 2.01 m/s^2 against
@@ -66,12 +85,13 @@ hard, so the referee is differentiating a held signal -- a recording artefact ra
 a fact about the simulator, and not one a fit set should be asked to absorb.
 """
 
+import json
 import os
 import sys
 
 import numpy as np
 
-from plant import Plant
+from plant import G, Plant
 from sysid_apex import measure as apex_measure
 from sysid_data import load_epochs, zoh
 from sysid_frames import truth_body_rates, v_body
@@ -81,7 +101,6 @@ SESSIONS = os.path.join(HERE, "..", "sessions")
 
 CARD1 = ["20260731-150712", "20260731-143025", "20260731-144815"]
 CARD2 = ["20260801-004843", "20260801-005059"]
-FIT = CARD1 + CARD2
 HOLDOUT = ["20260731-131305"]
 EXCLUDED = {
     "20260731-130744": "referee does not close (median 1.45 m/s^2); position velocity "
@@ -90,7 +109,56 @@ EXCLUDED = {
                        "stream repeats in 43% of rows",
     "20260801-005518": "identical rerun of 20260801-005059; kept as a repeatability "
                        "check rather than counted twice",
+    "20260801-004337": "never left the pad (0 usable samples) and the wall->sim clock "
+                       "fit is degenerate: +-1382 s of spread over 20.5 s of recording",
 }
+
+# Sessions flown with the levelling assist ON. Their commands are still what went out
+# over MAVLink, so they are valid force data -- but the assist generates those commands
+# from the state through an outer P loop clamped at 3.0 rad/s, so the rate loop cannot
+# be identified from them. They are coverage, not excitation.
+#
+# These three are named because they predate the recorder emitting a `level_assist`
+# event and there is nothing in their files to detect it from; `sessions/README.md` is
+# the only record. Anything flown since says so in `events.jsonl`, which `assist_on()`
+# reads -- so a new card does not need this list edited, and forgetting to edit it does
+# not silently poison the rate loop.
+ASSIST_ON_LEGACY = {"20260731-195307", "20260731-203428",
+                    "20260731-204841-vq1-lap-slow"}
+
+
+def assist_on(name, root=SESSIONS):
+    """True if this session flew any part of itself under the levelling assist."""
+    if name in ASSIST_ON_LEGACY:
+        return True
+    path = os.path.join(root, name, "events.jsonl")
+    if not os.path.exists(path):
+        return False
+    with open(path) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or '"level_assist"' not in line:
+                continue
+            try:
+                ev = json.loads(line)
+            except ValueError:
+                continue
+            if ev.get("kind") == "level_assist" and ev.get("on"):
+                return True
+    return False
+
+
+def discover(root=SESSIONS):
+    """Every session directory on disk that is neither held out nor excluded.
+
+    Discovery rather than a hard-coded list, because new recordings land in
+    `pilot/sessions` and a list in this file is one more thing to forget to update.
+    The two curated sets stay explicit: what is *removed* from a fit is a judgement
+    that has to be written down and justified, while what is added is just data.
+    """
+    names = sorted(d for d in os.listdir(root)
+                   if d[:4].isdigit() and os.path.isdir(os.path.join(root, d)))
+    return [n for n in names if n not in EXCLUDED and n not in HOLDOUT]
 
 RATE_DELAY = 0.010      # s, measured: rate cmd -> gyro
 THRUST_DELAY = 0.015    # s, measured: thrust cmd -> motor outputs
@@ -192,7 +260,38 @@ BIN_MIN = 20      # samples a bin needs before it is an observation of the curve
 MODEL_SE = 0.20   # m/s^2; see thrust_bins
 
 
-def thrust_bins(f, vb, thr, wt, kz):
+def fit_body_lift(f, vb, thr, wt, kz, knots):
+    """`c` in `-a_z = T/m + kz*w|w| + c*u^2`, with the curve and `kz` already fixed.
+
+    Ordering is the whole argument for trusting this number. `kz` comes from the apex
+    arcs, which are near-vertical -- `|u|` is small there, so lift is ~0 and cannot be
+    absorbed into `kz`. The thrust curve comes from samples chosen for having no drag
+    term in the way. Only then is the residual asked what is left, and what is left
+    correlates with forward speed squared.
+
+    Fitted the other way round -- `c` and `kz` together on racing flight -- the two are
+    not separable: `u` and `w` covary through every turn, and the joint estimate returns
+    whatever that covariance happens to be, which is the same trap that gave `kz` a 20%
+    error when it was fitted alongside thrust.
+
+    Returns (c, r2, alternatives) where `alternatives` scores the rival forms on the
+    same residual so the choice of `u^2` is visible rather than asserted.
+    """
+    u, w = vb[:, 0], vb[:, 2]
+    kx_ = np.asarray([k[0] for k in knots], dtype=float)
+    ky_ = np.asarray([k[1] for k in knots], dtype=float)
+    resid = -f[:, 2] - np.interp(thr, kx_, ky_) - kz * w * np.abs(w)
+
+    forms = {"c*u^2": u ** 2, "c*u|u|": u * np.abs(u), "c*|u|w": np.abs(u) * w}
+    scored = {}
+    for name, q in forms.items():
+        coef, r2 = wls(q[:, None], resid, wt)
+        scored[name] = (float(coef[0]), r2)
+    c, r2 = scored["c*u^2"]
+    return c, r2, scored
+
+
+def thrust_bins(f, vb, thr, wt, kz, c_lift=0.0):
     """`T/m` per throttle bin: (centre, mean, standard error, n) for each populated bin.
 
     The curve is fitted to these rather than to the samples, because the two carry
@@ -209,7 +308,14 @@ def thrust_bins(f, vb, thr, wt, kz):
     """
     m = thrust_mask(vb)
     w = vb[:, 2]
-    y = (-f[:, 2] - kz * w * np.abs(w))[m]
+    # Body lift has to come out here too, and it is not a small correction: the mask
+    # admits samples on `|w| < QUASI_W`, which includes fast level flight, so `u` can be
+    # 25 m/s in a bin that is supposed to be reading thrust alone. Leaving lift in the
+    # residual would push the middle of the curve up and then the curve would explain
+    # the lift, which is the collinearity this whole ordering exists to avoid. On the
+    # first pass `c_lift` is 0 because it is not known yet; `main` runs the pass again
+    # once it is.
+    y = (-f[:, 2] - kz * w * np.abs(w) - c_lift * vb[:, 0] ** 2)[m]
     t, weight = thr[m], wt[m]
     out = []
     edges = np.arange(0.0, 1.0 + BIN_W / 2, BIN_W)
@@ -387,12 +493,20 @@ def report_axis(name, y, pred, wt):
 
 def main(argv):
     out_path = argv[0] if argv else os.path.join(HERE, "plant.json")
-    fit_eps = load_epochs([os.path.join(SESSIONS, s) for s in FIT])
+    fit_names = discover()
+    fit_eps = load_epochs([os.path.join(SESSIONS, s) for s in fit_names])
     hold_eps = load_epochs([os.path.join(SESSIONS, s) for s in HOLDOUT])
-    print("fit      %s" % ", ".join(ep.name for ep in fit_eps))
+    print("fit      %d sessions, %d epochs: %s"
+          % (len(fit_names), len(fit_eps), ", ".join(fit_names)))
     print("held out %s" % ", ".join(ep.name for ep in hold_eps))
     for name, why in EXCLUDED.items():
         print("excluded %s -- %s" % (name, why))
+
+    assisted = sorted(n for n in fit_names if assist_on(n))
+    rate_eps = [ep for ep in fit_eps if ep.name.split("#")[0] not in set(assisted)]
+    print("rate loop from %d of %d epochs (assist-off only; %s flew under the assist,"
+          " so their commands come from an outer loop rather than from a pilot)"
+          % (len(rate_eps), len(fit_eps), ", ".join(assisted) or "none"))
 
     f, vb, thr, wt = force_samples(fit_eps)
     print("\n%d fit samples, %.1f s of flight, throttle %.2f..%.2f, "
@@ -430,6 +544,32 @@ def main(argv):
     knots = build_knots(bins, apex["thrust_reads"])
     print("    %d knots after the card 2 reads replace the bins they overlap"
           % len(knots))
+
+    c_lift, r2_lift, lift_forms = fit_body_lift(f, vb, thr, wt, kz, knots)
+    print("step 3b body lift off what body z has left over, curve and kz already fixed")
+    for nm in ("c*u^2", "c*u|u|", "c*|u|w"):
+        coef, r2 = lift_forms[nm]
+        print("    %-7s  c %+.6f   R2 %.4f%s"
+              % (nm, coef, r2, "   <- kept" if nm == "c*u^2" else ""))
+    print("    at |u| 20 m/s that is %.2f m/s^2, %.0f%% of hover thrust -- not a "
+          "rounding error" % (c_lift * 400.0, 100 * c_lift * 400.0 / G))
+
+    # Second pass. The first curve was built with lift still in the residual, so it
+    # absorbed some of it; now that lift is known, take it out and read the curve again.
+    # One pass, not iterated to convergence: the correction is small enough that a
+    # second round moves the knots by less than the direct reads' own spread, and an
+    # iteration that keeps going would only be fitting its own last answer.
+    before = np.interp(np.linspace(0, 1, 101),
+                       [k[0] for k in knots], [k[1] for k in knots])
+    bins = thrust_bins(f, vb, thr, wt, kz, c_lift)
+    knots = build_knots(bins, apex["thrust_reads"])
+    after = np.interp(np.linspace(0, 1, 101),
+                      [k[0] for k in knots], [k[1] for k in knots])
+    print("    curve rebuilt with lift removed: moves by at most %.2f m/s^2 "
+          "(%.2f at hover), %d knots" % (np.abs(after - before).max(),
+                                         abs(float(np.interp(0.27, np.linspace(0, 1, 101),
+                                                             after - before))),
+                                         len(knots)))
     curves = {}
     for degree, label in ((1, "affine   ", ), (2, "quadratic")):
         coef, r2 = fit_thrust_curve(bins, degree)
@@ -445,7 +585,7 @@ def main(argv):
 
     c0, c1, c2 = curves[2]
 
-    rates = fit_rates(fit_eps)
+    rates = fit_rates(rate_eps)
     print("\nstep 4  rate loop, per axis, in the simulator's convention")
     for ax, (gain, used) in enumerate(rates):
         label = ("roll", "pitch", "yaw")[ax]
@@ -465,15 +605,20 @@ def main(argv):
              " found" if all(abs(m + 1) < 0.02 for m in mirror)
              else "NOT a clean -1 on every axis -- plant.SIGN_RATE is wrong for this data"))
 
-    def build(kn):
-        return Plant(kx=kx, ky=ky, kz=kz, thrust_knots=kn,
+    def build(kn, c=None):
+        return Plant(kx=kx, ky=ky, kz=kz,
+                     c_lift=c_lift if c is None else c, thrust_knots=kn,
                      rate_gain=[float(g) for g, _ in rates],
                      rate_delay=RATE_DELAY, thrust_delay=THRUST_DELAY,
                      rate_tau_max=RATE_TAU_MAX,
-                     meta=dict(fit_sessions=FIT, holdout=HOLDOUT,
+                     meta=dict(fit_sessions=fit_names, holdout=HOLDOUT,
                                excluded=EXCLUDED, n_samples=int(len(f)),
                                kz_source="sysid_apex arcs", kz_spread=apex["kz_spread"],
                                kz_terminal=apex["kz_terminal"],
+                               c_lift_source="body-z residual after curve and kz, "
+                                             "u^2 chosen over u|u| and |u|w on R^2",
+                               c_lift_r2=r2_lift,
+                               rate_sessions=[e.name for e in rate_eps],
                                r2_fit=[r2x, r2y, None]))
 
     fh, vh, th, wh = force_samples(hold_eps)
@@ -513,6 +658,14 @@ def main(argv):
     plant.meta["r2_holdout"] = r2_out
     plant.meta["r2_fit"] = [r2x, r2y,
                             weighted_r2(f[:, 2], pred[:, 2], wt)]
+
+    # What the lift term actually bought, measured where it counts: on data the fit
+    # never saw, against the same curve and the same kz. In sample it can only help.
+    r2_nolift = weighted_r2(fh[:, 2], predict_force(build(knots, c=0.0),
+                                                    vh, th)[:, 2], wh)
+    plant.meta["r2_holdout_no_lift_z"] = r2_nolift
+    print("    body z with the lift term set to zero: R2 %.4f  (%+.4f from keeping it)"
+          % (r2_nolift, r2_out[2] - r2_nolift))
 
     print("\nthrust curve against the direct reads it was built to honour:")
     for t_read, tm in sorted(apex["thrust_reads"]):

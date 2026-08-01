@@ -27,6 +27,28 @@ IDs and timestamps, so it still tells you when frames exist and how they line up
 
 The last three also carry frames (5 962 / 531 / 2 937), which the earlier sessions do not.
 
+### Card 2 and later (recorded 2026-07-31 late / 2026-08-01, `pilot/sysid_card2.py`)
+
+| session | dur | cmd rows | thrust range | max speed | what it was |
+|---|---|---|---|---|---|
+| `20260731-233219` |  152 s |  5 910 | 0.00–1.00 | 41.1 m/s | maneuver D attempt. **Excluded** |
+| `20260801-004337` |   21 s |  1 014 | 0.00–0.40 |  0.0 m/s | preflight, never left the pad. **Excluded** |
+| `20260801-004403` |   28 s |  1 367 | 0.00–0.40 |  8.7 m/s | preflight, referee PASS |
+| `20260801-004843` |   97 s |  4 827 | 0.00–0.50 | 11.4 m/s | **card 2 A — apex arcs** |
+| `20260801-005059` |   21 s |  1 039 | 0.00–1.00 | 31.1 m/s | **card 2 B — terminal runs** |
+| `20260801-005518` |   21 s |  1 038 | 0.00–1.00 | 31.1 m/s | identical rerun of `005059`. **Excluded** |
+| `20260801-005715` |   21 s |    810 | 0.00–0.69 | 20.5 m/s | card 2 C — crashed at gate 0 |
+
+`20260731-233219` and `20260801-005715` carry frames (2 397 / 508 on this machine).
+
+**Three of these are excluded from the fit** and `pilot/control/plant.json` records why:
+`233219` because the kinematic referee does not close (median 2.01 m/s², the
+`LOCAL_POSITION_NED` velocity repeating bit-identically in 43% of rows — the same
+recording artefact as `130744`); `005518` because it is the same open-loop script as
+`005059` run twice and agreeing to 0.1 m/s, so counting it twice would double-weight one
+measurement; `004337` because it has no usable samples at all and its wall→sim clock fit
+is degenerate (±1382 s of spread over 20.5 s of recording).
+
 **`20260731-204841-vq1-lap-slow` is the held-out completed lap** — all six gates, a single
 collision episode, no resets. Do not fit on it.
 
@@ -88,9 +110,23 @@ Full detail: `pilot/NOTES.md`, `pilot/control/README.md`.
 
 **`20260731-131305` is held out** (2026-07-31): nine minutes, wide thrust range, near-30
 m/s, and ordinary flying rather than a maneuver card, so it tests whether a model
-generalises past the excitation it was fitted from. The plant fit uses the three bold
-sessions above and records the split in `pilot/control/plant.json` — keep it that way, or
-the replay ends up validating on its own training data.
+generalises past the excitation it was fitted from. It has been held out across every
+fit so far, which is what makes their numbers comparable — keep it that way, or the
+replay ends up validating on its own training data.
+
+**The fit set is discovered, not listed.** `sysid_fit.py` takes every session directory
+on disk that is neither held out nor explicitly excluded, so a new recording is picked up
+by dropping it in this folder. As of 2026-08-01 that is 13 sessions, 22 epochs, 40 604
+samples — up from the 5 sessions and 23 261 samples the first two fits used. What is
+*removed* stays an explicit, justified list in `sysid_fit.EXCLUDED`; what is added is
+just data.
+
+**The levelling assist is detected, not remembered.** The rate loop can only be
+identified from open-loop sticks, so assist-on sessions are dropped from that stage while
+still contributing force samples. Sessions recorded since 2026-08-01 write a
+`level_assist` event into `events.jsonl` and `sysid_fit.assist_on()` reads it; the three
+older assist-on sessions have nothing to detect, so they are named in
+`ASSIST_ON_LEGACY` — that list exists only for them and should not need to grow.
 
 **`20260731-130744` is excluded from both.** It is the one session where the kinematic
 referee does not close: median residual 1.45 m/s² against 0.007–0.22 everywhere else. Cause

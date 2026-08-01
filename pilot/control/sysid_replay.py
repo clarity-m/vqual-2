@@ -22,14 +22,32 @@ the numbers above it would be decoration. The gate is therefore the *closest* co
 variant, not the worst -- and each control is scored only on windows that excite the axis
 it corrupts, since "indistinguishable" and "untested" are different answers.
 
-Result (2026-07-31, held out on `20260731-131305`, which the fit never saw):
+**There are two independent pass criteria and both must hold.** The corruption margin
+says the test has teeth. The drift target says the model is accurate enough to tune a
+gain against. A model can hold either one while failing the other, so neither number
+substitutes for the other and the run reports both.
 
-    horizon   fitted drift        nearest corrupted variant
-    2 s       0.54 m,  0.4 deg    vertical drag removed, 2x
-    5 s       2.60 m,  0.9 deg    vertical drag removed, 3x
+Drift is `position error / distance travelled`, taken **per window and then medianed** --
+not median error divided by median distance. Those are different numbers and only the
+first answers "how far off is it, per metre flown": the windows that drift worst tend to
+be the ones that travel least, and dividing medians hides exactly that. On the shipped
+plant the honest figure is 7.4% at 5 s where the ratio of medians reads 6.0%.
 
-over a median 35 m travelled per 5 s window, so the fitted model holds position to about
-7% of distance flown open loop. Every sign corruption is caught by 17x to 60x.
+Result (2026-08-01, held out on `20260731-131305`, which the fit never saw):
+
+    horizon   fitted drift          nearest corrupted variant
+    2 s       0.35 m, 0.5 deg, 2.8%    vertical drag removed, 2x
+    5 s       1.57 m, 1.0 deg, 3.9%    vertical drag removed, 4x
+
+over a median 35 m travelled per 5 s window. Every sign corruption is caught by 31x to
+45x.
+
+The body-lift term is what moved this: the same plant with `c_lift` set to zero drifts
+7.4% at 5 s, which is precisely where the model sat before that term existed. Adding
+eight more sessions to the fit set did not move drift on its own; the term did. That
+control is in the table as "body lift removed", and it is deliberately **report-only**:
+the gate exists to catch sign and structure errors, and a small physical term that a
+correct model sits within 2x of must not be allowed to fail the run.
 
 Two things the table teaches beyond pass/fail:
 
@@ -59,32 +77,47 @@ DT = 1 / 100.0
 HORIZONS = (2.0, 5.0)
 STRIDE = 1.0
 
+DRIFT_TARGET = 0.05   # position error as a fraction of distance flown; see main()
+MIN_TRAVEL = 1.0      # m; a window that barely moved has no meaningful drift *ratio*
+
 
 def variants(plant):
     """The fitted plant plus deliberately corrupted copies of it.
 
-    The last field is the command axis a variant depends on. A yaw-sign error cannot
-    show up in a window that never commanded yaw, so each control is scored only on
-    windows that excite the axis it corrupts. Scoring it on all of them would report
-    "indistinguishable" and mean "untested".
+    Fields are (name, plant, rate_sign, excited_axis, gated). `excited_axis` is the
+    command axis a variant depends on: a yaw-sign error cannot show up in a window that
+    never commanded yaw, so each control is scored only on windows that excite the axis
+    it corrupts. Scoring it on all of them would report "indistinguishable" and mean
+    "untested".
+
+    `gated` says whether the variant is part of the pass criterion. Every *sign and
+    structure* corruption is, because those are the errors this test exists to catch and
+    a model that cannot be told apart from them is not identified. The body-lift control
+    is not: it is a small physical term, and a correct model is allowed to sit close to
+    one without it. Reporting it and gating on it are different claims, and only the
+    first is honest here.
     """
     def corrupt(**kw):
         blob = {f: getattr(plant, f) for f in Plant.FIELDS}
         blob.update(kw)
         return Plant(**blob)
 
-    return [
-        ("fitted", plant, 1.0, None),
-        ("rate mirror inverted", plant, -1.0, None),
+    out = [
+        ("fitted", plant, 1.0, None, False),
+        ("rate mirror inverted", plant, -1.0, None, True),
         ("roll rate sign flipped",
-         corrupt(rate_gain=plant.rate_gain * np.array([-1, 1, 1])), 1.0, 0),
+         corrupt(rate_gain=plant.rate_gain * np.array([-1, 1, 1])), 1.0, 0, True),
         ("pitch rate sign flipped",
-         corrupt(rate_gain=plant.rate_gain * np.array([1, -1, 1])), 1.0, 1),
+         corrupt(rate_gain=plant.rate_gain * np.array([1, -1, 1])), 1.0, 1, True),
         ("yaw rate sign flipped",
-         corrupt(rate_gain=plant.rate_gain * np.array([1, 1, -1])), 1.0, 2),
-        ("drag removed", corrupt(kx=0.0, ky=0.0, kz=0.0), 1.0, None),
-        ("vertical drag removed", corrupt(kz=0.0), 1.0, None),
+         corrupt(rate_gain=plant.rate_gain * np.array([1, 1, -1])), 1.0, 2, True),
+        ("drag removed", corrupt(kx=0.0, ky=0.0, kz=0.0), 1.0, None, True),
+        ("vertical drag removed", corrupt(kz=0.0), 1.0, None, True),
     ]
+    if getattr(plant, "c_lift", 0.0):
+        out.append(("body lift removed (report only)",
+                    corrupt(c_lift=0.0), 1.0, None, False))
+    return out
 
 
 MIN_EXCITATION = 0.5    # rad/s rms on an axis for a window to test that axis' sign
@@ -128,10 +161,19 @@ def replay(ep, plant, horizon, start, rate_sign):
     R_true = quat_to_rot(quat_from_euler(roll[-1], pitch[-1], yaw[-1]))
     tilt = float(np.degrees(np.arccos(np.clip(
         (np.trace(R_true.T @ R_pred) - 1) / 2, -1, 1))))
+    position = float(np.linalg.norm(sim.p - p_true[-1]))
+    travelled = float(np.linalg.norm(p_true[-1] - p_true[0]))
     return dict(speed=float(np.linalg.norm(sim.v - v_true[-1])),
-                position=float(np.linalg.norm(sim.p - p_true[-1])),
+                position=position,
                 attitude=tilt,
-                travelled=float(np.linalg.norm(p_true[-1] - p_true[0])))
+                travelled=travelled,
+                # Per-window ratio, not a ratio of medians. The two are different
+                # numbers and only this one answers "how far off is it, per metre
+                # flown": a window that drifts 1 m over 5 m and one that drifts 5 m
+                # over 50 m have the same median position error and nothing else in
+                # common. Windows that barely moved are dropped rather than allowed
+                # to divide by ~0.
+                drift=position / travelled if travelled > MIN_TRAVEL else np.nan)
 
 
 def main(argv):
@@ -144,6 +186,7 @@ def main(argv):
     print("held-out epochs: %s" % ", ".join(ep.name for ep in eps))
 
     margins = []
+    drifts = {}
     for horizon in HORIZONS:
         all_windows = [(ep, s, rms) for ep in eps for s, rms in windows(ep, horizon)]
         if not all_windows:
@@ -153,19 +196,23 @@ def main(argv):
                                for ep, s, _ in all_windows])
         print("\nhorizon %.0f s   %d windows   median %.0f m travelled per window"
               % (horizon, len(all_windows), travelled))
-        print("    variant                    n   speed err  position err  attitude err")
+        print("    variant                        n   speed err  position err"
+              "  attitude err   drift")
 
-        for name, p, sign, axis in variants(plant):
+        for name, p, sign, axis, gated in variants(plant):
             sel = all_windows if axis is None else \
                 [w for w in all_windows if w[2][axis] > MIN_EXCITATION]
             if len(sel) < 10:
-                print("    %-24s  --   only %d window(s) command that axis above"
+                print("    %-28s  --   only %d window(s) command that axis above"
                       " %.1f rad/s: untested here, not passed"
                       % (name, len(sel), MIN_EXCITATION))
                 continue
             rs = [replay(ep, p, horizon, s, sign) for ep, s, _ in sel]
             med = {k: float(np.median([r[k] for r in rs]))
                    for k in ("speed", "position", "attitude")}
+            med["drift"] = float(np.nanmedian([r["drift"] for r in rs]))
+            if name == "fitted":
+                drifts[horizon] = med["drift"]
             base = [replay(ep, plant, horizon, s, 1.0) for ep, s, _ in sel]
             ref = {k: float(np.median([r[k] for r in base]))
                    for k in ("position", "attitude")}
@@ -176,10 +223,11 @@ def main(argv):
             # free gimbal and costs nothing in path -- seen from the other side.
             ratio = max(med["position"] / max(ref["position"], 1e-6),
                         med["attitude"] / max(ref["attitude"], 1e-6))
-            print("    %-24s %4d  %6.2f m/s   %7.2f m    %7.1f deg%s"
+            print("    %-28s %4d  %6.2f m/s   %7.2f m    %7.1f deg   %5.1f%%%s"
                   % (name, len(sel), med["speed"], med["position"], med["attitude"],
+                     100.0 * med["drift"],
                      "" if name == "fitted" else "   (caught %.0fx)" % ratio))
-            if name != "fitted":
+            if gated:
                 margins.append((horizon, name, ratio))
 
     if not margins:
@@ -189,13 +237,34 @@ def main(argv):
         near = min((r, n) for h, n, r in margins if h == horizon)
         print("  horizon %.0f s   nearest miss: %s, caught %.0fx over"
               % (horizon, near[1], near[0]))
-    ok = min(r for _, _, r in margins) > 2.0
-    print("\n%s" % ("PASS -- every corruption this data can see is clearly worse than the"
-                    " fit.\nThe absolute drift is what it is; read it before trusting a"
-                    " gain tuned on this."
-                    if ok else
-                    "FAIL -- a corrupted model scores nearly as well as the fit, so this"
-                    "\nreplay cannot tell them apart and neither can the numbers above."))
+    caught = min(r for _, _, r in margins) > 2.0
+
+    # Two independent claims, and the run passes only if both hold. The corruption
+    # margin says the test has teeth -- that a wrong model would have been caught.
+    # The drift target says the model is accurate enough to tune a gain against. A
+    # model can hold one and fail the other in either direction, so neither number
+    # substitutes for the other.
+    worst = max(drifts.values()) if drifts else float("nan")
+    print("\nopen-loop drift, position error per metre flown (target < %.0f%%):"
+          % (100 * DRIFT_TARGET))
+    for horizon in sorted(drifts):
+        print("  horizon %.0f s   %.1f%%%s"
+              % (horizon, 100 * drifts[horizon],
+                 "" if drifts[horizon] < DRIFT_TARGET else "   <-- over target"))
+    on_target = bool(drifts) and worst < DRIFT_TARGET
+
+    ok = caught and on_target
+    print("\n%s" % (
+        "PASS -- every corruption this data can see is clearly worse than the fit,\n"
+        "and open-loop drift is inside the %.0f%% target at every horizon."
+        % (100 * DRIFT_TARGET)
+        if ok else
+        ("FAIL -- " + ("a corrupted model scores nearly as well as the fit, so this\n"
+                       "replay cannot tell them apart and neither can the numbers above."
+                       if not caught else
+                       "the model is identified, but open-loop drift reaches %.1f%% "
+                       "against a\n%.0f%% target. A gain tuned on this inherits that "
+                       "error." % (100 * worst, 100 * DRIFT_TARGET)))))
     return 0 if ok else 1
 
 

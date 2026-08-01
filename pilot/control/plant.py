@@ -8,11 +8,11 @@ The model, in body axes, with (u, v, w) the body-frame velocity:
 
     accelerometer_x = -kx * u|u|
     accelerometer_y = -ky * v|v|
-    accelerometer_z = -T/m - kz * w|w|
+    accelerometer_z = -T/m - kz * w|w| - c_lift * u^2
     T/m             = interp(throttle, thrust_knots)
     body rates      = rate_gain * commanded rates          (simulator convention)
 
-Three properties worth knowing before using it.
+Four properties worth knowing before using it.
 
 **The thrust curve is a measured table, not a polynomial.** Card 2 made `T/m` directly
 readable -- wherever `|w|` is small the drag term is under 0.2 m/s^2, so `-a_z` *is*
@@ -33,6 +33,16 @@ time it chops throttle into a descent.
 axis fits to R^2 0.999; the isotropic `-k * |v| * v_i` fits the same data to 0.80. That
 is a statement about this simulator, not about aerodynamics, and it is the reason the
 body frame is load-bearing: on `|v_world|` the same data gives R^2 0.11.
+
+**Forward speed generates lift, and it is a separate term from drag.** Without
+`c_lift * u^2` there is nowhere for that force to go but `kz`, which then reads 0.0443
+below 2 m/s of forward speed and 0.0412 between 10 and 15 -- one coefficient describing
+two different effects, biased toward whichever regime the recordings happen to contain.
+Splitting them is worth +0.043 of held-out body-z R^2. The exponent is `u^2` and not
+`u|u|` because lift does not reverse when the drone flies backwards; fitting `u|u|`
+instead scores worse than having no term at all, which is the data saying the same thing.
+Note the term vanishes at `u = 0`, so hover, terminal climb and both self-checks below
+are untouched by it.
 
 **The rate loop is very nearly ideal, and mirrored.** Commanded body rates are tracked
 at gain 0.90..0.97 with a lag too short to resolve at 61 Hz, so there is almost no
@@ -55,15 +65,26 @@ SIGN_RATE = -1.0    # NED body rate = SIGN_RATE * (gyro or commanded rate)
 class Plant:
     """Fitted parameters plus the algebra they define. Stateless."""
 
-    FIELDS = ("kx", "ky", "kz", "thrust_knots", "rate_gain",
+    FIELDS = ("kx", "ky", "kz", "c_lift", "thrust_knots", "rate_gain",
               "rate_delay", "thrust_delay", "rate_tau_max")
+
+    # Parameters that postdate a shipped `plant.json`. Defaulting them rather than
+    # requiring them keeps every previously written file loadable -- including the
+    # frozen sidecars beside training checkpoints, which are the record of what a
+    # policy was actually trained against and must not be rewritten to stay readable.
+    # A default of 0.0 is also the honest one: it reproduces the older model exactly.
+    OPTIONAL = {"c_lift": 0.0}
 
     def __init__(self, **kw):
         self.meta = kw.pop("meta", {})
         for f in self.FIELDS:
             if f not in kw:
-                raise KeyError("plant parameter %r missing" % f)
+                if f in self.OPTIONAL:
+                    kw[f] = self.OPTIONAL[f]
+                else:
+                    raise KeyError("plant parameter %r missing" % f)
             setattr(self, f, kw[f])
+        self.c_lift = float(self.c_lift)
         self.rate_gain = np.asarray(self.rate_gain, dtype=float)
         knots = np.asarray(self.thrust_knots, dtype=float)
         if knots.ndim != 2 or knots.shape[1] != 2:
@@ -106,16 +127,34 @@ class Plant:
         return -k * v * np.abs(v)
 
     def specific_force(self, v_body, throttle):
-        """What the accelerometer would read: thrust along body -z, plus drag."""
+        """What the accelerometer would read: thrust along body -z, plus drag and lift.
+
+        Body lift is `c_lift * u^2` along body -z, the same direction as thrust. A quad
+        in fast forward flight is not a point mass: the airframe and the tilted disc
+        generate a force that does not depend on throttle, and with no term for it the
+        fit has nowhere to put that force but `kz`. That is visible directly -- `kz`
+        reads 0.0443 below 2 m/s of forward speed and 0.0412 between 10 and 15, which is
+        one coefficient being asked to describe two different things.
+
+        It is `u^2` rather than `u|u|` because lift does not reverse when the drone flies
+        backwards, and the data agrees: `u|u|` scores *worse* than having no term at all.
+        """
         f = self.drag(v_body)
-        return f - np.array([0.0, 0.0, 1.0]) * self.thrust(throttle)
+        u = np.asarray(v_body, dtype=float)[..., 0]
+        lift = self.c_lift * u ** 2
+        return f - np.array([0.0, 0.0, 1.0]) * (self.thrust(throttle) + lift)
 
     def rates_ned(self, cmd_rates):
         """Commanded body rates -> true NED body rates. The mirror is applied here."""
         return SIGN_RATE * self.rate_gain * np.asarray(cmd_rates, dtype=float)
 
     def hover_throttle(self):
-        """The throttle at which T/m == g. The table is monotone, so this inverts it."""
+        """The throttle at which T/m == g. The table is monotone, so this inverts it.
+
+        Body lift does not enter: hovering means `u = 0`, where the term is identically
+        zero. The same is true of `terminal_speed` and of both self-checks in `__main__`,
+        which is why adding lift leaves the closed-form climb algebra untouched.
+        """
         return float(np.interp(G, self._knot_y, self._knot_x))
 
     def terminal_speed(self, axis=0, tilt_deg=20.0):
@@ -127,6 +166,8 @@ class Plant:
         return "\n".join([
             "drag        kx %.4f  ky %.4f  kz %.4f   (m/s^2 per (m/s)^2, body axes)"
             % (self.kx, self.ky, self.kz),
+            "body lift   c  %.5f   (m/s^2 per (m/s)^2 of forward speed, along body -z)"
+            % self.c_lift,
             "thrust      %d measured knots, idle %.2f   hover %.3f   "
             "full %.1f m/s^2 (%.2f g)"
             % (len(self._knot_x), self.thrust(0.0), self.hover_throttle(),
