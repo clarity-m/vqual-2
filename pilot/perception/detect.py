@@ -10,12 +10,22 @@ classes separate on SATURATION alone -- orange gate 202, cyan ribbon 197, white 
 and 66.5% of the frame sits below V=40. So the mask is generous on hue and strict on
 saturation, which is what keeps ceiling lights out.
 
-WHAT IS DETECTED IS THE FRAME, NOT THE APERTURE. A gate renders as an orange annulus: an
-outer border with a hole. The hole is what we need -- interface.py's range relation
-480/gate_px is defined on the 1500 mm INNER aperture -- so the quad is fitted to the
-contour's HOLE (child in the hierarchy), never to its outer boundary. Fitting the outer
-edge instead yields a range biased short by the border width, which grows as you close in
-and therefore corrupts exactly the approach it is meant to guide.
+A gate renders as an orange annulus: an outer border with a hole. The hole is the primary
+target -- interface.py's range relation 480/gate_px is defined on the 1500 mm INNER
+aperture -- so the quad is fitted to the contour's HOLE (child in the hierarchy) whenever
+one exists.
+
+FALLBACK TO THE 2700 mm OUTER BOUNDARY when it does not. The aperture only forms a hole
+contour if the annulus closes, and it does not when the gate is clipped by the frame edge.
+Measured on the 204841 lap: that single failure accounted for 46% of all visible instances
+-- more than every threshold combined -- and recall was WORST at 50-100 px apparent size
+(0.21), not at the small end, which is the signature of near gates running out of frame
+rather than of anything being too small to see. Adding the fallback took recall 0.46 ->
+0.74 with centre error and range error unchanged.
+
+The outer square is the WORSE observation and is flagged `source: 'outer'`: it is the
+frame's outer edge, so bloom and signage bias it outward, and 2700/1500 = 1.8 means a
+given pixel error buys 1.8x the range error. Prefer inner whenever both are available.
 
 Scoring mode compares against label.py's projected corners:
 
@@ -39,9 +49,13 @@ import label as L  # noqa: E402
 S_MIN, V_MIN = 110, 110
 HUE_LO, HUE_HI = 12, 170
 
-MIN_HOLE_AREA = 120.0      # px^2. Below this the aperture is under ~11 px across.
+MIN_HOLE_AREA = 60.0       # px^2. An aperture 12 px across is 144; 120 cut real gates.
 MAX_ASPECT = 3.0           # a gate seen very obliquely, past which PnP is worthless
 MIN_FILL = 0.55            # hole area / fitted quad area; rejects ragged blobs
+MIN_OUTER_AREA = 200.0     # px^2, outer-boundary fallback
+MIN_FILL_OUTER = 0.45      # the outer blob is solid orange, but signage frays it
+GATE_OUTER_M = 2.7         # spec 3.7
+GATE_INNER_M = 1.5
 
 # SOLVEPNP_IPPE_SQUARE does NOT accept an arbitrary winding: OpenCV fixes the order as
 # TL, TR, BR, BL with +y UP in object space, and silently returns a garbage pose for any
@@ -53,6 +67,7 @@ OBJ = np.array([[-L.HALF, +L.HALF, 0.0],
                 [+L.HALF, +L.HALF, 0.0],
                 [+L.HALF, -L.HALF, 0.0],
                 [-L.HALF, -L.HALF, 0.0]], dtype=np.float64)
+OBJ_OUTER = OBJ * (GATE_OUTER_M / GATE_INNER_M)
 K = np.array([[L.FX, 0.0, L.CX], [0.0, L.FY, L.CY], [0.0, 0.0, 1.0]])
 DIST = np.zeros(5)
 
@@ -87,32 +102,54 @@ def fit_quad(contour):
     return box.astype(np.float64)
 
 
-def detections(bgr):
-    """All plausible gate apertures in one frame, nearest (largest) first."""
+def detections(bgr, rejects=None):
+    """All plausible gate apertures in one frame, nearest (largest) first.
+
+    Pass a list as `rejects` to collect (centroid, reason) for everything thrown away.
+    Recall is a filter-tuning problem and tuning blind overfits to whichever filter you
+    happened to suspect, so the reasons are instrumented rather than guessed at.
+    """
     m = orange_mask(bgr)
     cnts, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     if hier is None:
         return []
     hier = hier[0]
     out = []
+    used_parents = set()
+
+    def drop(c, why):
+        if rejects is not None:
+            mo = cv2.moments(c)
+            if mo['m00'] > 0:
+                rejects.append((np.array([mo['m10'] / mo['m00'], mo['m01'] / mo['m00']]), why))
+
     for i, c in enumerate(cnts):
         if hier[i][3] < 0:          # outer boundary of the frame body -- not the aperture
+            drop(c, 'not-a-hole')
             continue
         area = cv2.contourArea(c)
         if area < MIN_HOLE_AREA:
+            drop(c, 'area')
             continue
         quad = fit_quad(c)
         if quad is None:
+            drop(c, 'no-quad')
             continue
         qa = cv2.contourArea(quad.astype(np.float32))
         if qa <= 1.0 or area / qa < MIN_FILL:
+            drop(c, 'fill')
             continue
         e = [np.linalg.norm(quad[(j + 1) % 4] - quad[j]) for j in range(4)]
-        if min(e) < 4.0 or max(e) / max(min(e), 1e-6) > MAX_ASPECT:
+        if min(e) < 4.0:
+            drop(c, 'edge-too-short')
+            continue
+        if max(e) / max(min(e), 1e-6) > MAX_ASPECT:
+            drop(c, 'aspect')
             continue
         ok, rvec, tvec = cv2.solvePnP(OBJ, order_quad(quad), K, DIST,
                                       flags=cv2.SOLVEPNP_IPPE_SQUARE)
         if not ok:
+            drop(c, 'pnp')
             continue
         R, _ = cv2.Rodrigues(rvec)
         t = tvec.reshape(3)
@@ -133,7 +170,59 @@ def detections(bgr):
             'range_m': float(np.linalg.norm(t)),
             'range_size_m': 480.0 / max(float(max(e)), 1e-6),
             'area': float(area),
+            'source': 'inner',
         })
+        used_parents.add(hier[i][3])
+
+    # ---- fallback: the OUTER boundary, 2700 mm ----------------------------------------
+    # The aperture only forms a hole contour when the orange annulus closes. It does not
+    # when the gate is clipped by the frame edge, which is why recall was WORST at 50-100
+    # px apparent size (0.21) rather than at the small end -- near gates run out of frame.
+    # Measured: 46% of all visible instances failed here, far more than every threshold
+    # combined, so this is structural and no amount of sweeping reaches it.
+    #
+    # The outer square is a worse observation than the inner one: it is the frame's outer
+    # edge, so bloom and the signage bias it outward, and 2700/1500 = 1.8 means the same
+    # pixel error buys 1.8x the range error. It is a fallback, flagged as such.
+    for i, c in enumerate(cnts):
+        if hier[i][3] >= 0 or i in used_parents:
+            continue
+        area = cv2.contourArea(c)
+        if area < MIN_OUTER_AREA:
+            continue
+        quad = fit_quad(c)
+        if quad is None:
+            continue
+        qa = cv2.contourArea(quad.astype(np.float32))
+        if qa <= 1.0 or area / qa < MIN_FILL_OUTER:
+            drop(c, 'outer-fill')
+            continue
+        e = [np.linalg.norm(quad[(j + 1) % 4] - quad[j]) for j in range(4)]
+        if min(e) < 6.0 or max(e) / max(min(e), 1e-6) > MAX_ASPECT:
+            drop(c, 'outer-aspect')
+            continue
+        ok, rvec, tvec = cv2.solvePnP(OBJ_OUTER, order_quad(quad), K, DIST,
+                                      flags=cv2.SOLVEPNP_IPPE_SQUARE)
+        if not ok:
+            drop(c, 'outer-pnp')
+            continue
+        R, _ = cv2.Rodrigues(rvec)
+        t = tvec.reshape(3)
+        normal_cam = R[:, 2]
+        if float(normal_cam @ t) > 0:
+            normal_cam = -normal_cam
+        out.append({
+            'quad': order_quad(quad),
+            'centre': quad.mean(axis=0),
+            'size_px': float(max(e)) * (GATE_INNER_M / GATE_OUTER_M),  # inner-equivalent
+            'pos_body': L.body_to_cam().T @ t,
+            'normal_body': L.body_to_cam().T @ normal_cam,
+            'range_m': float(np.linalg.norm(t)),
+            'range_size_m': (L.FX * GATE_OUTER_M) / max(float(max(e)), 1e-6),
+            'area': float(area),
+            'source': 'outer',
+        })
+
     out.sort(key=lambda d: -d['area'])
     return out
 
