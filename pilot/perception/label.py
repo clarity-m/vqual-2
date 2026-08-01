@@ -74,6 +74,19 @@ HALF = GATE_INNER / 2.0
 GATE_TRUTH = 'C:/Users/USER/Projects/vqual-1/pilot/gate_truth.json'
 
 
+def load_gates(path=None):
+    """Gate centres. Override with $VQ_GATES to use refine.py's fused estimate.
+
+    Kept as an explicit override rather than auto-preferring gates_refined.json, because
+    scoring a detector against labels that detector produced is circular and the default
+    must not silently become the circular one.
+    """
+    import numpy as _np
+    src = path or os.environ.get('VQ_GATES') or GATE_TRUTH
+    d = json.load(open(src))['consensus']
+    return {int(k): _np.array([v['x'], v['y'], v['z']]) for k, v in d.items()}
+
+
 def load_csv(path):
     with open(path, newline='') as fh:
         return list(csv.DictReader(fh))

@@ -230,9 +230,7 @@ def detections(bgr, rejects=None):
 def score(session, limit):
     """Detections vs label.py's projections. Reports recall and metric error."""
     track = L.PoseTrack(session)
-    import json
-    gt = json.load(open(L.GATE_TRUTH))['consensus']
-    gates = {int(k): np.array([v['x'], v['y'], v['z']]) for k, v in gt.items()}
+    gates = L.load_gates()
     frames = [r for r in L.load_csv(os.path.join(session, 'frames.csv')) if r['file']]
     ft = np.array([float(r['sim_time_ns']) for r in frames]) / 1e9
 
