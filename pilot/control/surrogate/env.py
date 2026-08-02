@@ -142,6 +142,11 @@ class EnvConfig:
     vq2_pool_seed: int = 0
     vq2_yaw_mode: str = "mixed"       # 'mixed' (randomize the disagreement) | 'bisector'
     vq2_yaw_jitter_deg: float = 4.0
+    # Probability a pool course is built with edge 1-2's CONTESTED rival reading in play
+    # (accepted 8.32 m from 5 rows of one flight; a refused 34-row channel says 13.0 m).
+    # The package then coin-flips, so the rival lands in ~half of those. Every VQ2 episode
+    # flies 1->2, so training only on the accepted value bets the run on that edge.
+    vq2_alt_hypothesis_p: float = 0.5
     vq2_tilt_deg: object = None       # {gate: (lo_deg, hi_deg)}; None = all vertical
     # ASSUMED -- the map's z is relative to gate 0, not to the floor, so where the floor
     # sits is a free parameter. Randomized rather than guessed. The lower bound must clear

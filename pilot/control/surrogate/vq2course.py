@@ -207,6 +207,7 @@ class VQ2Pool:
         jitter = math.radians(float(cfg.vq2_yaw_jitter_deg))
         mixed = str(cfg.vq2_yaw_mode) == "mixed"
         tilt_spec = dict(cfg.vq2_tilt_deg or {})
+        alt_p = float(cfg.vq2_alt_hypothesis_p)
 
         # Candidate plane azimuths per gate, in radians, from the JSON. `yaw_deg` is null
         # at gates 8/12/13 and `yaw_grid_bin_deg` encodes Claire's grid-alignment claim,
@@ -231,7 +232,16 @@ class VQ2Pool:
             # Positions only. `sample`'s own yaw draw is not used: it puts a UNIFORM
             # 0-180 deg plane on every gate whose yaw was refused, which would face gates
             # 8/12/13 in a random direction each episode and make them unlearnable.
-            c = pkg.sample(seed=int(seed) * 1_000_003 + i, randomize_yaw=False)
+            #
+            # `include_alt_hypotheses` coin-flips edge 1-2 onto its rival 13.0 m reading.
+            # That edge is CONTESTED -- the accepted 8.32 m rests on 5 rows from a single
+            # flight, and a refused 34-row channel reads 13.0 m. Every VQ2 episode flies
+            # 1->2, so a policy trained only on 8.32 m has memorized a spacing that may be
+            # 4.7 m wrong. `course/README.md` recommends switching this on for exactly
+            # this case. The package flips at 50%, so the rival lands in ~alt_p/2 of pool
+            # courses.
+            c = pkg.sample(seed=int(seed) * 1_000_003 + i, randomize_yaw=False,
+                           include_alt_hypotheses=bool(rng.random() < alt_p))
             P = _extend_runout(np.asarray(c.positions, dtype=float), self.n_race, self.S)
 
             bis = _bisector_az(P)
@@ -297,6 +307,7 @@ def get_pool(cfg):
         return None
     key = (int(cfg.vq2_pool_size), int(cfg.n_gates_range[1]), str(cfg.vq2_yaw_mode),
            float(cfg.vq2_yaw_jitter_deg), int(cfg.vq2_pool_seed),
+           float(cfg.vq2_alt_hypothesis_p),
            tuple(sorted((int(k), tuple(v)) for k, v in dict(cfg.vq2_tilt_deg or {}).items())))
     if key not in _pool_cache:
         _pool_cache[key] = VQ2Pool(cfg.vq2_pool_size, cfg, seed=cfg.vq2_pool_seed)
@@ -305,6 +316,10 @@ def get_pool(cfg):
 
 def mix(rng, m, cfg, pool):
     """`course.generate`, with a `cfg.vq2_frac` share of the rows replaced by VQ2 courses."""
+    if pool is not None and cfg.vq2_frac >= 1.0 and m > 0:
+        # Pure VQ2: generating procedural courses only to overwrite every one of them is
+        # pure waste, and at frac = 1 that is exactly what the path below would do.
+        return pool.draw(rng, m, cfg)
     out = course.generate(rng, m, cfg)
     if pool is None or cfg.vq2_frac <= 0.0 or m == 0:
         return out

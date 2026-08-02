@@ -37,8 +37,36 @@ is unchanged until you ask for it. Rationale, and the full measured-vs-assumed s
 18 m while 10 of VQ2's 16 race edges are shorter than that, and the corners that decide
 this course pair a sharp turn with a ~10 m exit — a combination the generator never draws.
 
-Keep some procedural share. The map cannot help a policy that is lost, so gate-seeking has
-to survive alongside the track.
+### Training on VQ2 only
+
+`vq2_frac=1.0` is a legitimate strategy — the course is fixed and deterministic (spec
+§3.5), attempts are unlimited and ranking is on time (§9.4), so overfitting to it is the
+point. Three things change, and one is easy to miss:
+
+    # train
+    --env-kwarg vq2_frac=1.0
+    # rank checkpoints on the SAME course, or selection is meaningless
+    python pilot/control/evalsuite/select.py --ckpt ... --vq2-frac 1.0
+
+1. **Eval must match.** `select.py` / `run_policy.py` / `stress.py` default to procedural
+   courses. Ranking a VQ2-only checkpoint against courses it never trained on selects the
+   wrong checkpoint, quietly. Pass `--vq2-frac 1.0`.
+2. **`difficulty` loses half its meaning.** It no longer anneals course geometry — that is
+   now fixed — so it only drives perception noise, the collision margin and the corridor
+   radius. `speed_cap` is unaffected. The curriculum still works, it just anneals less.
+3. **You give up the gate-seeking safety net.** `course/README.md` warns that a whole leg
+   can rotate by 90° if its mod-90 quadrant came from the sketch rather than a shared
+   measurement — "a discrete failure a Gaussian cannot express", and the sampled envelope
+   is "a lower bound". A pure-VQ2 policy has memorized a track that may be wrong in a way
+   no amount of sampling covers. `vq2_frac=0.9` buys the insurance for ~10% of the run.
+
+`vq2_alt_hypothesis_p` (default 0.5) covers the contested 1-2 edge: the accepted 8.32 m
+rests on five rows from one flight and a refused 34-row channel reads 13.0 m. Every VQ2
+episode flies 1→2, so the rival lands in ~25% of pool courses rather than betting the run
+on one reading.
+
+Keep some procedural share otherwise. The map cannot help a policy that is lost, so
+gate-seeking has to survive alongside the track.
 
 Other knobs (all `--env-kwarg`): `vq2_yaw_mode` (`'mixed'` randomizes across the three
 disagreeing gate-yaw hypotheses, `'bisector'` fixes them), `vq2_pool_size`,

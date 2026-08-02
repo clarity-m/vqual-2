@@ -121,11 +121,17 @@ def override(cfg, **kw):
 
 
 def build_config(difficulty=0.2, speed_cap=1.0, decision_hz=None, n_gates=None,
-                 time_penalty=None):
+                 time_penalty=None, vq2_frac=None):
+    """The eval config.
+
+    `vq2_frac` must match what the checkpoint was TRAINED on. Scoring a VQ2-trained policy
+    against procedurally generated courses ranks it on a distribution it never saw and was
+    never meant to fly -- which is the quiet way to select the wrong checkpoint.
+    """
     _, EnvConfig = load_surrogate()
     cfg = EnvConfig.curriculum(float(difficulty), float(speed_cap))
     return override(cfg, decision_hz_range=decision_hz, n_gates_range=n_gates,
-                    enable_time_penalty=time_penalty)
+                    enable_time_penalty=time_penalty, vq2_frac=vq2_frac)
 
 
 def config_dict(cfg):
@@ -310,6 +316,9 @@ def add_common_args(ap):
     ap.add_argument("--speed-cap", type=float, default=1.0)
     ap.add_argument("--decision-hz", default=None, help="override, e.g. 45,65")
     ap.add_argument("--n-gates", default=None, help="override, e.g. 18,22")
+    ap.add_argument("--vq2-frac", type=float, default=None,
+                    help="share of eval episodes on the measured VQ2 course. MATCH the "
+                         "value the checkpoint was trained on (1.0 for a VQ2-only run)")
     ap.add_argument("--time-penalty", dest="time_penalty", action="store_true",
                     default=None)
     ap.add_argument("--max-steps", type=int, default=5000)
@@ -348,7 +357,7 @@ def main(argv=None):
     cfg = build_config(args.difficulty, args.speed_cap,
                        decision_hz=parse_pair(args.decision_hz),
                        n_gates=parse_pair(args.n_gates),
-                       time_penalty=args.time_penalty)
+                       time_penalty=args.time_penalty, vq2_frac=args.vq2_frac)
     policy, name = make_policy(args.policy, args.ckpt, args.gains, args.supervisor,
                                args.device)
     print("%s | difficulty %.2f speed_cap %.2f | %d seeds"

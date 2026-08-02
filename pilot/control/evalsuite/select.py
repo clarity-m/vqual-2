@@ -127,7 +127,7 @@ def main(argv=None):
     cfg = build_config(args.difficulty, args.speed_cap,
                        decision_hz=parse_pair(args.decision_hz),
                        n_gates=parse_pair(args.n_gates),
-                       time_penalty=args.time_penalty)
+                       time_penalty=args.time_penalty, vq2_frac=args.vq2_frac)
 
     candidates = []
     if args.baseline:

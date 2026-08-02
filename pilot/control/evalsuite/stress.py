@@ -33,11 +33,11 @@ STRESS_HZ = (28.0, 32.0)
 
 def compare(policy, name, seeds, difficulty, speed_cap, stress_hz=STRESS_HZ,
             nominal_hz=None, n_gates=None, time_penalty=None, max_steps=5000,
-            quiet=False):
+            quiet=False, vq2_frac=None):
     runs = {}
     for label, hz in (("nominal", nominal_hz), ("stress %g-%g Hz" % stress_hz, stress_hz)):
         cfg = build_config(difficulty, speed_cap, decision_hz=hz, n_gates=n_gates,
-                           time_penalty=time_penalty)
+                           time_penalty=time_penalty, vq2_frac=vq2_frac)
         print("\n--- %s ---" % label)
         results = evaluate(policy, cfg, seeds, max_steps=max_steps)
         summary = summarize(results)
