@@ -570,12 +570,21 @@ class VecSurrogate:
         # the NEW one, ~28 m further off. Differencing them would charge a large negative
         # progress for the one event the reward most wants to encourage, cancelling most
         # of the crossing bonus. The target moved; the aircraft did not regress.
-        # Potential-based, with PHI = -rem: the shaping term is `gamma*PHI(s') - PHI(s)`,
-        # which by Ng/Harada/Russell leaves the optimal policy unchanged. The old form
-        # dropped the gamma, a per-step leak that accumulates over a 200-step episode.
+        # PHI = -rem, telescoped at gamma = 1 ON PURPOSE. The textbook potential-based
+        # form is `gamma*PHI(s') - PHI(s)`, and it was tried: at gamma=0.997 it pays a
+        # STATIONARY aircraft `rem*(1-gamma)` every step, which at a typical 25 m is
+        # +0.075/step against a real closure signal of ~0.09/step -- a survival bonus that
+        # GROWS with distance from the gate. Measured over 30M steps (`runA`): episode
+        # return climbed 10.7 -> 12.4 while per-gate rate stayed at 0.07 and collisions at
+        # 0.94, i.e. the policy learned to loiter at range and farm the bonus. run1, with
+        # this gamma=1 form, returned ~+2 at the same task performance; the +10 was pure
+        # drift. Ng/Harada/Russell needs a BOUNDED potential to be safe in practice, and
+        # `rem` is not bounded. The residual bias from gamma=1 here is orders of magnitude
+        # smaller than the pathology it removes. `_clearance_potential` keeps its gamma
+        # because it saturates at `k_clear`, so its drift is a harmless -0.009/step.
         g = float(cfg.gamma_shaping)
         prog = np.where(advanced | finished, 0.0,
-                        np.clip(self.rem_prev - g * rem,
+                        np.clip(self.rem_prev - rem,
                                 -cfg.progress_clip, cfg.progress_clip))
         if cfg.progress_gate_scale != 1.0:
             prog = prog * np.where(self._near_gate_mask(), cfg.progress_gate_scale, 1.0)

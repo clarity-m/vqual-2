@@ -116,10 +116,17 @@ class CurriculumConfig:
     # and speed_cap 0.5 for exactly this reason. Per-gate accuracy is roughly invariant
     # to episode length, so it keeps working as `gates_per_episode` grows.
     #
-    # The thresholds are HIGHER than the completion ones on purpose: to finish 20 gates
-    # at 70% you need per-gate 0.983, so 0.85 is a promotion, not an arrival.
-    gate_rate_promote: float = 0.85
-    gate_rate_demote: float = 0.55
+    # Set these against what is ACHIEVABLE at the current level, not against what the
+    # finished policy needs. Measured on this config (difficulty 0, margin 0-0.16,
+    # speed_cap 0.5), the reactive PID baseline reaches 0.291 per gate. A promote
+    # threshold of 0.85 -- which is what finishing 20 gates would eventually require --
+    # is therefore above what a hand-tuned controller manages, so the schedule would
+    # never advance: exactly the `completion >= 0.70` trap one level up. 0.60 is roughly
+    # twice the baseline and is a real promotion; the accuracy needed for a full course
+    # comes from continued training at the TOP of the schedule, not from refusing to
+    # climb it.
+    gate_rate_promote: float = 0.60
+    gate_rate_demote: float = 0.30
     min_attempts: int = 60       # pooled gate attempts before the rate is actionable
 
     # --- episode length, the axis the architecture was missing -----------------------
@@ -302,7 +309,12 @@ class Curriculum:
         self._since_promote = 0
         self.n_stalls += 1
         changed = False
-        if self.progress_gate_scale > c.progress_gate_scale_min:
+        # Guard on the STEP, not just the floor. With the step at 0 this branch still
+        # reported `changed`, so every stall rebuilt the env and cleared the curriculum
+        # windows for a value that had not moved -- visible in `runA` at update 80, where
+        # STALL printed `progress_gate_scale=1.00` and reset gate_rate to n/a anyway.
+        if (c.progress_gate_scale_step > 0.0
+                and self.progress_gate_scale > c.progress_gate_scale_min):
             self.progress_gate_scale = max(
                 c.progress_gate_scale_min, self.progress_gate_scale - c.progress_gate_scale_step
             )
