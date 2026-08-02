@@ -44,6 +44,7 @@ REASON_FLAGS = (("finished", "completed"), ("collision", "collision"),
                 ("crashed", "collision"), ("out_of_bounds", "corridor"),
                 ("truncated", "truncated"))
 GATE_KEYS = ("gates_passed", "gates", "n_passed")
+COLLISION_KEYS = ("collision_episodes", "collisions", "n_collisions")
 
 
 # -- the surrogate, imported late so this module loads before the sibling exists ----
@@ -59,51 +60,16 @@ def load_surrogate():
     return SingleSurrogate, EnvConfig
 
 
-class _Env:
-    """`SingleSurrogate`, with a shim around one transient sibling bug.
+def _Env(config, seed):
+    """One scored instance. `SingleSurrogate` is the reference implementation.
 
-    2026-08-01: `VecSurrogate.step` grew an info entry `terminal_obs` of shape
-    [n, 73], and `SingleSurrogate.step` scalarizes every info value with `v[0].item()`,
-    which raises on a 73-vector. The shim re-does the sibling's OWN two-line adapter
-    (their `vec.step` plus their `build_observation`) and scalarizes only what is
-    actually scalar -- it duplicates no dynamics, no detections and no attention. It
-    prints once and stops being used the moment `single.py` handles the array itself.
+    This used to be a class wrapping a shim around `SingleSurrogate.step`, which once
+    raised on the `terminal_obs` [n, 73] info entry. `single.py:59` now scalarizes only
+    what is actually scalar and leaves vectors alone, so the shim never fired; it has
+    been removed rather than left as a fallback nobody exercises.
     """
-
-    warned = False
-
-    def __init__(self, config, seed):
-        SingleSurrogate, _ = load_surrogate()
-        self.env = SingleSurrogate(config, seed)
-        self.shim = False
-
-    def reset(self):
-        return self.env.reset()
-
-    def step(self, action):
-        if not self.shim:
-            try:
-                return self.env.step(action)
-            except (ValueError, TypeError) as exc:
-                self.shim = True
-                if not _Env.warned:
-                    _Env.warned = True
-                    print("  note: SingleSurrogate.step raised %s(%s); using the "
-                          "evalsuite info shim" % (type(exc).__name__, exc))
-        from pilot.control.surrogate.env import build_observation
-        import numpy as np
-        a = np.array([[float(action.roll_rate), float(action.pitch_rate),
-                       float(action.thrust)]], dtype=np.float32)
-        _, rew, done, info = self.env.vec.step(a)
-        obs = build_observation(self.env.vec._fields, 0)
-        out = {k: (v[0].item() if getattr(v, "ndim", 1) == 1 else v[0])
-               for k, v in info.items()}
-        out["reward"] = float(rew[0])
-        out["done"] = bool(done[0])
-        return obs, out
-
-    def __getattr__(self, name):
-        return getattr(self.env, name)
+    SingleSurrogate, _ = load_surrogate()
+    return SingleSurrogate(config, seed)
 
 
 def override(cfg, **kw):
@@ -120,12 +86,26 @@ def override(cfg, **kw):
         return cfg
 
 
+# P2 randomizes episode starts (normal / mid-course / hover / corridor-offset /
+# no-gate) so the D6 recovery handback is in the TRAINING distribution. Scoring is a
+# different question, and inheriting that default silently breaks the primary metric:
+# half of every eval run spawns off the start line and a quarter spawns at a uniformly
+# random gate index, so `completed` -- reaching `n_gates_total` -- means flying anywhere
+# from 4 to 22 gates depending on the draw. `completion_rate` is select.py's primary
+# ranking key and does NOT normalize for that, so candidates were being ranked partly on
+# which seeds happened to spawn late. Evaluation therefore starts at the start line, and
+# the randomized starts are opt-in (`--random-starts`) for the recovery suite that
+# actually wants them.
+EVAL_START_PROBS = (1.0, 0.0, 0.0, 0.0, 0.0)
+
+
 def build_config(difficulty=0.2, speed_cap=1.0, decision_hz=None, n_gates=None,
-                 time_penalty=None):
+                 time_penalty=None, random_starts=False):
     _, EnvConfig = load_surrogate()
     cfg = EnvConfig.curriculum(float(difficulty), float(speed_cap))
     return override(cfg, decision_hz_range=decision_hz, n_gates_range=n_gates,
-                    enable_time_penalty=time_penalty)
+                    enable_time_penalty=time_penalty,
+                    start_probs=None if random_starts else EVAL_START_PROBS)
 
 
 def config_dict(cfg):
@@ -144,7 +124,23 @@ def _flag(info, keys):
     return False
 
 
-def run_episode(policy, config, seed, max_steps=5000):
+def steps_for(config, slack=1.15):
+    """A step cap that sits ABOVE the env's own wall clock, not below it.
+
+    The old fixed 5000 is ~91 s at 55 Hz against `max_time_s = 120`, so a slow-but-alive
+    policy was cut off by the harness and scored `reason="max_steps"` before the
+    surrogate's own timeout could fire. Derive it instead: the worst case is the fastest
+    decision rate running the full episode clock.
+    """
+    try:
+        hz = float(getattr(config, "decision_hz_range", (45.0, 65.0))[1])
+        t = float(getattr(config, "max_time_s", 120.0))
+    except Exception:
+        return 5000
+    return max(int(hz * t * slack), 1000)
+
+
+def run_episode(policy, config, seed, max_steps=None):
     """Fly one seed to termination.
 
     THE OBSERVATION RETURNED BY THE TERMINATING STEP BELONGS TO THE NEXT EPISODE.
@@ -154,6 +150,8 @@ def run_episode(policy, config, seed, max_steps=5000):
     numbers come from the info dict (computed pre-reset) and, failing that, from the
     last observation handed out BEFORE the terminating step.
     """
+    if max_steps is None:
+        max_steps = steps_for(config)
     env = _Env(config, seed)
     obs = env.reset()
     policy.reset()
@@ -190,6 +188,12 @@ def run_episode(policy, config, seed, max_steps=5000):
     # the episode's own achievement is always a delta from the spawn index.
     gates = next((int(info[k]) for k in GATE_KEYS if k in info),
                  int(race.active_gate_index)) - gate0
+    # Same rule as `gates`, and for the same reason: the info dict is computed pre-reset,
+    # while `final` is the observation handed out BEFORE the terminating step and so
+    # predates the contact that ended the episode. Reading the count off `final` reported
+    # a constant zero for every collision run.
+    coll_n = next((int(info[k]) for k in COLLISION_KEYS if k in info),
+                  int(race.collision_episodes))
     race_s = float(race.race_time_s) - race0
     return dict(
         seed=int(seed),
@@ -200,7 +204,7 @@ def run_episode(policy, config, seed, max_steps=5000):
         start_index=gate0,
         n_gates=int(race.n_gates_total),
         time_s=round(race_s if race_s > 1e-9 else sim_s, 3),
-        collisions=int(race.collision_episodes) - coll0,
+        collisions=max(coll_n - coll0, 0),
         recoveries=int(getattr(policy, "recoveries", 0)),
         steps=int(steps),
         reason=reason,
@@ -209,7 +213,7 @@ def run_episode(policy, config, seed, max_steps=5000):
 
 
 # -- a sweep of seeds ---------------------------------------------------------------
-def evaluate(policy, config, seeds, max_steps=5000, progress=None):
+def evaluate(policy, config, seeds, max_steps=None, progress=None):
     out = []
     for s in seeds:
         r = run_episode(policy, config, s, max_steps=max_steps)
@@ -312,9 +316,45 @@ def add_common_args(ap):
     ap.add_argument("--n-gates", default=None, help="override, e.g. 18,22")
     ap.add_argument("--time-penalty", dest="time_penalty", action="store_true",
                     default=None)
-    ap.add_argument("--max-steps", type=int, default=5000)
+    ap.add_argument("--random-starts", action="store_true",
+                    help="use P2's randomized episode starts (mid-course, hover, "
+                         "corridor-offset, no-gate) instead of starting at the start "
+                         "line. This is the recovery-handback suite: it makes "
+                         "'completed' mean a different number of gates on every seed, "
+                         "so do not rank candidates on it")
+    ap.add_argument("--max-steps", type=int, default=None,
+                    help="default: derived from the config's max_time_s and fastest "
+                         "decision rate, so the harness cap sits above the env's own")
     ap.add_argument("--json", default=None, help="write results here")
     ap.add_argument("--quiet", action="store_true", help="summary only")
+
+
+def add_batch_arg(ap):
+    """Opt into the vectorised evaluator. Not in `add_common_args` on purpose: `stress.py`
+    drives `evaluate` directly and would silently ignore the flag."""
+    ap.add_argument("--batch", action="store_true",
+                    help="score all draws as LANES of one VecSurrogate (~15x). Lane i is "
+                         "NOT SingleSurrogate(seed=i) -- the draw list is reproducible "
+                         "and shared across candidates, but not seed-identical to the "
+                         "reference path. See evalsuite/batch.py")
+
+
+def run_batched(args, cfg, policy, seeds):
+    """The `--batch` path. Returns `run_episode`-shaped dicts, same as `evaluate`."""
+    from pilot.control.evalsuite.batch import ScalarBatchAdapter, evaluate_batch
+    n = len(seeds)
+    if args.policy == "rl" and not args.supervisor:
+        from pilot.control.policies.rl import RLBatchPolicy
+        bp = RLBatchPolicy(policy, n)
+    else:
+        # Scalar policies need one INDEPENDENT instance per lane -- the baseline carries
+        # a hover-trim integrator and a climb-rate estimator, and sharing one across
+        # lanes would cross-contaminate every trajectory.
+        bp = ScalarBatchAdapter(
+            lambda: make_policy(args.policy, args.ckpt, args.gains, args.supervisor,
+                                args.device)[0])
+    return evaluate_batch(bp, cfg, n_lanes=n, seed=seeds[0] if seeds else 0,
+                          max_steps=args.max_steps)
 
 
 def add_policy_args(ap):
@@ -342,19 +382,22 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     add_policy_args(ap)
     add_common_args(ap)
+    add_batch_arg(ap)
     args = ap.parse_args(argv)
 
     seeds = parse_seeds(args.seeds)
     cfg = build_config(args.difficulty, args.speed_cap,
                        decision_hz=parse_pair(args.decision_hz),
                        n_gates=parse_pair(args.n_gates),
-                       time_penalty=args.time_penalty)
+                       time_penalty=args.time_penalty,
+                       random_starts=args.random_starts)
     policy, name = make_policy(args.policy, args.ckpt, args.gains, args.supervisor,
                                args.device)
     print("%s | difficulty %.2f speed_cap %.2f | %d seeds"
           % (name, args.difficulty, args.speed_cap, len(seeds)))
 
-    results = evaluate(policy, cfg, seeds, max_steps=args.max_steps)
+    results = (run_batched(args, cfg, policy, seeds) if args.batch
+               else evaluate(policy, cfg, seeds, max_steps=args.max_steps))
     summary = summarize(results)
     print_results(name, results, summary, per_seed=not args.quiet)
     write_json(args.json, dict(policy=name, config=config_dict(cfg), seeds=seeds,

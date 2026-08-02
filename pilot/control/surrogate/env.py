@@ -77,6 +77,11 @@ RIBBON_LOOKAHEAD = np.array([4.0, 8.0, 14.0, 22.0, 32.0, 45.0])
 # Drone bounding sphere: 280 x 280 x 160 mm (spec 3.7) -> half-diagonal 0.214 m.
 DRONE_SPHERE_M = 0.214
 
+# `interface.RaceObs.collision_episodes` counts contact EPISODES, not contact samples:
+# two contacts closer together than this are the same episode. The number is the
+# interface's own (a parked drone emits ~250 contact messages a second).
+COLLISION_GAP_S = 0.5
+
 # The drag coefficient the ON-BOARD speed estimator believes, i.e. the published fit.
 # Deliberately NOT the per-episode randomised value: the aircraft only ever knows the
 # number in plant.json, and the mismatch is exactly what domain randomisation must expose.
@@ -224,6 +229,7 @@ class VecSurrogate:
         self.t_s = np.zeros(n)
         self.t_gate = np.zeros(n)
         self.t_coll = np.full(n, 1e3)
+        self.coll_n = np.zeros(n, dtype=np.int64)
         self.ep_ret = np.zeros(n)
         self.ep_len = np.zeros(n, dtype=np.int64)
 
@@ -395,7 +401,11 @@ class VecSurrogate:
         self.t_gate[mask] = 0.0
         # A hover / no-gate start is the D6 handback: the supervisor gives control back
         # shortly after a collision episode, so t_since_collision_s must look like it.
+        # `collision_episodes` is seeded to match: a start that claims a collision just
+        # happened must also have COUNTED it, or the two halves of the same event
+        # disagree and the supervisor's two trigger branches see different worlds.
         self.t_coll[mask] = np.where(mode >= 2, rng.uniform(0.2, 2.5, m), 1e3)
+        self.coll_n[mask] = np.where(mode >= 2, 1, 0)
         self.ep_ret[mask] = 0.0
         self.ep_len[mask] = 0
         self.gyro_true[mask] = 0.0
@@ -456,6 +466,12 @@ class VecSurrogate:
         dt = self.dt_dec
         self.t_s = self.t_s + dt
         self.t_gate = np.where(advanced, 0.0, self.t_gate + dt)
+        # `interface.RaceObs`: COLLISION is a contact SAMPLE, not a crash, and the counter
+        # reports EPISODES separated by a gap > COLLISION_GAP_S -- never message counts.
+        # Every collision terminates in this surrogate, so in practice the gate is always
+        # open and the counter steps 0 -> 1 on the terminal step; the rule is written out
+        # anyway so the semantics stay right if contact ever stops being terminal.
+        self.coll_n = self.coll_n + (collided & (self.t_coll + dt > COLLISION_GAP_S))
         self.t_coll = np.where(collided, 0.0, self.t_coll + dt)
         self.ep_len = self.ep_len + 1
 
@@ -508,6 +524,11 @@ class VecSurrogate:
 
         info = dict(gates_passed=self.active.copy(),
                     collision=collided.copy(),
+                    # Post-increment, pre-reset -- the count the ENDING episode finished
+                    # with. Scoring must read it here: the observation handed back by a
+                    # terminating step belongs to the next episode, and the last
+                    # observation handed out before it predates the contact.
+                    collision_episodes=self.coll_n.copy(),
                     corridor_exit=corridor.copy(),
                     timeout=timeout.copy(),
                     finished=finished.copy(),
@@ -731,7 +752,8 @@ class VecSurrogate:
             speed=speed, speed_conf=speed_conf,
             active=self.active.copy(), n_gates=self.n_gates.copy(),
             t_gate=self.t_gate.copy(), race_t=self.t_s.copy(),
-            t_coll=self.t_coll.copy(), armed=np.ones(n, dtype=bool),
+            t_coll=self.t_coll.copy(), coll_n=self.coll_n.copy(),
+            armed=np.ones(n, dtype=bool),
             t_s=self.t_s.copy(), dt_s=self.dt_dec.copy(),
         )
 
@@ -856,7 +878,8 @@ def build_observation(f, i):
     race = interface.RaceObs(
         active_gate_index=int(f["active"][i]), n_gates_total=int(f["n_gates"][i]),
         t_since_gate_s=float(f["t_gate"][i]), race_time_s=float(f["race_t"][i]),
-        armed=bool(f["armed"][i]), t_since_collision_s=float(f["t_coll"][i]))
+        armed=bool(f["armed"][i]), t_since_collision_s=float(f["t_coll"][i]),
+        collision_episodes=int(f["coll_n"][i]))
     att = interface.Attention(
         kind=interface.Attn(int(f["att_kind"][i])),
         target_dir_body=np.array(f["att_dir"][i], dtype=float),
