@@ -126,14 +126,39 @@ one is a gauge artifact of anchoring the chain at gate 0.
 | Floor position | the map's `z` is relative to gate 0, not the floor | `vq2_floor_clear_m`, randomized per episode |
 | Ceiling | never measured | placed above the course's own high point by `vq2_headroom_m` |
 | Gate plane yaw | three exported candidates disagree | `vq2_yaw_mode='mixed'` draws among them per episode |
-| Gate tilt | shipped prior overturned, correction pending | **held vertical**; `vq2_tilt_deg` takes it later |
+| Gate tilt | magnitude confirmed 2026-08-02, axis still open | gate 9 **21–24°**, all others vertical, via `vq2_tilt_deg` |
 
 Three notes on those:
 
-**Floor.** Anchored on the course's **lowest** gate, not gate 0. Gate 0 is the map's origin
-but not its low point, and a sampled course can put a gate below it because the per-edge
-`dz` draws accumulate. Anchoring on gate 0 put gates 0.8 m underground; caught by an
-assertion, not by reading.
+**Floor. MEASURED 2026-08-02 — the bottom of gate 0's frame touches the ground.** With the
+spec-exact 2700 mm outer frame that puts gate 0's centre at **1.35 m**. Gate 0 is also the
+map's lowest gate: every other gate is at positive `z` relative to it (gate 4 is nearest at
++0.40 m, gate 7 highest at +10.95 m).
+
+The old `vq2_floor_clear_m = (2.6, 4.5)` was never a measurement. Its derivation is in the
+comment at `env.py:173` — *"floor_clear_m plus half the aperture or gates start
+underground"* — so 2.6 is just the smallest value the **spawn clamp** tolerated. Measured,
+the whole course had been floating **2.25 m** off the ground.
+
+The fix is coupled and both halves are required:
+
+```
+--env-kwarg floor_clear_m=0.5 --env-kwarg "vq2_floor_clear_m=(1.30,1.45)"
+```
+
+`floor_clear_m` (default 1.8) sets the spawn clamp to `+0.6` → 2.40 m. Correcting only
+`vq2_floor_clear_m` leaves every episode spawning at 2.40 m, **above the 2.18 m top of gate
+0's aperture**. Measured across 256 courses: current config puts gate 0's frame bottom
+2.25 m above ground; the paired fix puts it at +0.10 m with spawn altitudes from 1.10 m.
+
+Why it matters: at the true floor height, gates **0, 3, 4, 5** sit at 1.35 / 2.54 / 1.75 /
+1.99 m — all inside `clear_ref_m = 2.5`, where the clearance term is active and a floor
+strike is live. Under the old setting they sat at 3.6–5.5 m, outside it entirely. The
+opening third of the course was being flown with margin that does not exist.
+
+Anchoring stays on the *lowest sampled* gate rather than gate 0, because accumulated `dz`
+draws can put gate 4 below gate 0 in a given sample. Consequence: gate 0's centre averages
+~1.43 m rather than exactly 1.35. An 8 cm conservatism, left alone.
 
 **Yaw.** The map exports measured / grid-aligned / race-bisector azimuths that disagree,
 and perception's guidance is to treat "enter along the normal" as a *soft preference* and
@@ -144,10 +169,24 @@ always computed. The package's own `sample(randomize_yaw=True)` is **not** used:
 a uniform 0–180° plane to every refused-yaw gate, which would face gates 8/12/13 in a random
 direction every episode and make them unlearnable. Only positions come from `sample()`.
 
-**Tilt.** The shipped JSON gives gates 8 and 9 a uniform 0–20° prior. Perception has since
-overturned it — gate 9 measures **~21–24° across four sessions**, everything else vertical.
-21–24° is *outside* the shipped prior, so the current file cannot sample the truth at all;
-training on it would bake in an artifact. Held at vertical until the corrected JSON lands.
+**Tilt.** The shipped JSON gives gates 8 and 9 a uniform 0–20° prior. Perception overturned
+it and has now **confirmed** (2026-08-02) that gate 9 measures **21–24°** and every other
+gate is vertical. 21–24° is *outside* the shipped prior, so the file as shipped cannot
+sample the truth at all — but the knob does not need it:
+
+```
+--env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"
+```
+
+Verified over 256 sampled courses: gate 9's normal leans 21.02–23.99° out of horizontal,
+gate 8 exactly 0.00°, all others vertical. **Any VQ2-only run should carry this** — the
+whole point of `vq2_frac=1.0` is memorization, and memorizing a vertical gate 9 bakes in a
+specific wrong fact rather than a diffuse one.
+
+What is confirmed is the **magnitude**, not the **axis**. `vq2course._normals` models tilt
+as a *lean* (`n = [cos t·cos az, cos t·sin az, sin t]`), which the knob applies. If gate 9
+is instead rolled in-plane about its own normal, the surrogate cannot represent it at all —
+see §4 — and setting the knob does not help. Open item 1.
 
 ---
 
@@ -300,13 +339,17 @@ depend on this, but anything else importing `course` does.
 
 ## 8. Open items
 
-1. **Gate 9 tilt — lean or in-plane roll?** Decides whether a knob suffices or the
-   square-aperture collision test is required. Asked; unanswered. Tilt held vertical
-   meanwhile.
-2. **Corrected `course_vq2.json`** pending from perception (gate 9 ~21–24°, all others
-   vertical). Lands as `--env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"`, no code change.
-3. **Floor reference unmeasured.** One measurement of any gate's height above the hangar
-   floor collapses `vq2_floor_clear_m` from a randomized assumption to a fact.
+1. **Gate 9 tilt — lean or in-plane roll?** Magnitude **confirmed** 2026-08-02 (21–24°,
+   all other gates vertical); the axis is still open and decides whether the knob suffices
+   or the square-aperture collision test is required. Asked; unanswered.
+2. ~~**Corrected `course_vq2.json`** pending from perception.~~ Superseded: the knob
+   `--env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"` applies the confirmed values without
+   waiting for the file, and is verified working. The corrected JSON is still wanted so the
+   default stops disagreeing with the measurement, but it no longer blocks training.
+3. ~~**Floor reference unmeasured.**~~ **Answered 2026-08-02**: gate 0's frame bottom
+   touches the ground → centre at 1.35 m. See §3. Requires the paired `floor_clear_m`
+   change; any VQ2 run started before this is training on a course floating 2.25 m off the
+   ground, with the opening four gates outside the clearance band entirely.
 4. **Obstacles.** Spec §3.1 lists them, the surrogate has none, the map excludes them.
    `NOTES.md` mentions support columns in the hangar. Largest remaining fidelity gap.
 5. **Square-aperture collision test.** Worth doing regardless of item 1 — see §4.
