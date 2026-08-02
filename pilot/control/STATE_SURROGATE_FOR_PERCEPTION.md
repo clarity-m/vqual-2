@@ -88,24 +88,30 @@ unlimited and ranking is on time, so overfitting to it is the intent.
 
 Your measurement was a correction, not a refinement:
 
+Figures below are the **2026-08-02 corrected package**, after edge 10-11 was re-measured
+from 33.84 m to 16.49 m — which moved gates 11–16 by ~15 m and shortened the course by
+17 m. Anything derived from an earlier copy is stale.
+
 | | generator | measured |
 |---|---|---|
 | gates | 18–22 | **17** |
-| segment | 18–34 m | 8.32–33.88 m, median **15.3**, mean 16.8 |
-| turn per gate | ≤80° | mean 30.5°, max 76.4°, 5 of 15 over 40° |
+| segment | 18–34 m | 8.32–22.46 m, median **15.26**, mean 15.70 |
+| turn per gate | ≤80° | mean 32.3°, max 76.5°, 5 of 15 over 40° |
 | elevation | mean-reverting | sustained **+10.95 m climb over gates 0→7** |
-| path length | — | 268.2 m |
+| path length | — | **251.1 m** |
 
-**Ten of the sixteen race edges are shorter than the shortest segment the generator could
-produce** — its floor was 18 m even at maximum difficulty.
+**Eleven of the sixteen race edges are shorter than the shortest segment the generator
+could produce** — its floor was 18 m even at maximum difficulty. After the correction the
+generator's *longest* segment (34 m) also exceeds the real course's longest edge (22.46 m),
+so the two distributions barely overlap.
 
 The corners that decide the course pair a sharp turn with a short exit:
 
 | gate | turn | exit edge |
 |---|---|---|
-| 7 | −73.5° | 11.2 m |
-| 9 | +66.6° | 10.1 m |
-| 13 | −76.4° | 12.3 m |
+| 7 | 75.8° | 11.42 m |
+| 9 | 66.5° | 10.10 m |
+| 13 | 76.5° | 12.31 m |
 
 About one second at cruise to reacquire, align and thread. The generator drew 80° turns and
 it drew 18 m edges — never the two together.
@@ -185,37 +191,41 @@ and accepted; the sampled envelope is a lower bound.
 
 ---
 
-## 6. Gate 9 tilt — confirmed, and what is still open
+## 6. Gate 9 tilt — resolved, and the direction is what mattered
 
-**Confirmed by perception, 2026-08-02:** gate 9 measures **21–24°**, every other gate is
-vertical. This overturns the shipped JSON's uniform 0–20° prior over gates 8 *and* 9, which
-could not sample 21–24° at all.
+**The 2026-08-02 package settled this.** It is a **lean**: what was measured is
+`tilt_lean_azimuth_deg = 129.7`, the azimuth the gate's *top* leans toward, at
+`21° ± 5°` clipped to [12, 30]. Every other gate is vertical at its own measured residual
+(1.5–4.0°), which is noise rather than a prior. The lean-vs-in-plane-roll question is
+closed — a roll would have been unrepresentable here, since our collision test is radial
+and rotationally symmetric about the normal.
 
-The knob exists and is verified working — no code change needed:
+`vq2course` now reads tilt and lean straight from `pkg.sample()`. No knob.
 
-```
---env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"
-```
+### We had the direction backwards, and it was worse than a coin flip
 
-Measured over 256 sampled courses: gate 9 normal leans 21.02–23.99° out of horizontal,
-gate 8 exactly 0.00°, everything else vertical.
+Worth recording because the failure was silent. `_normals` built the elevation with a fixed
+`+sin(t)` and then flipped the whole normal to face along the race — so the lean direction
+was a function of *travel direction*, not of the measurement. Measured over 256 pool
+courses: **gate 9 leaned the wrong way in 100% of them**, mean deviation 159.5° from the
+measured azimuth. Not random — systematically inverted, because the travel orientation is
+deterministic on this course.
 
-### Still open: is it a lean or an in-plane roll?
+A magnitude without a direction is useless for planning an approach, and a *wrong*
+direction is worse than none: the policy aims at the frame rather than the aperture. Had we
+trained on the magnitude alone, gate 9 would have leaned exactly backwards every episode.
 
-The confirmation settles the **magnitude**, not the **axis**, and that distinction decides
-whether a knob is enough:
+Post-fix: 100% on the correct side, mean recovered azimuth 128.7° against the measured
+129.7°. The sign is set before the travel flip, which is safe because the top-lean vector
+`−n_z·n_horiz` is invariant under `n → −n`.
 
-* **A lean** — the plane's normal tips out of horizontal. This is what `vq2course._normals`
-  models (`n = [cos t·cos az, cos t·sin az, sin t]`) and what the knob above applies. Fully
-  representable today.
-* **An in-plane roll** — the square frame rotated about its own normal. **The surrogate
-  cannot represent this at all.** `env._gate_geometry` reduces a crossing to a radial
-  distance and compares it against half-widths, which is rotationally symmetric about the
-  normal, so rolling a square aperture is invisible to it. Fixing that means building a
-  square-aperture collision test, not setting a config value.
+### What would still help
 
-If the answer is "lean", we are done. If it is "roll", the knob is the wrong tool and the
-21–24° is currently unmodelled regardless of what we set.
+**One lateral pass at gate 9.** Every view is head-on (θ ≤ 19.2°), which is why the
+magnitude carries ±5° while the direction is solid to 0.3° across three flights. Above
+θ ≈ 45° the PnP-free edge channel measures the lean directly, with no model and no twin.
+Perception's own note: the detector's aspect-ratio filter discards the most oblique views,
+so it needs loosening for that pass.
 
 ---
 
@@ -272,10 +282,11 @@ Both are fixable, both need a retrain, neither has happened.
 
 ## 9. What would help most, ranked
 
-1. **Gate 9 — lean or in-plane roll?** See §6. Magnitude is settled; the axis is not, and
-   it decides between a config knob and a new collision test.
-2. **The corrected `course_vq2.json`.** Lands as the `--env-kwarg` in §6 with no code
-   change, so it is cheap to adopt the moment it arrives.
+1. ~~Gate 9 — lean or in-plane roll?~~ **Closed** — it is a lean, and the lean azimuth is
+   now consumed (§6). Replaced by: **one lateral pass at gate 9** (θ ≳ 45°) to pin the
+   magnitude, which is the only half still at ±5°.
+2. ~~The corrected `course_vq2.json`.~~ **Landed 2026-08-02**, including the edge 10-11
+   correction. In use.
 3. ~~One measurement of any gate's height above the hangar floor.~~ **Answered
    2026-08-02** — gate 0's frame bottom touches the ground, so its centre is at 1.35 m.
    See §5. This was the highest-value single number on the list and it changed the course

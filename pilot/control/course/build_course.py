@@ -277,7 +277,7 @@ def main():
 
     doc = {
         'schema': 'course_vq2/1',
-        'built': '2026-08-02',
+        'built': '2026-08-02 (edge 10-11 corrected)',
         'source': ('pilot/perception/map_vq2.json -- layout_directions_2026_08_02 '
                    '(positions, bearings, signed dz, gate plane angles) and '
                    'measured_pairs (distances, MAD, n). Vision + gravity + the '
@@ -351,9 +351,18 @@ def main():
             'RELATIVE MAP ONLY. There is no absolute origin and no absolute heading. '
             'A policy may not consume world coordinates; it may consume gate-relative '
             'geometry and the layout\'s shape.',
-            'Bridge edges (0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6-7, 9-10, 10-11, 11-12, '
-            '15-16) sit on a chain with no second path, so nothing in the data can '
-            'check them. Their sigma is inflated, not verified.',
+            'Bridge edges (0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6-7, 9-10, 15-16) sit on a '
+            'chain with no second path, so nothing in the data can check them. Their '
+            'sigma is inflated, not verified.',
+            'EDGE 10-11 WAS CORRECTED ON 2026-08-02: it read 33.84 m and was a real '
+            'measurement of the WRONG pair (the far detection was gate 12), taken from '
+            'a single vantage so the static-pair viewpoint referee never fired. It is '
+            '16.49 m, measured in 20260802-180755-vm-strafe-10-11 from four staged '
+            'vantages; 10-12 = 34.97 m entered as its own edge and 10-11-12 now closes '
+            'as a triangle (0.46 m over a 71 m perimeter). Course length fell from '
+            '268.22 m to 250.93 m. Any policy trained on a pre-correction copy of this '
+            'file learned a course 17 m too long with gates 11-16 ~15 m out of place. '
+            'See map_vq2.json status.CORRECTION_2026_08_02_edge_10_11.',
             '1-2 is the least-trusted edge in the map: 8.32 m on n=5 rows from one '
             'session, against a refused 34-row channel reading 13.0 m.',
             'Thin edges: 14-15 (n=9), 9-10 (n=12), 12-13 (n=14), 12-14 (n=15).',

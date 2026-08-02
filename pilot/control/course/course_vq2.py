@@ -45,6 +45,9 @@ class Course:
     positions: np.ndarray                  # (17, 3) metres, frame above
     yaw_deg: list                          # per gate: plane normal azimuth mod 180, or None
     tilt_deg: list                         # per gate: lean out of vertical, degrees
+    # per gate: azimuth (deg, same convention as bearings) the gate's TOP leans toward,
+    # or None where the gate is vertical and the direction is therefore meaningless.
+    tilt_lean_deg: list = field(default_factory=lambda: [None] * N_GATES)
     race_order: list = field(default_factory=lambda: list(range(N_GATES)))
     inner_m: float = INNER_M
     outer_m: float = OUTER_M
@@ -79,7 +82,8 @@ def load(path=None):
     yaw = [g['yaw_deg'] for g in doc['gates']]
     tilt = [(0.0 if g['tilt_from_vertical_deg'] is None
              else g['tilt_from_vertical_deg']) for g in doc['gates']]
-    return Course(positions=P, yaw_deg=yaw, tilt_deg=tilt,
+    lean = [g.get('tilt_lean_azimuth_deg') for g in doc['gates']]
+    return Course(positions=P, yaw_deg=yaw, tilt_deg=tilt, tilt_lean_deg=lean,
                   race_order=list(doc['race_order']),
                   inner_m=doc['aperture']['inner_m'],
                   outer_m=doc['aperture']['outer_m'], raw=doc,
@@ -161,8 +165,15 @@ def sample(seed=0, include_alt_hypotheses=False, randomize_yaw=True, path=None):
 
     Yaw and tilt: gate plane yaw is drawn about its measured value with its own MAD
     (and uniformly over 0-180 for the three gates the map refused, 8/12/13, when
-    randomize_yaw is on). Tilt is 0 for every gate except the two that carry an
-    unresolved tilt prior (8 and 9), which draw uniformly over 0-20 deg -- see README.
+    randomize_yaw is on).
+
+    TILT (revised 2026-08-02). Sixteen gates are MEASURED VERTICAL and draw a small
+    Gaussian about 0 with their own measured noise floor (1.5-4 deg) -- that is residual
+    measurement error, not a prior over unknown geometry. GATE 9 IS MEASURED TILTED:
+    21 deg out of vertical, drawn as a Gaussian with sigma 5 deg clipped to 12-30, with
+    its top leaning toward azimuth ~130 deg (drawn with sigma 5 deg). The previous
+    version of this file randomized gates 8 AND 9 uniformly over 0-20 deg because the
+    tilt was thought unresolved; that was a reduction artefact. See README.
     """
     doc = json.load(open(path)) if path else _doc()
     edges = doc['edges']
@@ -189,7 +200,7 @@ def sample(seed=0, include_alt_hypotheses=False, randomize_yaw=True, path=None):
     nominal = np.array([g['position_m'] for g in doc['gates']], float)
     P = nominal + (pert - base)
 
-    yaw, tilt = [], []
+    yaw, tilt, lean = [], [], []
     for g in doc['gates']:
         y = g['yaw_deg']
         if not randomize_yaw:
@@ -201,13 +212,26 @@ def sample(seed=0, include_alt_hypotheses=False, randomize_yaw=True, path=None):
         yaw.append(y)
         pr = g.get('tilt_prior')
         if pr is not None:
+            # legacy path: an unresolved gate exported as a uniform prior. No gate uses
+            # this any more -- kept so an older course_vq2.json still loads.
             tilt.append(float(rng.uniform(pr['low_deg'], pr['high_deg'])))
+            lean.append(g.get('tilt_lean_azimuth_deg'))
+            continue
+        t = g['tilt_from_vertical_deg'] or 0.0
+        s = g.get('tilt_sigma_deg') or 0.0
+        v = abs(t + rng.normal(0.0, s)) if s else t
+        clip = g.get('tilt_clip_deg')
+        if clip:
+            v = min(max(v, clip[0]), clip[1])
+        tilt.append(float(v))
+        a = g.get('tilt_lean_azimuth_deg')
+        if a is None:
+            lean.append(None)
         else:
-            t = g['tilt_from_vertical_deg'] or 0.0
-            s = g.get('tilt_sigma_deg') or 0.0
-            tilt.append(float(abs(t + rng.normal(0.0, s))) if s else float(t))
+            lean.append(float((a + rng.normal(
+                0.0, g.get('tilt_lean_azimuth_sigma_deg') or 5.0)) % 360.0))
 
-    return Course(positions=P, yaw_deg=yaw, tilt_deg=tilt,
+    return Course(positions=P, yaw_deg=yaw, tilt_deg=tilt, tilt_lean_deg=lean,
                   race_order=list(doc['race_order']),
                   inner_m=doc['aperture']['inner_m'],
                   outer_m=doc['aperture']['outer_m'], raw=doc, seed=seed,
@@ -225,6 +249,13 @@ def gate_basis(gate, course, yaw_fallback='bisector'):
     against the race direction). `right` is the horizontal in-plane axis, `up_in_plane`
     the other in-plane axis, tilted out of world-up by the gate's tilt.
 
+    TILT DIRECTION. Where a gate carries a measured lean azimuth (only gate 9 does), the
+    sign of the normal's elevation is set so that the gate's TOP leans toward that
+    azimuth. The lean direction is invariant under normal -> -normal (the top-lean vector
+    is -n_z * n_horiz, and both factors flip together), so this is well defined even
+    though the normal's own sign is not. Without it a caller gets the magnitude of the
+    lean but a coin flip for which way it leans -- useless for computing an approach.
+
     yaw_fallback: what to do at a gate whose yaw the map refused (8, 12, 13).
       'bisector' -- face the racing line (bisector of the in/out legs). An ASSUMPTION.
       'raise'    -- refuse to guess.
@@ -236,7 +267,14 @@ def gate_basis(gate, course, yaw_fallback='bisector'):
         y = course.raw['gates'][gate]['yaw_race_bisector_deg']
     t = math.radians(course.tilt_deg[gate] or 0.0)
     a = math.radians(y)
-    n = np.array([math.cos(t) * math.cos(a), math.cos(t) * math.sin(a), math.sin(t)])
+    s = 1.0
+    lean = course.tilt_lean_deg[gate] if gate < len(course.tilt_lean_deg) else None
+    if lean is not None:
+        c = math.cos(a - math.radians(lean))
+        if abs(c) > 1e-6:
+            s = -1.0 if c > 0 else 1.0
+    n = np.array([math.cos(t) * math.cos(a), math.cos(t) * math.sin(a),
+                  s * math.sin(t)])
     r = np.array([-math.sin(a), math.cos(a), 0.0])
     u = np.cross(n, r)
     return n, r, u / np.linalg.norm(u)

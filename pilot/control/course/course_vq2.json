@@ -1,6 +1,6 @@
 {
  "schema": "course_vq2/1",
- "built": "2026-08-02",
+ "built": "2026-08-02 (edge 10-11 corrected)",
  "source": "pilot/perception/map_vq2.json -- layout_directions_2026_08_02 (positions, bearings, signed dz, gate plane angles) and measured_pairs (distances, MAD, n). Vision + gravity + the skylight compass only; no pose stream, no sim ground truth.",
  "frame": {
   "kind": "RELATIVE. No absolute origin or heading w.r.t. the sim world.",
@@ -58,14 +58,28 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -13.76,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 7.72,
+   "tilt_near_rows_median_deg": 4.62,
+   "tilt_edge_channel_deg": 1.19,
+   "tilt_n_near_rows": 337,
+   "tilt_n_sessions": 5,
+   "tilt_per_session_deg": [
+    4.62,
+    6.17,
+    3.95,
+    8.66,
+    3.76
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 2.3,
-   "tilt_n": 680,
-   "tilt_median_deg": 2.3,
-   "tilt_p90_deg": 7.78,
-   "tilt_frac_over_10deg": 0.051,
-   "tilt_median_oblique_views_deg": 3.91,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 4.6 deg over 5 session(s) -- the estimator noise floor, and it FALLS from 7.7 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 1,
@@ -75,8 +89,8 @@
     3.25
    ],
    "sigma_xy_m": 0.516,
-   "sigma_x_m": 0.544,
-   "sigma_y_m": 0.487,
+   "sigma_x_m": 0.546,
+   "sigma_y_m": 0.485,
    "sigma_z_m": 0.225,
    "sigma_xy_local_m": 0.516,
    "sigma_z_local_m": 0.225,
@@ -87,14 +101,27 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -36.76,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 6.29,
+   "tilt_near_rows_median_deg": 4.33,
+   "tilt_edge_channel_deg": 1.04,
+   "tilt_n_near_rows": 163,
+   "tilt_n_sessions": 4,
+   "tilt_per_session_deg": [
+    11.87,
+    5.01,
+    3.64,
+    1.18
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.1,
-   "tilt_n": 770,
-   "tilt_median_deg": 3.1,
-   "tilt_p90_deg": 8.51,
-   "tilt_frac_over_10deg": 0.045,
-   "tilt_median_oblique_views_deg": 4.41,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 4.3 deg over 4 session(s) -- the estimator noise floor, and it FALLS from 6.3 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 2,
@@ -103,12 +130,12 @@
     14.98,
     2.63
    ],
-   "sigma_xy_m": 1.031,
-   "sigma_x_m": 1.23,
-   "sigma_y_m": 0.782,
-   "sigma_z_m": 0.496,
+   "sigma_xy_m": 1.032,
+   "sigma_x_m": 1.237,
+   "sigma_y_m": 0.777,
+   "sigma_z_m": 0.491,
    "sigma_xy_local_m": 0.894,
-   "sigma_z_local_m": 0.439,
+   "sigma_z_local_m": 0.436,
    "yaw_race_bisector_deg": 3.71,
    "yaw_deg": 165.64,
    "yaw_mad_deg": 12.88,
@@ -116,14 +143,26 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -21.75,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 5.53,
+   "tilt_near_rows_median_deg": 2.67,
+   "tilt_edge_channel_deg": 1.28,
+   "tilt_n_near_rows": 113,
+   "tilt_n_sessions": 3,
+   "tilt_per_session_deg": [
+    2.16,
+    2.67,
+    4.18
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.08,
-   "tilt_n": 391,
-   "tilt_median_deg": 3.08,
-   "tilt_p90_deg": 6.67,
-   "tilt_frac_over_10deg": 0.026,
-   "tilt_median_oblique_views_deg": 3.73,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 2.7,
+   "tilt_clip_deg": [
+    0.0,
+    8.1
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 2.7 deg over 3 session(s) -- the estimator noise floor, and it FALLS from 5.5 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 3,
@@ -132,12 +171,12 @@
     8.02,
     1.19
    ],
-   "sigma_xy_m": 1.155,
-   "sigma_x_m": 1.351,
-   "sigma_y_m": 0.917,
-   "sigma_z_m": 0.544,
-   "sigma_xy_local_m": 0.523,
-   "sigma_z_local_m": 0.226,
+   "sigma_xy_m": 1.16,
+   "sigma_x_m": 1.365,
+   "sigma_y_m": 0.909,
+   "sigma_z_m": 0.54,
+   "sigma_xy_local_m": 0.519,
+   "sigma_z_local_m": 0.224,
    "yaw_race_bisector_deg": 36.11,
    "yaw_deg": 36.35,
    "yaw_mad_deg": 14.48,
@@ -145,14 +184,25 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": 28.96,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 10.62,
+   "tilt_near_rows_median_deg": 2.78,
+   "tilt_edge_channel_deg": 1.73,
+   "tilt_n_near_rows": 185,
+   "tilt_n_sessions": 2,
+   "tilt_per_session_deg": [
+    3.06,
+    2.49
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.73,
-   "tilt_n": 435,
-   "tilt_median_deg": 3.73,
-   "tilt_p90_deg": 9.72,
-   "tilt_frac_over_10deg": 0.076,
-   "tilt_median_oblique_views_deg": 9.03,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 2.8,
+   "tilt_clip_deg": [
+    0.0,
+    8.4
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 2.8 deg over 2 session(s) -- the estimator noise floor, and it FALLS from 10.6 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 4,
@@ -161,12 +211,12 @@
     -6.03,
     0.4
    ],
-   "sigma_xy_m": 1.327,
-   "sigma_x_m": 1.497,
-   "sigma_y_m": 1.131,
-   "sigma_z_m": 0.587,
-   "sigma_xy_local_m": 0.646,
-   "sigma_z_local_m": 0.224,
+   "sigma_xy_m": 1.332,
+   "sigma_x_m": 1.513,
+   "sigma_y_m": 1.121,
+   "sigma_z_m": 0.582,
+   "sigma_xy_local_m": 0.647,
+   "sigma_z_local_m": 0.225,
    "yaw_race_bisector_deg": 28.39,
    "yaw_deg": 39.9,
    "yaw_mad_deg": 10.45,
@@ -174,14 +224,25 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": 32.51,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 6.46,
+   "tilt_near_rows_median_deg": 3.5,
+   "tilt_edge_channel_deg": 0.69,
+   "tilt_n_near_rows": 30,
+   "tilt_n_sessions": 2,
+   "tilt_per_session_deg": [
+    3.87,
+    3.12
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 2.97,
-   "tilt_n": 691,
-   "tilt_median_deg": 2.97,
-   "tilt_p90_deg": 7.0,
-   "tilt_frac_over_10deg": 0.036,
-   "tilt_median_oblique_views_deg": 7.12,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 3.5,
+   "tilt_clip_deg": [
+    0.0,
+    10.5
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 3.5 deg over 2 session(s) -- the estimator noise floor, and it FALLS from 6.5 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 5,
@@ -190,12 +251,12 @@
     -12.34,
     0.64
    ],
-   "sigma_xy_m": 1.432,
-   "sigma_x_m": 1.61,
-   "sigma_y_m": 1.227,
-   "sigma_z_m": 0.628,
-   "sigma_xy_local_m": 0.54,
-   "sigma_z_local_m": 0.224,
+   "sigma_xy_m": 1.438,
+   "sigma_x_m": 1.623,
+   "sigma_y_m": 1.226,
+   "sigma_z_m": 0.625,
+   "sigma_xy_local_m": 0.539,
+   "sigma_z_local_m": 0.226,
    "yaw_race_bisector_deg": 4.35,
    "yaw_deg": 173.72,
    "yaw_mad_deg": 11.31,
@@ -203,14 +264,25 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -13.67,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 5.81,
+   "tilt_near_rows_median_deg": 4.75,
+   "tilt_edge_channel_deg": 1.25,
+   "tilt_n_near_rows": 51,
+   "tilt_n_sessions": 2,
+   "tilt_per_session_deg": [
+    2.17,
+    7.32
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.5,
-   "tilt_n": 1083,
-   "tilt_median_deg": 3.5,
-   "tilt_p90_deg": 7.57,
-   "tilt_frac_over_10deg": 0.026,
-   "tilt_median_oblique_views_deg": 5.91,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 4.7 deg over 2 session(s) -- the estimator noise floor, and it FALLS from 5.8 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 6,
@@ -221,10 +293,10 @@
    ],
    "sigma_xy_m": 1.513,
    "sigma_x_m": 1.724,
-   "sigma_y_m": 1.269,
-   "sigma_z_m": 0.666,
-   "sigma_xy_local_m": 0.484,
-   "sigma_z_local_m": 0.223,
+   "sigma_y_m": 1.267,
+   "sigma_z_m": 0.661,
+   "sigma_xy_local_m": 0.481,
+   "sigma_z_local_m": 0.227,
    "yaw_race_bisector_deg": 172.68,
    "yaw_deg": 168.97,
    "yaw_mad_deg": 8.56,
@@ -232,14 +304,26 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -18.42,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 5.58,
+   "tilt_near_rows_median_deg": 4.65,
+   "tilt_edge_channel_deg": 0.78,
+   "tilt_n_near_rows": 142,
+   "tilt_n_sessions": 3,
+   "tilt_per_session_deg": [
+    4.65,
+    1.81,
+    4.8
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 2.65,
-   "tilt_n": 933,
-   "tilt_median_deg": 2.65,
-   "tilt_p90_deg": 8.77,
-   "tilt_frac_over_10deg": 0.068,
-   "tilt_median_oblique_views_deg": 6.25,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 4.6 deg over 3 session(s) -- the estimator noise floor, and it FALLS from 5.6 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 7,
@@ -248,12 +332,12 @@
     -8.44,
     10.95
    ],
-   "sigma_xy_m": 1.641,
-   "sigma_x_m": 1.896,
-   "sigma_y_m": 1.337,
-   "sigma_z_m": 0.729,
-   "sigma_xy_local_m": 0.63,
-   "sigma_z_local_m": 0.292,
+   "sigma_xy_m": 1.637,
+   "sigma_x_m": 1.888,
+   "sigma_y_m": 1.34,
+   "sigma_z_m": 0.724,
+   "sigma_xy_local_m": 0.629,
+   "sigma_z_local_m": 0.293,
    "yaw_race_bisector_deg": 136.15,
    "yaw_deg": 87.89,
    "yaw_mad_deg": 6.69,
@@ -261,14 +345,28 @@
    "yaw_grid_bin_deg": 97.39,
    "yaw_grid_dev_deg": -9.5,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 5.01,
+   "tilt_near_rows_median_deg": 10.35,
+   "tilt_edge_channel_deg": 2.93,
+   "tilt_n_near_rows": 232,
+   "tilt_n_sessions": 5,
+   "tilt_per_session_deg": [
+    10.35,
+    3.3,
+    42.46,
+    10.39,
+    1.85
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 2.9,
-   "tilt_n": 649,
-   "tilt_median_deg": 2.9,
-   "tilt_p90_deg": 10.31,
-   "tilt_frac_over_10deg": 0.114,
-   "tilt_median_oblique_views_deg": 4.55,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 10.4 deg over 5 session(s) -- the estimator noise floor, and it FALLS from 5.0 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 8,
@@ -277,11 +375,11 @@
     2.62,
     10.14
    ],
-   "sigma_xy_m": 1.671,
-   "sigma_x_m": 1.912,
-   "sigma_y_m": 1.39,
-   "sigma_z_m": 0.741,
-   "sigma_xy_local_m": 0.314,
+   "sigma_xy_m": 1.667,
+   "sigma_x_m": 1.904,
+   "sigma_y_m": 1.391,
+   "sigma_z_m": 0.736,
+   "sigma_xy_local_m": 0.316,
    "sigma_z_local_m": 0.123,
    "yaw_race_bisector_deg": 108.54,
    "yaw_deg": null,
@@ -290,19 +388,27 @@
    "yaw_grid_bin_deg": null,
    "yaw_grid_dev_deg": null,
    "yaw_status": "REFUSED by the map (IPPE head-on valley, MAD > 20 deg) -- use the bisector or randomize",
-   "tilt_from_vertical_deg": null,
-   "tilt_sigma_deg": null,
-   "tilt_n": 1094,
-   "tilt_median_deg": 4.78,
-   "tilt_p90_deg": 12.89,
-   "tilt_frac_over_10deg": 0.274,
-   "tilt_median_oblique_views_deg": 3.86,
-   "tilt_status": "UNRESOLVED -- randomize. data outlier: 27% of rows lean >10 deg, p90 12.9 deg -- the only gate that stands out, but its sessions disagree",
-   "tilt_prior": {
-    "kind": "uniform",
-    "low_deg": 0.0,
-    "high_deg": 20.0
-   }
+   "tilt_median_all_rows_deg": 11.26,
+   "tilt_near_rows_median_deg": 3.6,
+   "tilt_edge_channel_deg": 1.91,
+   "tilt_n_near_rows": 185,
+   "tilt_n_sessions": 4,
+   "tilt_per_session_deg": [
+    2.84,
+    7.65,
+    2.11,
+    4.36
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.6,
+   "tilt_clip_deg": [
+    0.0,
+    10.8
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 3.6 deg over 4 session(s) -- the estimator noise floor, and it FALLS from 11.3 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 9,
@@ -311,11 +417,11 @@
     15.35,
     9.7
    ],
-   "sigma_xy_m": 1.734,
-   "sigma_x_m": 2.003,
-   "sigma_y_m": 1.414,
-   "sigma_z_m": 0.741,
-   "sigma_xy_local_m": 0.524,
+   "sigma_xy_m": 1.729,
+   "sigma_x_m": 1.992,
+   "sigma_y_m": 1.417,
+   "sigma_z_m": 0.735,
+   "sigma_xy_local_m": 0.53,
    "sigma_z_local_m": 0.122,
    "yaw_race_bisector_deg": 150.98,
    "yaw_deg": 132.42,
@@ -324,19 +430,37 @@
    "yaw_grid_bin_deg": 97.39,
    "yaw_grid_dev_deg": 35.03,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
-   "tilt_from_vertical_deg": null,
-   "tilt_sigma_deg": null,
-   "tilt_n": 382,
-   "tilt_median_deg": 4.03,
-   "tilt_p90_deg": 9.97,
-   "tilt_frac_over_10deg": 0.099,
-   "tilt_median_oblique_views_deg": 3.39,
-   "tilt_status": "UNRESOLVED -- randomize. pilot's visual identification of the ~15-20 deg tilted gate in gate8.png; our rows read 4.0 deg median and do NOT confirm it",
-   "tilt_prior": {
-    "kind": "uniform",
-    "low_deg": 0.0,
-    "high_deg": 20.0
-   }
+   "tilt_median_all_rows_deg": 14.63,
+   "tilt_near_rows_median_deg": 22.49,
+   "tilt_edge_channel_deg": 4.22,
+   "tilt_n_near_rows": 130,
+   "tilt_n_sessions": 3,
+   "tilt_per_session_deg": [
+    24.92,
+    22.49,
+    20.64
+   ],
+   "tilt_lean_azimuth_deg": 129.7,
+   "tilt_lean_azimuth_sigma_deg": 5.0,
+   "tilt_lean_unit_xy": [
+    -0.639,
+    0.769
+   ],
+   "tilt_from_vertical_deg": 21.0,
+   "tilt_sigma_deg": 5.0,
+   "tilt_clip_deg": [
+    12.0,
+    30.0
+   ],
+   "tilt_channels_deg": {
+    "pnp_head_on_rows": 22.5,
+    "pnp_resolved_3d_axis": 23.1,
+    "screenshot_gate8png_edge_on_pnp_free": 19.7,
+    "edge_slope_fit_pnp_free_weak_lower_bound": 13.2
+   },
+   "tilt_limited_by": "OBLIQUITY COVERAGE, not row count: every gate-9 row is a head-on view (theta <= 19.2 deg, no strafe session passes gate 9). One lateral pass at gate 9 would measure this directly with the PnP-free edge channel and remove the model dependence entirely.",
+   "tilt_lean_concentration_R": 0.966,
+   "tilt_status": "TILTED (measured). Magnitude 21 +- 5 deg, clipped to 12-30 -- WIDE ON PURPOSE: three channels give 13.2 / 19.7 / 21-25 deg and none is in its ideal regime, because every gate-9 row is a head-on view (theta <= 19 deg). None supports a vertical gate. DIRECTION is the better-determined half: the gate TOP leans toward azimuth 130 deg in the export frame (unit xy [-0.639, 0.769]) -- mostly +y, the Station 21-29 column row, with a component along the race direction. Twin-resolved (the selected branch clusters to 2.7 deg residual, the mirror branch to 24.1 deg), three flights agree to 0.3 deg, and it matches the map's independent plane azimuth 132.4 deg to 2.7 deg. Azimuth inherits the frame's k*90 ambiguity w.r.t. the sim world but is exact relative to the course. Per-session head-on PnP medians: 24.9, 22.5, 20.6 deg."
   },
   {
    "id": 10,
@@ -345,99 +469,136 @@
     14.6,
     8.78
    ],
-   "sigma_xy_m": 1.926,
-   "sigma_x_m": 2.312,
-   "sigma_y_m": 1.44,
-   "sigma_z_m": 0.86,
-   "sigma_xy_local_m": 0.853,
-   "sigma_z_local_m": 0.441,
-   "yaw_race_bisector_deg": 14.7,
+   "sigma_xy_m": 1.925,
+   "sigma_x_m": 2.305,
+   "sigma_y_m": 1.448,
+   "sigma_z_m": 0.853,
+   "sigma_xy_local_m": 0.852,
+   "sigma_z_local_m": 0.437,
+   "yaw_race_bisector_deg": 7.88,
    "yaw_deg": 11.36,
    "yaw_mad_deg": 2.42,
    "yaw_n": 151,
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": 3.97,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 3.71,
+   "tilt_near_rows_median_deg": 3.68,
+   "tilt_edge_channel_deg": 1.36,
+   "tilt_n_near_rows": 147,
+   "tilt_n_sessions": 4,
+   "tilt_per_session_deg": [
+    4.28,
+    2.03,
+    3.08,
+    5.68
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 2.0,
-   "tilt_n": 151,
-   "tilt_median_deg": 1.38,
-   "tilt_p90_deg": 4.15,
-   "tilt_frac_over_10deg": 0.013,
-   "tilt_median_oblique_views_deg": null,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 3.7,
+   "tilt_clip_deg": [
+    0.0,
+    11.1
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 3.7 deg over 4 session(s) -- the estimator noise floor, and it FALLS from 3.7 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 11,
    "position_m": [
-    -152.8,
-    0.23,
-    7.03
+    -138.32,
+    11.32,
+    5.06
    ],
-   "sigma_xy_m": 2.107,
-   "sigma_x_m": 2.454,
-   "sigma_y_m": 1.69,
-   "sigma_z_m": 0.912,
-   "sigma_xy_local_m": 0.855,
-   "sigma_z_local_m": 0.293,
-   "yaw_race_bisector_deg": 31.38,
+   "sigma_xy_m": 1.975,
+   "sigma_x_m": 2.35,
+   "sigma_y_m": 1.508,
+   "sigma_z_m": 0.868,
+   "sigma_xy_local_m": 0.429,
+   "sigma_z_local_m": 0.16,
+   "yaw_race_bisector_deg": 24.16,
    "yaw_deg": 51.46,
    "yaw_mad_deg": 10.89,
    "yaw_n": 527,
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": 44.07,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 2.59,
+   "tilt_near_rows_median_deg": 1.76,
+   "tilt_edge_channel_deg": 0.79,
+   "tilt_n_near_rows": 87,
+   "tilt_n_sessions": 3,
+   "tilt_per_session_deg": [
+    1.63,
+    1.76,
+    2.43
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.01,
-   "tilt_n": 527,
-   "tilt_median_deg": 3.01,
-   "tilt_p90_deg": 6.07,
-   "tilt_frac_over_10deg": 0.017,
-   "tilt_median_oblique_views_deg": 4.03,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 1.8,
+   "tilt_clip_deg": [
+    0.0,
+    5.4
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 1.8 deg over 3 session(s) -- the estimator noise floor, and it FALLS from 2.6 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 12,
    "position_m": [
-    -168.38,
-    -11.78,
-    9.35
+    -153.83,
+    -0.3,
+    7.11
    ],
-   "sigma_xy_m": 2.211,
-   "sigma_x_m": 2.557,
-   "sigma_y_m": 1.799,
-   "sigma_z_m": 0.962,
-   "sigma_xy_local_m": 0.674,
-   "sigma_z_local_m": 0.295,
-   "yaw_race_bisector_deg": 39.37,
+   "sigma_xy_m": 1.996,
+   "sigma_x_m": 2.359,
+   "sigma_y_m": 1.551,
+   "sigma_z_m": 0.869,
+   "sigma_xy_local_m": 0.456,
+   "sigma_z_local_m": 0.159,
+   "yaw_race_bisector_deg": 38.99,
    "yaw_deg": null,
    "yaw_mad_deg": null,
    "yaw_n": 0,
    "yaw_grid_bin_deg": null,
    "yaw_grid_dev_deg": null,
    "yaw_status": "REFUSED by the map (IPPE head-on valley, MAD > 20 deg) -- use the bisector or randomize",
+   "tilt_median_all_rows_deg": 3.39,
+   "tilt_near_rows_median_deg": 3.55,
+   "tilt_edge_channel_deg": 1.18,
+   "tilt_n_near_rows": 142,
+   "tilt_n_sessions": 3,
+   "tilt_per_session_deg": [
+    6.43,
+    3.55,
+    1.0
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.99,
-   "tilt_n": 1817,
-   "tilt_median_deg": 3.99,
-   "tilt_p90_deg": 9.2,
-   "tilt_frac_over_10deg": 0.081,
-   "tilt_median_oblique_views_deg": 4.08,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 3.5,
+   "tilt_clip_deg": [
+    0.0,
+    10.5
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 3.5 deg over 3 session(s) -- the estimator noise floor, and it FALLS from 3.4 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 13,
    "position_m": [
-    -178.35,
-    -20.48,
-    10.12
+    -163.8,
+    -9.01,
+    7.89
    ],
-   "sigma_xy_m": 2.254,
-   "sigma_x_m": 2.597,
-   "sigma_y_m": 1.849,
-   "sigma_z_m": 0.981,
-   "sigma_xy_local_m": 0.443,
-   "sigma_z_local_m": 0.184,
+   "sigma_xy_m": 2.047,
+   "sigma_x_m": 2.405,
+   "sigma_y_m": 1.611,
+   "sigma_z_m": 0.888,
+   "sigma_xy_local_m": 0.444,
+   "sigma_z_local_m": 0.185,
    "yaw_race_bisector_deg": 2.91,
    "yaw_deg": null,
    "yaw_mad_deg": null,
@@ -445,57 +606,78 @@
    "yaw_grid_bin_deg": null,
    "yaw_grid_dev_deg": null,
    "yaw_status": "REFUSED by the map (IPPE head-on valley, MAD > 20 deg) -- use the bisector or randomize",
+   "tilt_median_all_rows_deg": 3.01,
+   "tilt_near_rows_median_deg": 7.56,
+   "tilt_edge_channel_deg": 1.74,
+   "tilt_n_near_rows": 104,
+   "tilt_n_sessions": 2,
+   "tilt_per_session_deg": [
+    2.69,
+    12.42
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.12,
-   "tilt_n": 528,
-   "tilt_median_deg": 3.12,
-   "tilt_p90_deg": 6.65,
-   "tilt_frac_over_10deg": 0.023,
-   "tilt_median_oblique_views_deg": 3.07,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 7.6 deg over 2 session(s) -- the estimator noise floor, and it FALLS from 3.0 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 14,
    "position_m": [
-    -188.41,
-    -13.36,
-    10.22
+    -173.86,
+    -1.88,
+    7.99
    ],
-   "sigma_xy_m": 2.252,
-   "sigma_x_m": 2.594,
-   "sigma_y_m": 1.848,
-   "sigma_z_m": 0.978,
-   "sigma_xy_local_m": 0.333,
-   "sigma_z_local_m": 0.127,
-   "yaw_race_bisector_deg": 135.38,
+   "sigma_xy_m": 2.042,
+   "sigma_x_m": 2.399,
+   "sigma_y_m": 1.609,
+   "sigma_z_m": 0.884,
+   "sigma_xy_local_m": 0.334,
+   "sigma_z_local_m": 0.128,
+   "yaw_race_bisector_deg": 135.36,
    "yaw_deg": 134.58,
    "yaw_mad_deg": 16.99,
    "yaw_n": 56,
    "yaw_grid_bin_deg": 97.39,
    "yaw_grid_dev_deg": 37.19,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 2.79,
+   "tilt_near_rows_median_deg": 1.48,
+   "tilt_edge_channel_deg": 0.59,
+   "tilt_n_near_rows": 19,
+   "tilt_n_sessions": 1,
+   "tilt_per_session_deg": [
+    1.48
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 3.36,
-   "tilt_n": 56,
-   "tilt_median_deg": 3.36,
-   "tilt_p90_deg": 7.11,
-   "tilt_frac_over_10deg": 0.0,
-   "tilt_median_oblique_views_deg": 0.94,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 1.5,
+   "tilt_clip_deg": [
+    0.0,
+    4.5
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 1.5 deg over 1 session(s) -- the estimator noise floor, and it FALLS from 2.8 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 15,
    "position_m": [
-    -196.45,
-    -2.31,
-    8.37
+    -181.9,
+    9.17,
+    6.13
    ],
-   "sigma_xy_m": 2.279,
-   "sigma_x_m": 2.615,
-   "sigma_y_m": 1.884,
-   "sigma_z_m": 0.989,
-   "sigma_xy_local_m": 0.425,
-   "sigma_z_local_m": 0.168,
+   "sigma_xy_m": 2.069,
+   "sigma_x_m": 2.421,
+   "sigma_y_m": 1.645,
+   "sigma_z_m": 0.896,
+   "sigma_xy_local_m": 0.427,
+   "sigma_z_local_m": 0.167,
    "yaw_race_bisector_deg": 147.7,
    "yaw_deg": 170.99,
    "yaw_mad_deg": 13.12,
@@ -503,28 +685,38 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -16.4,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 3.89,
+   "tilt_near_rows_median_deg": 2.83,
+   "tilt_edge_channel_deg": 1.21,
+   "tilt_n_near_rows": 17,
+   "tilt_n_sessions": 1,
+   "tilt_per_session_deg": [
+    2.83
+   ],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 4.64,
-   "tilt_n": 301,
-   "tilt_median_deg": 4.64,
-   "tilt_p90_deg": 7.0,
-   "tilt_frac_over_10deg": 0.043,
-   "tilt_median_oblique_views_deg": 5.11,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 2.8,
+   "tilt_clip_deg": [
+    0.0,
+    8.4
+   ],
+   "tilt_status": "VERTICAL (measured). Near-row (>= 60 px) tilt 2.8 deg over 1 session(s) -- the estimator noise floor, and it FALLS from 3.9 deg on all rows as views get closer, which is what noise does and a real tilt does not. sigma is that residual, not a prior."
   },
   {
    "id": 16,
    "position_m": [
-    -217.1,
-    1.57,
-    7.78
+    -202.55,
+    13.05,
+    5.54
    ],
-   "sigma_xy_m": 2.385,
-   "sigma_x_m": 2.738,
-   "sigma_y_m": 1.97,
-   "sigma_z_m": 1.034,
-   "sigma_xy_local_m": 0.685,
-   "sigma_z_local_m": 0.295,
+   "sigma_xy_m": 2.182,
+   "sigma_x_m": 2.545,
+   "sigma_y_m": 1.746,
+   "sigma_z_m": 0.943,
+   "sigma_xy_local_m": 0.681,
+   "sigma_z_local_m": 0.292,
    "yaw_race_bisector_deg": 169.36,
    "yaw_deg": 174.66,
    "yaw_mad_deg": 17.85,
@@ -532,14 +724,22 @@
    "yaw_grid_bin_deg": 7.39,
    "yaw_grid_dev_deg": -12.73,
    "yaw_status": "measured (PnP normal + skylight compass, mod 180)",
+   "tilt_median_all_rows_deg": 7.85,
+   "tilt_near_rows_median_deg": null,
+   "tilt_edge_channel_deg": null,
+   "tilt_n_near_rows": 0,
+   "tilt_n_sessions": 0,
+   "tilt_per_session_deg": [],
+   "tilt_lean_azimuth_deg": null,
+   "tilt_lean_azimuth_sigma_deg": null,
+   "tilt_lean_unit_xy": null,
    "tilt_from_vertical_deg": 0.0,
-   "tilt_sigma_deg": 4.93,
-   "tilt_n": 123,
-   "tilt_median_deg": 4.93,
-   "tilt_p90_deg": 8.98,
-   "tilt_frac_over_10deg": 0.057,
-   "tilt_median_oblique_views_deg": 3.59,
-   "tilt_status": "vertical (measured)"
+   "tilt_sigma_deg": 4.0,
+   "tilt_clip_deg": [
+    0.0,
+    12.0
+   ],
+   "tilt_status": "vertical -- assumed: no rows at >= 60 px, so the quality-stratified test could not run here. sigma is the population noise floor."
   }
  ],
  "edges": [
@@ -822,25 +1022,52 @@
     10,
     11
    ],
-   "d_horiz_m": 33.835,
-   "d_3d_m": 33.88,
-   "mad_m": 0.415,
-   "n_rows": 76,
+   "d_horiz_m": 16.49,
+   "d_3d_m": 16.91,
+   "mad_m": 0.28,
+   "n_rows": 96,
    "n_sessions": 1,
-   "bearing_deg": 205.14,
-   "bearing_row_mad_deg": 0.28,
+   "bearing_deg": 191.57,
+   "bearing_row_mad_deg": 0.26,
+   "bearing_cross_session_spread_deg": null,
+   "dz_up_m": -3.66,
+   "dz_mad_m": 0.1,
+   "dz_n": 96,
+   "bridge": false,
+   "sigma_d_m": 0.52,
+   "sigma_bearing_deg": 1.56,
+   "sigma_dz_m": 0.195,
+   "flags": [
+    "single-session"
+   ],
+   "loo_d_err_m": -0.163,
+   "loo_bearing_err_deg": 1.495
+  },
+  {
+   "pair": [
+    10,
+    12
+   ],
+   "d_horiz_m": 34.97,
+   "d_3d_m": 35.01,
+   "mad_m": 0.5,
+   "n_rows": 156,
+   "n_sessions": 1,
+   "bearing_deg": 205.16,
+   "bearing_row_mad_deg": 0.27,
    "bearing_cross_session_spread_deg": null,
    "dz_up_m": -1.75,
    "dz_mad_m": 0.08,
-   "dz_n": 76,
-   "bridge": true,
-   "sigma_d_m": 0.78,
+   "dz_n": 75,
+   "bridge": false,
+   "sigma_d_m": 0.52,
    "sigma_bearing_deg": 1.56,
-   "sigma_dz_m": 0.293,
+   "sigma_dz_m": 0.195,
    "flags": [
-    "single-session",
-    "bridge(no loop check)"
-   ]
+    "single-session"
+   ],
+   "loo_d_err_m": 0.266,
+   "loo_bearing_err_deg": -0.609
   },
   {
    "pair": [
@@ -858,14 +1085,15 @@
    "dz_up_m": 2.32,
    "dz_mad_m": 0.14,
    "dz_n": 28,
-   "bridge": true,
-   "sigma_d_m": 0.78,
+   "bridge": false,
+   "sigma_d_m": 0.52,
    "sigma_bearing_deg": 1.56,
-   "sigma_dz_m": 0.293,
+   "sigma_dz_m": 0.195,
    "flags": [
-    "single-session",
-    "bridge(no loop check)"
-   ]
+    "single-session"
+   ],
+   "loo_d_err_m": -0.336,
+   "loo_bearing_err_deg": 0.915
   },
   {
    "pair": [
@@ -1052,13 +1280,15 @@
   ]
  },
  "structure": {
-  "gates_are_vertical": "Measured: every gate reads a median side-edge lean of 1.3-4.9 deg out of gravity-vertical, which is the noise floor of the estimator, and nothing rises with viewing obliquity the way a real tilt must. Treat the course as vertical planes. This is a usable PRIOR for a pose estimator: it resolves the two-fold IPPE tilt ambiguity, which is exactly the ambiguity that made gate YAW unmeasurable at 8/12/13.",
-  "tilted_gate": "ONE EXCEPTION EXISTS AND WE COULD NOT NAIL WHICH GATE IT IS. An independent sim screenshot (gate8.png) shows a gate edge-on leaning 19.7 deg off vertical -- unambiguous, and 5x the 3.9 deg of perspective lean expected for a true vertical at that image position. The pilot first read it as gate 8, then as gate 9. Our five mapped sessions do not confirm either: gate 8 has by far the heaviest lean tail (27% of rows over 10 deg, p90 12.9 deg, against 1-11% and p90 4-10 deg for every other gate) but its own sessions disagree (median 10.5 deg on 121520, 3.1 deg on 202110); gate 9 reads 4.0 deg median, 10% over 10 deg -- unremarkable. Because a lean-BACK tilt is invisible head-on and our rows are mostly approach views, absence of evidence here is weak evidence of absence. RECOMMENDED HANDLING: randomize the tilt of gates 8 AND 9 over 0-20 deg (course_vq2.sample does this) rather than committing to either.",
-  "gate_faces_and_the_grid": "The pilot reports that gate faces are parallel to the hangar columns, i.e. gate yaw is quantized to the ceiling/floor/column grid (which the skylight compass reads, and which the station rows share within sketch accuracy). OUR MEASURED YAWS DO NOT REPRODUCE THAT: the 14 accepted plane azimuths, taken mod 90, spread over 11-88 deg with no cluster at the grid bin (deviations -37 to +44 deg). They agree far better with the RACE-LINE BISECTOR (median |error| 10.9 deg, and under 6 deg for gates 1, 3, 6, 10, 14, 16). Both facts are exported per gate -- yaw_deg, yaw_grid_bin_deg + yaw_grid_dev_deg, yaw_race_bisector_deg -- and the conflict is flagged rather than smoothed. Given how noisy IPPE azimuth proved to be on this course, the visual claim may well be right and our azimuths wrong; do not build anything that needs an exact gate yaw."
+  "gates_are_vertical": "SIXTEEN of the seventeen gates are vertical planes: on close views (>= 60 px) they read 1.5-4.0 deg out of gravity-vertical, and that reading FALLS as views get closer, which is the signature of estimator noise. They are exported as tilt 0 with that residual as sigma. This is a usable PRIOR for a pose estimator: it resolves the two-fold IPPE tilt ambiguity, the same ambiguity that made gate YAW unmeasurable at 8/12/13.",
+  "tilted_gate": "GATE 9 IS TILTED. DIRECTION is solid: the gate top leans toward azimuth 130 deg in the export frame (unit xy [-0.64, +0.77]) -- mostly toward +y, the Station 21-29 column row, with a component along the race direction. The IPPE twin was resolved by RANSAC over both candidates of all 130 near rows: the selected branch forms one cluster (2.7 deg residual), the mirror branch does not form an axis at all (24.1 deg), and three flights whose vantages differ by 15 deg agree on the azimuth to 0.3 deg -- which a mirror artefact cannot do. It also matches the map's independent gate-plane azimuth (132.4 deg mod 180) to 2.7 deg, as a lean perpendicular to the plane must. MAGNITUDE is 21 +- 5 deg, deliberately wide: gate 9 is seen only head-on (theta <= 19 deg in every row), which is the worst regime for BOTH estimators in opposite directions, so the value reconciles three channels -- 21-25 deg (PnP elevation / resolved axis), 19.7 deg (the edge-on gate8.png screenshot, PnP-free and the only observation in the edge channel's valid regime, with in-frame column controls at 1.0-1.2 deg), and 13.2 deg (a short-lever slope fit that reads 19.0 deg on a gate known to be vertical, so a weak lower bound only). No channel supports a vertical gate. GATE 8 IS NOT TILTED (3.6 deg on near rows); the earlier suspicion came from its pooled far-row tail. TO CLOSE THE MAGNITUDE: one lateral strafe past gate 9 gives theta > 45 deg rows, where the PnP-free edge channel measures the lean directly.",
+  "why_the_first_pass_missed_it": "TWO reduction mistakes, in opposite directions, on the SAME rows -- both worth knowing before re-deriving anything from this file. (1) POOLING. The first pass took the median over all ~8500 detections per gate. Most rows are far and small, where a 20 deg lean is geometrically invisible and the estimator returns noise; pooling drags a tilted gate DOWN to the noise floor and pushes vertical gates UP to it, and the two become indistinguishable -- which is exactly the \"every gate reads 1.3-4.9 deg\" non-result that was reported. (2) STRATIFYING ON THE WRONG VARIABLE. Fixing (1) by selecting big, close rows finds the tilted gate, but it cannot size it, because on this course near+large means HEAD-ON, and head-on is where the PnP estimator is biased up AND the PnP-free edge estimator is blind. The variable both blind spots depend on is OBLIQUITY (angle between the viewing ray and the gate normal), and gate 9 has no rows above 19 deg of it. General form: stratify by the variable the ESTIMATOR's error depends on, not by the one that looks like data quality, and check every reduction against control gates carried through the identical cut. Both errors here were invisible in the pooled number and obvious in the stratified one.",
+  "gate_faces_and_the_grid": "The pilot reports that gate faces are parallel to the hangar columns, i.e. gate yaw is quantized to the ceiling/floor/column grid. OUR MEASURED YAWS DO NOT REPRODUCE THAT: the 14 accepted plane azimuths, taken mod 90, spread over 11-88 deg with no cluster at the grid bin (deviations -37 to +44 deg). They agree far better with the RACE-LINE BISECTOR (median |error| 10.9 deg, under 6 deg at gates 1, 3, 6, 10, 14, 16). Both facts are exported per gate -- yaw_deg, yaw_grid_bin_deg + yaw_grid_dev_deg, yaw_race_bisector_deg -- and the conflict is flagged rather than smoothed. Given how noisy IPPE azimuth proved on this course, the visual claim may well be right and our azimuths wrong; do not build anything that needs an exact gate yaw. NOTE the gate-9 tilt direction is a separate and much better-conditioned measurement: its 130 deg agrees with the map's independent plane azimuth (132.4 deg mod 180) to 2.7 deg, as it must, since a lean is perpendicular to the gate plane."
  },
  "limits": [
   "RELATIVE MAP ONLY. There is no absolute origin and no absolute heading. A policy may not consume world coordinates; it may consume gate-relative geometry and the layout's shape.",
-  "Bridge edges (0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6-7, 9-10, 10-11, 11-12, 15-16) sit on a chain with no second path, so nothing in the data can check them. Their sigma is inflated, not verified.",
+  "Bridge edges (0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6-7, 9-10, 15-16) sit on a chain with no second path, so nothing in the data can check them. Their sigma is inflated, not verified.",
+  "EDGE 10-11 WAS CORRECTED ON 2026-08-02: it read 33.84 m and was a real measurement of the WRONG pair (the far detection was gate 12), taken from a single vantage so the static-pair viewpoint referee never fired. It is 16.49 m, measured in 20260802-180755-vm-strafe-10-11 from four staged vantages; 10-12 = 34.97 m entered as its own edge and 10-11-12 now closes as a triangle (0.46 m over a 71 m perimeter). Course length fell from 268.22 m to 250.93 m. Any policy trained on a pre-correction copy of this file learned a course 17 m too long with gates 11-16 ~15 m out of place. See map_vq2.json status.CORRECTION_2026_08_02_edge_10_11.",
   "1-2 is the least-trusted edge in the map: 8.32 m on n=5 rows from one session, against a refused 34-row channel reading 13.0 m.",
   "Thin edges: 14-15 (n=9), 9-10 (n=12), 12-13 (n=14), 12-14 (n=15).",
   "Gate plane YAW is refused by the map for gates 8, 12 and 13 (viewed head-on, where IPPE's rotation is degenerate). Do not rely on an exact gate plane at those three.",

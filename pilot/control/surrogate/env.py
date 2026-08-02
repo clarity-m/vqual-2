@@ -166,7 +166,11 @@ class EnvConfig:
     # The package then coin-flips, so the rival lands in ~half of those. Every VQ2 episode
     # flies 1->2, so training only on the accepted value bets the run on that edge.
     vq2_alt_hypothesis_p: float = 0.5
-    vq2_tilt_deg: object = None       # {gate: (lo_deg, hi_deg)}; None = all vertical
+    # {gate: (lo_deg, hi_deg)} MANUAL OVERRIDE. None = use the package's measured per-gate
+    # tilt, which since 2026-08-02 carries gate 9 at 21+/-5 deg leaning toward azimuth
+    # ~130 deg and every other gate vertical at its own residual. Overriding loses the
+    # lean azimuth for that gate, so prefer None unless deliberately probing.
+    vq2_tilt_deg: object = None
     # ASSUMED -- the map's z is relative to gate 0, not to the floor, so where the floor
     # sits is a free parameter. Randomized rather than guessed. The lower bound must clear
     # floor_clear_m plus half the aperture or gates start underground.

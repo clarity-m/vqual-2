@@ -79,27 +79,44 @@ verified by stepping two `vq2_frac=0` envs on the same seed and comparing observ
 
 ## 2. Why it matters — the generator was wrong in one direction
 
-Measured from `course_vq2.json` (16 race edges, gates 0→16):
+Measured from `course_vq2.json` (16 race edges, gates 0→16). **Numbers below are the
+2026-08-02 corrected package** — see §2b for what the correction moved.
 
 | | `course.generate` | measured VQ2 |
 |---|---|---|
 | gates | 18–22 | **17** |
-| segment | easy 26–34 m, hard **18–26 m** | 8.3–33.9 m, mean 16.8, **median 15.1** |
-| turn per gate | ≤20° easy, ≤80° hard | mean 30.5°, max 76.4°, 5 of 15 over 40° |
-| elevation | ≤22°, `alt_revert=0.3` mean-reverting | ≤18.8°, sustained **+10.95 m climb over gates 0→7** |
-| path length | — | 268.2 m (217.2 m straight extent) |
+| segment | easy 26–34 m, hard **18–26 m** | 8.32–22.46 m, mean 15.70, **median 15.26** |
+| turn per gate | ≤20° easy, ≤80° hard | mean 32.3°, max 76.5°, 5 of 15 over 40° |
+| elevation | ≤22°, `alt_revert=0.3` mean-reverting | sustained **+10.95 m climb over gates 0→7** |
+| path length | — | **251.1 m** |
 
-**10 of the 16 race edges are shorter than the shortest segment the generator can
-produce.** Its floor is 18 m even at maximum difficulty.
+**11 of the 16 race edges are shorter than the shortest segment the generator can
+produce.** Its floor is 18 m even at maximum difficulty — and after the correction the
+generator's *longest* segment (34 m) now exceeds the real course's longest edge (22.46 m),
+so the two distributions barely overlap at all.
 
 Worse, the corners that decide this course pair a sharp turn with a *short exit* — about
 one second of flight at cruise to reacquire, align and thread:
 
 | gate | turn | exit edge |
 |---|---|---|
-| 7 | −73.5° | 11.2 m |
-| 9 | +66.6° | 10.1 m |
-| 13 | −76.4° | 12.3 m |
+| 7 | 75.8° | 11.42 m |
+| 9 | 66.5° | 10.10 m |
+| 13 | 76.5° | 12.31 m |
+
+## 2b. The 2026-08-02 correction — edge 10-11 was wrong by 17 m
+
+Perception re-measured edge 10-11: it read **33.84 m and is 16.49 m**. The old rows were a
+real measurement of the *wrong pair* — they saw gate 12 at the far end from a single
+vantage, so gate 11 and the whole tail 12→16 sat ~15.6 m too far along-course.
+
+What moved: course length **268.22 → 251.13 m**; gates 11–16 all shifted (gate 11 by
+15.6 m, 12–16 by 14.6–15.6 m); gate 11 dropped 1.97 m in z. A **new edge 10-12** (34.97 m)
+makes 10-11-12 a closed triangle rather than two bridges, which *lowered* per-gate sigma
+for 11–16 (2.11–2.38 → 1.98–2.18 m). The edge table went 19 → 20 pairs.
+
+Any checkpoint trained before this flew a course whose back half is 15 m out of place.
+Gate 0 remains the lowest gate, so the floor work in §3 is unaffected.
 
 The generator draws 80° turns and it draws 18 m edges, but never the two together.
 
@@ -169,24 +186,38 @@ always computed. The package's own `sample(randomize_yaw=True)` is **not** used:
 a uniform 0–180° plane to every refused-yaw gate, which would face gates 8/12/13 in a random
 direction every episode and make them unlearnable. Only positions come from `sample()`.
 
-**Tilt.** The shipped JSON gives gates 8 and 9 a uniform 0–20° prior. Perception overturned
-it and has now **confirmed** (2026-08-02) that gate 9 measures **21–24°** and every other
-gate is vertical. 21–24° is *outside* the shipped prior, so the file as shipped cannot
-sample the truth at all — but the knob does not need it:
+**Tilt. Now measured, including direction — no knob required.** The 2026-08-02 package
+exports gate 9 at `tilt_from_vertical_deg 21.0`, `tilt_sigma_deg 5.0`, `tilt_clip_deg
+[12, 30]`, and the part that actually matters: `tilt_lean_azimuth_deg 129.7` — the azimuth
+the gate's **top** leans toward. Every other gate exports tilt 0 with its own *measured
+residual* (1.5–4.0°) as sigma, which is noise rather than a prior over unknown geometry.
 
-```
---env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"
-```
+`vq2course` reads all of this from `pkg.sample()` directly. `cfg.vq2_tilt_deg` survives
+only as a manual override for experiments, and using it **loses the lean azimuth** for that
+gate, so prefer `None`.
 
-Verified over 256 sampled courses: gate 9's normal leans 21.02–23.99° out of horizontal,
-gate 8 exactly 0.00°, all others vertical. **Any VQ2-only run should carry this** — the
-whole point of `vq2_frac=1.0` is memorization, and memorizing a vertical gate 9 bakes in a
-specific wrong fact rather than a diffuse one.
+**The lean-vs-roll question is closed: it is a lean.** What was measured is the azimuth the
+top leans toward, which is exactly what `_normals` models. The square-aperture collision
+test is still worth doing (§4) but is no longer blocked on this.
 
-What is confirmed is the **magnitude**, not the **axis**. `vq2course._normals` models tilt
-as a *lean* (`n = [cos t·cos az, cos t·sin az, sin t]`), which the knob applies. If gate 9
-is instead rolled in-plane about its own normal, the surrogate cannot represent it at all —
-see §4 — and setting the knob does not help. Open item 1.
+**The direction was the load-bearing half, and we had it backwards.** A tilt magnitude with
+no direction is a coin flip, and a policy that guesses wrong aims at the frame instead of
+the aperture. `_normals` built the elevation with a fixed `+sin(t)` and then flipped the
+whole normal to face along the race — which made the lean direction a function of travel
+direction, not of the measurement. Measured over 256 pool courses: **pre-fix, gate 9 leaned
+the wrong way in 100% of them** (mean deviation 159.5° from the measured azimuth — not
+random, systematically inverted, because the travel orientation is deterministic here).
+Post-fix, 100% land on the correct side at a mean recovered azimuth of 128.7° against the
+measured 129.7°.
+
+The fix sets the elevation sign from the lean azimuth *before* the travel flip. That is
+safe because the top-lean vector `−n_z·n_horiz` is invariant under `n → −n` — both factors
+flip together — so orienting the normal along the race cannot undo the lean.
+
+Recovered lean azimuth spreads ±22° across courses. That is correct, not slop: a lean must
+be perpendicular to the gate plane (the map confirms this to 2.7°), so it follows our
+sampled plane azimuth, which is itself drawn across the measured / grid / bisector
+candidates plus jitter.
 
 ---
 
@@ -339,13 +370,15 @@ depend on this, but anything else importing `course` does.
 
 ## 8. Open items
 
-1. **Gate 9 tilt — lean or in-plane roll?** Magnitude **confirmed** 2026-08-02 (21–24°,
-   all other gates vertical); the axis is still open and decides whether the knob suffices
-   or the square-aperture collision test is required. Asked; unanswered.
-2. ~~**Corrected `course_vq2.json`** pending from perception.~~ Superseded: the knob
-   `--env-kwarg "vq2_tilt_deg={9:(21.0,24.0)}"` applies the confirmed values without
-   waiting for the file, and is verified working. The corrected JSON is still wanted so the
-   default stops disagreeing with the measurement, but it no longer blocks training.
+1. ~~**Gate 9 tilt — lean or in-plane roll?**~~ **CLOSED 2026-08-02: it is a lean**, and
+   the lean azimuth (129.7°) is exported and now consumed. See §3. The one outstanding
+   ask is a *lateral* pass at gate 9 — every view we have is head-on (θ ≤ 19.2°), which is
+   why the magnitude is ±5°; above θ ≈ 45° the PnP-free edge channel measures the lean
+   directly. Perception notes the detector's aspect-ratio filter discards the most oblique
+   views, so it must be loosened for that pass.
+2. ~~**Corrected `course_vq2.json`** pending from perception.~~ **LANDED 2026-08-02.** The
+   package in `course/` is the corrected one: edge 10-11 re-measured (§2b) and gate 9's
+   tilt plus lean azimuth exported. Regenerate anything derived from the old copy.
 3. ~~**Floor reference unmeasured.**~~ **Answered 2026-08-02**: gate 0's frame bottom
    touches the ground → centre at 1.35 m. See §3. Requires the paired `floor_clear_m`
    change; any VQ2 run started before this is training on a course floating 2.25 m off the

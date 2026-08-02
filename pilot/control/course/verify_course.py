@@ -75,6 +75,33 @@ def main():
     print('max |exported gate position - map positions_m|                  = '
           '%.4f m' % dmax)
 
+    print('\n--- (b2) tilt: gate 9 leans, the other 16 do not, and it leans the SAME WAY '
+          'in every sample')
+    q = C.gate_corners(9, nom, size_m=nom.outer_m)
+    d = 0.5 * (q[2] + q[3]) - 0.5 * (q[0] + q[1])       # top edge midpoint - bottom
+    az = math.degrees(math.atan2(d[1], d[0])) % 360.0
+    print('gate 9 nominal: tilt %.1f deg, top displaced %.2f m horizontally toward '
+          'azimuth %.1f deg (exported lean azimuth %.1f)'
+          % (nom.tilt_deg[9], float(np.hypot(d[0], d[1])), az, nom.tilt_lean_deg[9]))
+    assert nom.tilt_deg[9] > 10.0, 'gate 9 must be exported tilted'
+    assert abs((az - nom.tilt_lean_deg[9] + 180.0) % 360.0 - 180.0) < 15.0, \
+        'gate 9 corners lean the wrong way'
+    others = [nom.tilt_deg[g] for g in range(17) if g != 9]
+    print('other 16 gates, nominal tilt: max %.1f deg' % max(others))
+    assert max(others) == 0.0
+    S = [C.sample(s) for s in range(200)]
+    t9 = np.array([s.tilt_deg[9] for s in S])
+    l9 = np.array([s.tilt_lean_deg[9] for s in S])
+    tv = np.array([[s.tilt_deg[g] for g in range(17) if g != 9] for s in S])
+    print('200 samples: gate 9 tilt %.1f +- %.1f deg (range %.0f-%.0f), lean azimuth '
+          '%.1f +- %.1f deg' % (t9.mean(), t9.std(), t9.min(), t9.max(),
+                                l9.mean(), l9.std()))
+    print('200 samples: every other gate tilt max %.1f deg (all clipped at 3 sigma)'
+          % tv.max())
+    assert t9.min() > 10.0, 'a sample must never make gate 9 nearly vertical'
+    assert tv.max() < 12.5, 'a "vertical" gate drew an implausible tilt'
+    assert float(np.abs((l9 - 129.7 + 180) % 360 - 180).max()) < 25.0
+
     print('\n--- (c) envelope plot')
     samples = [C.sample(s) for s in range(20)]
     fig, axes = plt.subplots(2, 1, figsize=(15, 11.0), dpi=130)

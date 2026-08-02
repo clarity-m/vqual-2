@@ -41,18 +41,28 @@ ASSUMED HERE, because the map does not contain it:
   turning an unresolved disagreement into domain randomization rather than picking a side.
   Gates 8, 12 and 13 have no trusted yaw at all and fall back to the bisector, which is
   both the map's own recommendation and what `course.generate` has always used.
-* **Gate tilt.** Held at vertical for every gate. The shipped JSON randomizes gates 8 and 9
-  over a uniform 0-20 deg prior, and the perception side has since overturned that: gate 9
-  measures ~21-24 deg across four sessions and every other gate is vertical. 21-24 deg is
-  *outside* the shipped prior, so the current file cannot sample the truth and training on
-  it would bake in an artifact. `cfg.vq2_tilt_deg` takes `{gate: (lo, hi)}` once the
-  corrected JSON lands.
+MEASURED as of the 2026-08-02 package (no longer assumed):
 
-Note that the tilt the package models is a LEAN -- the plane normal tips out of horizontal.
-If gate 9 turns out to be rolled about its own normal instead, this surrogate cannot
-represent it at all: `env._gate_geometry` reduces a crossing to a radial distance, which is
-rotationally symmetric about the normal, so an in-plane roll of a square aperture is
-invisible to it. That would need the square-aperture collision test, not a knob here.
+* **Gate tilt and its DIRECTION.** Sixteen gates are measured vertical and draw a small
+  Gaussian at their own measured residual (1.5-4 deg) -- that is noise, not a prior over
+  unknown geometry. Gate 9 is measured tilted: N(21, 5) deg clipped to [12, 30], with its
+  TOP leaning toward azimuth ~130 deg (drawn at sigma 5 deg). Both come straight from
+  `pkg.sample()`; `cfg.vq2_tilt_deg` is a manual override for experiments, not the source.
+
+  The lean *direction* is the half that matters and the half that is solid -- magnitude is
+  +/-5 deg because every view of gate 9 is head-on. A tilt magnitude without a direction is
+  a coin flip, and a policy that guesses wrong is aiming at the frame rather than the
+  aperture. `_normals` sets the elevation sign from it.
+
+  Superseded: an earlier package shipped gates 8 AND 9 with a uniform 0-20 deg prior. That
+  was a reduction artefact, not data -- gate 8 is vertical (3.6 deg) and gate 9 is tilted.
+
+The tilt the package models is a LEAN -- the plane normal tips out of horizontal -- and the
+2026-08-02 export confirms that is the right model: what was measured is the azimuth the
+gate's top leans toward. Had it instead been an in-plane roll about the gate's own normal,
+this surrogate could not represent it at all, because `env._gate_geometry` reduces a
+crossing to a radial distance and is rotationally symmetric about the normal. That question
+is now closed; the square-aperture collision test is still worth doing for other reasons.
 
 ## Frames
 
@@ -141,14 +151,33 @@ def _bisector_az(P):
     return np.arctan2(b[:, 1], b[:, 0])
 
 
-def _normals(P, az, tilt_rad):
+def _normals(P, az, tilt_rad, lean_rad=None):
     """Unit gate normals from plane azimuth and lean, oriented along the race direction.
 
     Yaw is an AXIS -- a square gives no sign -- so the sign is set by the travel direction
     rather than taken from the azimuth.
+
+    LEAN DIRECTION (2026-08-02). A tilt magnitude alone leaves *which way* the gate leans
+    as a coin flip, which is useless for planning an approach: gate 9 leans 21 deg toward
+    azimuth ~130 deg and a policy that assumes the opposite is aiming at the frame. Where
+    `lean_rad` gives a measured lean azimuth, the elevation's sign is set so the gate's TOP
+    leans that way.
+
+    The subsequent travel-direction flip does not undo it. The top-lean vector is
+    `-n_z * n_horiz`, and under `n -> -n` both factors flip together, so the lean direction
+    is invariant while the normal's own sign is not. That is why the sign can be chosen
+    here and the orientation fixed afterwards without the two fighting.
     """
     ct = np.cos(tilt_rad)
-    n = np.stack([ct * np.cos(az), ct * np.sin(az), np.sin(tilt_rad)], axis=1)
+    s_lean = np.ones(len(az))
+    if lean_rad is not None:
+        c = np.cos(az - lean_rad)
+        # cos > 0 means the normal's horizontal part already points along the lean, so the
+        # TOP must tip the other way: negative elevation. NaN (vertical / no measurement)
+        # leaves the sign at +1, where the tilt is 0 anyway and the sign is meaningless.
+        s_lean = np.where(np.isnan(c) | (np.abs(c) <= 1e-6), 1.0,
+                          np.where(c > 0.0, -1.0, 1.0))
+    n = np.stack([ct * np.cos(az), ct * np.sin(az), s_lean * np.sin(tilt_rad)], axis=1)
     travel = np.empty_like(P)
     travel[1:-1] = P[2:] - P[:-2]
     travel[0] = P[1] - P[0]
@@ -252,12 +281,24 @@ class VQ2Pool:
                     az[k] = opts[int(rng.integers(len(opts)))]
                 az[:self.n_race] += rng.normal(0.0, jitter, self.n_race)
 
+            # Tilt comes from the package's own per-gate draw: sixteen gates draw a small
+            # Gaussian about 0 at their MEASURED residual, and gate 9 draws N(21, 5) deg
+            # clipped to [12, 30] with its lean azimuth about 130 deg. `cfg.vq2_tilt_deg`
+            # stays as a manual override for experiments, not as the source of truth.
             tilt = np.zeros(self.S)
+            lean = np.full(self.S, np.nan)
+            ct_pkg = list(getattr(c, "tilt_deg", []) or [])
+            cl_pkg = list(getattr(c, "tilt_lean_deg", []) or [])
+            for k in range(min(self.n_race, len(ct_pkg))):
+                tilt[k] = math.radians(float(ct_pkg[k] or 0.0))
+            for k in range(min(self.n_race, len(cl_pkg))):
+                if cl_pkg[k] is not None:
+                    lean[k] = math.radians(float(cl_pkg[k]))
             for k, lohi in tilt_spec.items():
                 if 0 <= int(k) < self.S:
                     tilt[int(k)] = math.radians(float(rng.uniform(*lohi)))
 
-            N = _normals(P, az, tilt)
+            N = _normals(P, az, tilt, lean)
             self.pos[i] = P * _TO_NED
             self.nrm[i] = N * _TO_NED
             self.seg_len[i] = float(np.mean(
