@@ -85,6 +85,38 @@ Per `GateObs`'s documented degradation order:
   * nothing              -> wings level, cruise trim for `v_min`, hover thrust. Slow
                             down and stay flat so attention can re-acquire.
 
+THE CLIMB LOOP IS VELOCITY-REFERENCED TOO  (2026-08-01)
+--------------------------------------------------------
+The roll loop closes on where the aircraft is GOING, not where it is pointing, for the
+reason above. The climb loop used to close on elevation alone -- `a_des = k * e_horizon`
+-- and that is proportional control commanding an ACCELERATION, i.e. an undamped double
+integrator. It has no equilibrium at the target: elevation error goes to zero at the
+moment the aircraft is climbing hardest, so it sails through and comes back. Measured on
+the surrogate it held `e_horizon` at 0.23 rad rms, 13 degrees of permanent wander, and
+that is a large share of the vertical miss at the gate plane.
+
+The fix is the same law the roll loop uses, one axis over: null the angle between the
+velocity vector and the target, not the angle to the target.
+
+    w_cmd = V * e_horizon        the climb rate that points the velocity AT the target
+    a_des = k_w * (w_cmd - w)    close on it
+
+which is stable, has the right equilibrium (flying straight at the target), and scales
+its own gain with speed instead of being tuned for one cruise.
+
+That needs vertical speed, and `SelfObs` has none -- the drag bearing is horizontal only,
+because thrust acts along body -z and swamps the vertical drag term the other two axes
+are read from. But `vertical_accel` below IS an exact algebraic read of world-vertical
+acceleration, so vertical speed is one integration away. A pure integral would drift over
+a whole lap, so it is LEAKY (`w_tau`, 4 s): bounded by construction, cannot run away, and
+scored against surrogate truth at 0.38 m/s rms on a 1.53 m/s signal (corr 0.97) -- an
+undrifting integral scores 0.29, so the leak costs almost nothing. `w_tau = 0` disables
+the estimator entirely and restores the old proportional law with `k_climb_a = k_w * V`.
+
+The leak biases a sustained climb low by ~0.1 m/s, which is the hover trim's job to
+absorb, and it is the second piece of state in this file for the same reason as the
+first: the alternative is a standing error, not a simpler policy.
+
 WHAT IS DELIBERATELY MISSING
 ----------------------------
 No derivative term on the attitude loops. The rate loop is nearly ideal (gain 0.90-0.97,
@@ -94,10 +126,6 @@ one reason: `SelfObs.gyro`'s convention is stated one way by interface.py ("no f
 above the link layer may contain a sign flip", i.e. canonical NED) and the other way by
 control/plant.py's docstring. A wrong-signed damping term is positive feedback, and the
 loop does not need it, so the default declines the bet.
-
-The climb loop has no damping term either -- there is no vertical velocity in the
-permitted observation (the drag bearing is horizontal only). `k_climb` is kept small
-and the offset clipped; this is the first gain to tune on the surrogate.
 
 THE ONE INTEGRATOR: HOVER TRIM
 ------------------------------
@@ -178,7 +206,11 @@ class BaselinePolicy(interface.Policy):
                  elev_ceil_rad=math.radians(40.0),    # 9.4 deg of margin on +49.4
                  k_frame=2.0,             # rad of pitch per rad of frame violation
                  # --- thrust: climb, commanded as an ACCELERATION ---------------
-                 k_climb_a=6.0,           # m/s^2 of climb per rad of horizon elevation
+                 k_w=2.0,                 # 1/s on climb-rate error
+                 w_tau=4.0,               # s, leak on the climb-rate estimator; 0 = off
+                 w_max=6.0,               # m/s cap on the commanded climb rate
+                 v_ref_min=3.0,           # m/s floor under V in w_cmd = V * elevation
+                 k_climb_a=6.0,           # fallback m/s^2 per rad when w_tau = 0
                  climb_a_max=4.0,         # m/s^2
                  a_per_thrust=59.6,       # fitted dT/dthrottle; 1/this converts back
                  k_acc=0.70,              # accel-error feedback, dimensionless
@@ -211,6 +243,10 @@ class BaselinePolicy(interface.Policy):
         self.elev_floor_rad = float(elev_floor_rad)
         self.elev_ceil_rad = float(elev_ceil_rad)
         self.k_frame = float(k_frame)
+        self.k_w = float(k_w)
+        self.w_tau = float(w_tau)
+        self.w_max = float(w_max)
+        self.v_ref_min = float(v_ref_min)
         self.k_climb_a = float(k_climb_a)
         self.climb_a_max = float(climb_a_max)
         self.a_per_thrust = float(a_per_thrust)
@@ -227,6 +263,7 @@ class BaselinePolicy(interface.Policy):
     def reset(self):
         self.last = {}
         self.trim = interface.HOVER_THRUST
+        self.w_est = 0.0
 
     def __call__(self, obs):
         own = obs.own
@@ -258,24 +295,44 @@ class BaselinePolicy(interface.Policy):
         cc = math.cos(float(own.roll_rad)) * math.cos(float(own.pitch_rad))
         cc = max(cc, 1.0 / self.comp_max)
         comp = 1.0 + float(np.clip(own.attitude_conf, 0.0, 1.0)) * (1.0 / cc - 1.0)
-        a_des = w * float(np.clip(self.k_climb_a * e_horizon,
-                                  -self.climb_a_max, self.climb_a_max))
         a_up = self.vertical_accel(own)
+        dt = max(float(obs.dt_s), 0.0)
+        if self.w_tau > 0.0:
+            self.w_est = float(np.clip(
+                self.w_est * max(0.0, 1.0 - dt / self.w_tau) + a_up * dt, -25.0, 25.0))
+            # Climb rate that would put the velocity vector on the target, then close on
+            # it. `w` gates the DEMAND, not the damping: with no cue there is nothing to
+            # aim at, but arresting an inherited climb is exactly "stay flat".
+            v_ref = max(self._finite(own.speed_est_mps), self.v_ref_min)
+            w_cmd = w * float(np.clip(v_ref * math.sin(e_horizon),
+                                      -self.w_max, self.w_max))
+            a_raw = self.k_w * (w_cmd - self.w_est)
+        else:
+            w_cmd = w * self.k_climb_a * e_horizon
+            a_raw = w_cmd
+        a_des = float(np.clip(a_raw, -self.climb_a_max, self.climb_a_max))
         a_err = a_des - a_up
         per_a = 1.0 / max(self.a_per_thrust, 1e-6)
         trim = self.trim
         thrust = trim * comp + per_a * (a_des + self.k_acc * a_err)
-        self.trim = float(np.clip(trim + self.k_trim * per_a * a_err
-                                  * max(float(obs.dt_s), 0.0),
-                                  self.trim_min, self.trim_max))
+        # No reference, no integration: the trim estimates a hover offset against a cue
+        # it can actually see, and winding it against pure damping is windup.
+        if w > 0.0:
+            self.trim = float(np.clip(trim + self.k_trim * per_a * a_err * dt,
+                                      self.trim_min, self.trim_max))
 
         act = clamp_action(roll_rate, pitch_rate, thrust,
                            yaw_rate=0.0, yaw_mode=interface.YawMode.AUTO_ATTENTION)
         self.last = dict(cue=cue, weight=w, b_tgt=b_tgt, b_err=b_err, e_tgt=e_tgt,
                          e_frame=e_frame, e_horizon=e_horizon, bank_des=bank_des,
                          pitch_des=pitch_des, v_tgt=v_tgt, comp=comp, a_des=a_des,
-                         a_up=a_up, trim=trim, action=act)
+                         a_up=a_up, w_cmd=w_cmd, w_est=self.w_est, trim=trim, action=act)
         return act
+
+    @staticmethod
+    def _finite(x, default=0.0):
+        x = float(x)
+        return x if math.isfinite(x) else default
 
     @staticmethod
     def vertical_accel(own):

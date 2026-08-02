@@ -90,7 +90,7 @@ be useful without the one before it:
 
 `plant.json` is the result and `plant.py` is the model plus a steppable NumPy `Sim`.
 `surrogate/` wraps it with the course generator and the synthetic detection producer;
-`surrogate/selfcheck.py` passes 15/15 against this fit, reading hover 0.270 and a 30.99
+`surrogate/selfcheck.py` passes 17/17 against this fit, reading hover 0.270 and a 30.99
 m/s terminal climb straight out of the new thrust table.
 
 **Refitted 2026-08-01 on card 2** (`pilot/SYSID.md`). Card 2's maneuvers A and B were
@@ -246,7 +246,7 @@ from data already on disk — no further piloting is required for either.
 * **Detection statistics are guessed, and the one number that has been checked was
   wrong in the dangerous direction.** `noise.py` is the P3 fallback: every range in it is
   a reasoned guess. A feasibility probe over `20260731-204841-vq1-lap-slow` — project the
-  measured gate centres into all 2937 recorded frames using truth pose and the
+  measured gate centres into the recorded frames using truth pose and the
   `camera.py` model, then run the `NOTES.md` orange HSV mask — puts a blob where geometry
   says one should be on **95%** of in-frustum (gate, frame) pairs, and **95% at 30–45 m**,
   where `max_range_m = 14–30` says the gate should already be gone. Training against a
@@ -301,6 +301,11 @@ harmless reason, so pass it the whole corpus.
 
 **Still missing: a clean completed lap.** Card 2's maneuver C was flown and did not
 finish, so generalisation is still tested against nine minutes of ordinary flying.
+
+**Frames are only partly on this machine.** `20260731-204841-vq1-lap-slow` lists 2937
+frames in `frames.csv` and has **1235 JPEGs** here; `20260731-233219` has 2397 and
+`20260801-005715` has 508. Every other session has none. Count the files before scoping
+anything that runs over frames — the telemetry CSVs are in git, the JPEGs are not.
 
 **Two sessions are excluded and the reason is now known.** `20260731-130744` (referee
 median 1.45 m/s²) and `20260731-233219` (2.01) share one property: `LOCAL_POSITION_NED`

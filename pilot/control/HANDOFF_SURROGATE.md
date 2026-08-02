@@ -21,7 +21,7 @@ python3 pilot/control/sysid_apex.py                        # NEW — card 2 dire
 python3 pilot/control/sysid_fit.py                         # -> plant.json
 python3 pilot/control/sysid_replay.py                      # gate
 python3 pilot/control/plant.py                             # self-check
-python3 pilot/control/surrogate/selfcheck.py               # 15/15 vs this fit
+python3 pilot/control/surrogate/selfcheck.py               # 17/17 vs this fit
 ```
 
 ### New / modified files (this work)
@@ -72,7 +72,7 @@ Excluded: `130744`, `233219` (stale velocity stream), `005518` (identical rerun 
 | `sysid_fit.py` | writes `plant.json` (exit 0) |
 | `plant.py` | PASS |
 | `sysid_replay.py` | PASS (corruptions clearly worse) |
-| `surrogate/selfcheck.py` | 15/15 PASS (hover 0.270, terminal climb 30.99 m/s) |
+| `surrogate/selfcheck.py` | **17/17** PASS (hover 0.270, terminal climb 30.99 m/s) — re-verified 2026-08-01; the "15/15" this table used to read predates two added checks |
 | `sysid_frames.py` **all sessions** | PASS, margin **2.6×** |
 | `sysid_frames.py` card 2 alone | FAIL at 1.0× — attitude variety thin; **same winning signs**; do not treat as convention failure |
 
@@ -91,7 +91,8 @@ not a fact about the simulator that more piloting will fix.
 **6-gate** map with crossing points agreeing to **0.5–1.2 m**:
 
 - `20260731-195307`
-- `20260731-204841-vq1-lap-slow` (also has **2937 JPEGs**)
+- `20260731-204841-vq1-lap-slow` (`frames.csv` lists **2937** frames; only **1235 JPEGs
+  are on this machine**, the rest on the other laptop — check before planning a frame job)
 
 Measured course (NED mean of those two; start at origin):
 
@@ -192,5 +193,5 @@ python sysid_frames.py @s
 
 - `control/README.md` — updated for this refit
 - `TRAINING_ARCHITECTURE.md` — P3 visibility note added
-- `SYSID.md` — **not** updated (still reads as pre-flight)
+- `SYSID.md` — updated since (card 2 marked FLOWN); this line used to read "not updated"
 - This file — handoff for the next agent / human

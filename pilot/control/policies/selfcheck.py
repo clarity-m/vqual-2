@@ -79,8 +79,22 @@ def ribbon(bearing=0.0, elev=0.0, valid=True, stale=0.0):
     return rb
 
 
+def accel_for(roll, pitch, a_up=0.0, g=9.81):
+    """The specific force a drone holding `a_up` at this attitude actually reports.
+
+    `BaselinePolicy.vertical_accel` reads `a_up = -(z_row(R_wb) . accel) - g`, so a
+    fixture that leaves `accel` at its zero default is telling the policy it is in FREE
+    FALL -- which is a 9.81 m/s^2 climb demand on every check that was only meant to
+    test something else. Thrust acts along body -z by definition, so the consistent
+    reading is `(0, 0, -T)` with `T = (a_up + g) / (cos pitch cos roll)`.
+    """
+    cc = math.cos(pitch) * math.cos(roll)
+    return np.array([0.0, 0.0, -(a_up + g) / (cc if abs(cc) > 1e-6 else 1e-6)])
+
+
 def obs(gates=(), rb=None, roll=0.0, pitch=0.0, att_conf=1.0, speed=9.0,
-        speed_conf=1.0, vel_bearing=None, active=0, t_coll=1e3, episodes=0, dt=0.02):
+        speed_conf=1.0, vel_bearing=None, active=0, t_coll=1e3, episodes=0, dt=0.02,
+        a_up=0.0):
     o = interface.Observation()
     o.dt_s = dt
     gs = list(gates)
@@ -90,6 +104,7 @@ def obs(gates=(), rb=None, roll=0.0, pitch=0.0, att_conf=1.0, speed=9.0,
     o.ribbon = rb if rb is not None else interface.RibbonObs()
     o.own.roll_rad = roll
     o.own.pitch_rad = pitch
+    o.own.accel = accel_for(roll, pitch, a_up)
     o.own.attitude_conf = att_conf
     o.own.speed_est_mps = speed
     o.own.speed_conf = speed_conf
@@ -203,7 +218,7 @@ def check_baseline_vertical(C):
     tilted = act(p, obs([gate((10.0 * math.cos(th), 0.0, 10.0 * math.sin(th)))],
                         pitch=th))
     C(abs(p.last["e_tgt"] - -th) < 1e-9 and abs(p.last["e_horizon"]) < 1e-9
-      and abs(p.last["climb"]) < 1e-9,
+      and abs(p.last["a_des"]) < 1e-9,
       "nose-down trim, level target -> no climb demand",
       "body elev %+.2f rad, horizon %+.2f rad, thrust %.4f"
       % (p.last["e_tgt"], p.last["e_horizon"], tilted.thrust))
@@ -219,6 +234,126 @@ def check_baseline_vertical(C):
     C(abs(unsure.thrust - HOVER) < 1e-9,
       "attitude_conf 0 -> no compensation from an unusable gravity read",
       "%.4f" % unsure.thrust)
+
+
+def check_baseline_accel_loop(C):
+    """The inner loop the vertical law actually closes on: measured a_up, not thrust.
+
+    `vertical_accel` is an algebraic read of a permitted sensor, so it is checkable
+    exactly. It is also the one place where a wrong sign turns the thrust loop into
+    positive feedback, which is why it gets its own section rather than being implied
+    by the fixture.
+    """
+    C.head("baseline: the accelerometer vertical loop")
+    p = BaselinePolicy(k_trim=0.0)
+
+    o = obs([gate((10.0, 0.0, 0.0))])
+    C(abs(BaselinePolicy.vertical_accel(o.own)) < 1e-9,
+      "hovering accelerometer reads zero vertical acceleration",
+      "%+.4f m/s^2" % BaselinePolicy.vertical_accel(o.own))
+
+    for r, q, a in ((0.0, 0.0, 3.0), (0.0, 0.0, -3.0), (0.5, -0.3, 2.0),
+                    (-0.4, 0.25, -1.5)):
+        got = BaselinePolicy.vertical_accel(obs([], roll=r, pitch=q, a_up=a).own)
+        C(abs(got - a) < 1e-6, "a_up recovered through roll %+.2f pitch %+.2f" % (r, q),
+          "%+.3f vs %+.3f m/s^2" % (got, a))
+
+    # Sign of the feedback: already accelerating upward when nothing was asked for ->
+    # back off. Fresh policies each time; the climb-rate estimator is stateful.
+    def fresh(o, **kw):
+        q = BaselinePolicy(k_trim=0.0, **kw)
+        return act(q, o), q
+
+    level = fresh(obs([gate((10.0, 0.0, 0.0))]))[0]
+    rising = fresh(obs([gate((10.0, 0.0, 0.0))], a_up=+2.0))[0]
+    sinking = fresh(obs([gate((10.0, 0.0, 0.0))], a_up=-2.0))[0]
+    C(rising.thrust < level.thrust < sinking.thrust,
+      "unasked-for climb -> LESS thrust (negative feedback, not positive)",
+      "%.4f / %.4f / %.4f" % (rising.thrust, level.thrust, sinking.thrust))
+
+    # Magnitude, with the climb-rate cascade switched off so only the inner loop is
+    # under test: k_acc * a_err converted back through a_per_thrust.
+    lvl0 = fresh(obs([gate((10.0, 0.0, 0.0))]), w_tau=0.0)[0]
+    up0 = fresh(obs([gate((10.0, 0.0, 0.0))], a_up=+2.0), w_tau=0.0)[0]
+    d = (lvl0.thrust - up0.thrust) * p.a_per_thrust / p.k_acc
+    C(abs(d - 2.0) < 1e-6, "and by k_acc * a_err / a_per_thrust exactly",
+      "%.4f m/s^2 of correction for a 2.00 m/s^2 error" % d)
+
+
+def check_baseline_climb_rate(C):
+    """The velocity-referenced climb law: null the angle to the VELOCITY, not the nose.
+
+    The equilibrium these checks pin down is the whole point of the cascade -- the old
+    proportional-on-elevation law had none, and sailed through the target altitude at
+    whatever climb rate it had built up.
+    """
+    C.head("baseline: the climb-rate cascade (w_cmd = V sin(elevation))")
+    above = obs([gate((10.0, 0.0, -3.0))], speed=8.0)     # elev +0.291 rad
+    elev = above.gates[0].elev_rad
+
+    p = BaselinePolicy(k_trim=0.0)
+    act(p, above)
+    C(p.last["w_cmd"] > 0 and abs(p.last["w_cmd"] - 8.0 * math.sin(elev)) < 1e-9,
+      "target above -> climb rate demand of V sin(elev)",
+      "%.3f m/s at V 8.0, elev %.4f rad" % (p.last["w_cmd"], elev))
+
+    q = BaselinePolicy(k_trim=0.0)
+    act(q, obs([gate((10.0, 0.0, 3.0))], speed=8.0))
+    C(q.last["w_cmd"] < 0, "target below -> descent demand", "%.3f m/s" % q.last["w_cmd"])
+
+    # The demand scales with speed, which is why it is not a fixed gain: the same
+    # elevation at half the speed needs half the climb rate to point at the same place.
+    r = BaselinePolicy(k_trim=0.0)
+    act(r, obs([gate((10.0, 0.0, -3.0))], speed=4.0))
+    C(abs(2.0 * r.last["w_cmd"] - p.last["w_cmd"]) < 1e-9,
+      "and scales with speed", "%.3f at V 4.0 vs %.3f at V 8.0"
+      % (r.last["w_cmd"], p.last["w_cmd"]))
+
+    # Equilibrium: already climbing at the demanded rate -> stop asking for more. Wind
+    # the estimator up with a matching acceleration and watch the demand collapse.
+    s = BaselinePolicy(k_trim=0.0)
+    for _ in range(400):
+        act(s, obs([gate((10.0, 0.0, -3.0))], speed=8.0, a_up=+1.0))
+    C(s.w_est > 0 and s.last["a_des"] < 0.2 * p.last["a_des"],
+      "climbing at the demand -> the demand collapses (it has an equilibrium)",
+      "w_est %.2f vs w_cmd %.2f, a_des %+.2f -> %+.2f"
+      % (s.w_est, s.last["w_cmd"], p.last["a_des"], s.last["a_des"]))
+
+    # Overshooting it reverses the sign -- the term that the old law could not produce.
+    t = BaselinePolicy(k_trim=0.0)
+    t.w_est = 3.0 * p.last["w_cmd"]
+    act(t, above)
+    C(t.last["a_des"] < 0, "climbing FASTER than demanded -> push the nose over",
+      "w_est %.2f, a_des %+.3f" % (t.w_est, t.last["a_des"]))
+
+    # Blind: no demand, but an inherited climb is still arrested. "Stay flat" is a
+    # statement about the velocity, not about the thrust.
+    b = BaselinePolicy(k_trim=0.0)
+    b.w_est = 4.0
+    act(b, obs([]))
+    C(b.last["w_cmd"] == 0.0 and b.last["a_des"] < 0,
+      "blind -> no climb demand, but an inherited climb is arrested",
+      "w_cmd %.2f, a_des %+.3f" % (b.last["w_cmd"], b.last["a_des"]))
+    C(b.trim == HOVER, "and the trim does not wind against pure damping",
+      "%.4f" % b.trim)
+
+    # The estimator is leaky by construction: a standing acceleration cannot run away.
+    lk = BaselinePolicy(k_trim=0.0)
+    for _ in range(5000):
+        act(lk, obs([gate((10.0, 0.0, -3.0))], a_up=+2.0))
+    C(abs(lk.w_est - 2.0 * lk.w_tau) < 0.05,
+      "a standing +2 m/s^2 parks the estimator at a * w_tau, not infinity",
+      "%.3f m/s (a*tau = %.2f)" % (lk.w_est, 2.0 * lk.w_tau))
+    lk.reset()
+    C(lk.w_est == 0.0, "reset clears the climb-rate estimator")
+
+    # w_tau = 0 restores the old proportional law exactly.
+    old = BaselinePolicy(k_trim=0.0, w_tau=0.0)
+    act(old, above)
+    C(old.w_est == 0.0
+      and abs(old.last["a_des"] - old.k_climb_a * old.last["e_horizon"]) < 1e-9,
+      "w_tau = 0 falls back to a_des = k_climb_a * e_horizon",
+      "%+.3f m/s^2" % old.last["a_des"])
 
 
 def check_baseline_frame_guard(C):
@@ -339,21 +474,33 @@ def check_baseline_trim(C):
     below = obs([gate((10.0, 0.0, 3.0))])
     blind = obs([])
 
+    # How long winding takes is a gain, so the checks run to the clamp rather than for a
+    # fixed count: `k_trim` is deliberately slow (a standing 2 m/s^2 bias needs seconds,
+    # not milliseconds) and a step budget hardcoded against an older gain would read as
+    # "the clamp is broken" the next time it is tuned.
+    def wind(policy, o, budget=4000):
+        for i in range(budget):
+            act(policy, o)
+            if abs(policy.trim - policy.trim_max) < 1e-9 \
+                    or abs(policy.trim - policy.trim_min) < 1e-9:
+                return i + 1
+        return None
+
     p = BaselinePolicy()
     C(p.trim == HOVER, "starts at the measured HOVER_THRUST", "%.4f" % p.trim)
     for _ in range(50):
         act(p, above)
     up = p.trim
     C(up > HOVER, "target persistently above -> trim winds UP", "%.4f" % up)
-    for _ in range(400):
-        act(p, above)
-    C(abs(p.trim - p.trim_max) < 1e-9, "and clamps at trim_max", "%.4f" % p.trim)
+    n = wind(p, above)
+    C(n is not None and abs(p.trim - p.trim_max) < 1e-9, "and clamps at trim_max",
+      "%.4f after %s steps" % (p.trim, n))
 
     q = BaselinePolicy()
-    for _ in range(400):
-        act(q, below)
-    C(abs(q.trim - q.trim_min) < 1e-9, "target persistently below -> clamps at trim_min",
-      "%.4f" % q.trim)
+    n = wind(q, below)
+    C(n is not None and abs(q.trim - q.trim_min) < 1e-9,
+      "target persistently below -> clamps at trim_min",
+      "%.4f after %s steps" % (q.trim, n))
 
     r = BaselinePolicy()
     for _ in range(50):
@@ -527,6 +674,8 @@ def main():
     check_baseline_steering(C)
     check_baseline_velocity_referenced(C)
     check_baseline_vertical(C)
+    check_baseline_accel_loop(C)
+    check_baseline_climb_rate(C)
     check_baseline_trim(C)
     check_baseline_frame_guard(C)
     check_baseline_speed(C)

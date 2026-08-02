@@ -1,7 +1,8 @@
 # CONTROL PIPELINE STATE — FOR AGENTS
 
 **Generated:** 2026-08-01 from disk inspection of `pilot/control/` (source, `plant.json`, checkpoint sidecars, training CSVs).  
-**Do not treat older `HANDOFF*.md` / stale header lines as authority.** Prefer this file + the code.
+**Do not treat older `HANDOFF*.md` / stale header lines as authority.** Prefer this file + the code.  
+**P1/P2 detail:** `STATE_PLANT_SURROGATE.md` beside this file — same date, scoped to plant + surrogate, every number verified by executing the self-checks.
 
 **Deliverable:** an `interface.Policy` that beats the reactive baseline on the live sim.  
 **Contract:** `pilot/interface.py` (frozen; propose changes, do not edit unilaterally).  
@@ -317,5 +318,8 @@ python pilot/control/train/train.py --env surrogate --total-steps 20000000 `
 | PPO terminal obs unrecoverable | Env emits `terminal_obs`; PPO ignores |
 | Discount-factor note under T4 | Referenced in `TRAINING_ARCHITECTURE.md` header; **no such section body found** |
 | `run1` nonexistent | ~5M steps logged, 0% completion |
+| `HANDOFF_SURROGATE.md`: surrogate selfcheck "15/15" | **17/17** over 9 stages (verified by running it, 2026-08-01) |
+| `HANDOFF_SURROGATE.md` / `README.md`: lap-slow session has 2937 JPEGs | `frames.csv` has 2937 rows; **1235 JPEGs on this machine** (42%). Also on disk: `233219` 2397, `005715` 508 |
+| `HANDOFF_SURROGATE.md` §Doc sync: `SYSID.md` "not updated" | `SYSID.md` marks card 2 FLOWN in the working tree (uncommitted) |
 
 **Authority order:** code + `plant.json` + checkpoint sidecars/logs > this file > architecture/handoff markdown.

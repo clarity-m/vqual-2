@@ -1,9 +1,19 @@
 # RL training pipeline — architecture
 
-Owner: Alex (kongalex@umich.edu). Status: IN PROGRESS — P1 is done and
-validated (2026-07-31, `README.md`); the plant half of P2 exists (`plant.Sim`);
-the course generator, synthetic detections, P3 and T4 do not.
-Deadline 2026-08-03 06:00 PST.
+Owner: Alex (kongalex@umich.edu). Deadline 2026-08-03 06:00 PST.
+
+**Status, 2026-08-01.** P1 done and validated (`README.md`), refitted on card 2.
+P2 built and self-checking 17/17 — course generator, synthetic detections and
+the vector env all exist. P3 is still the hand-specified fallback, not measured.
+T4's harness is built and its self-test passes; real training has been run and
+has **not** produced a flyable policy yet (see the note on the discount factor
+under T4). E5 is wired; D6 is untested end to end.
+
+*(An earlier version of this header said the course generator, synthetic
+detections, P3 and T4 "do not" exist. That was true when it was written and is
+no longer; the code on disk is ahead of it. Where this document and the code
+disagree, the code and `plant.json` win — the stale sentences that are known to
+remain are flagged in place.)*
 
 The deliverable is an `interface.Policy` that beats the baseline. This document
 describes the *learned* route to one. The reactive baseline (PID off the gate

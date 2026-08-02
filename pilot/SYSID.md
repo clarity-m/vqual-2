@@ -5,7 +5,10 @@ of flying. **Use the VQ1 build** (`AIGP_VQ1_3391`) — the VQ2 build sends no po
 
 This card was flown on 2026-07-31 and the plant fit came out of it. **Card 2 at the bottom
 of this file is the follow-up** — three minutes aimed at the specific holes the fit exposed.
-If you have sim time and are choosing, fly card 2; card 1's data is already banked.
+
+**Card 2 was flown on 2026-08-01 and the plant was refitted on it.** Both cards' data is
+banked; see the status block on card 2 for what is left, which is not much and does not
+justify a sim slot on its own.
 
 Why not just fly a lap: a lap has correlated inputs and a narrow envelope, so a model
 fitted to it only knows how to fly that lap. These maneuvers excite one thing at a time.
@@ -103,6 +106,31 @@ whatever changed is not recorded. Details and why it matters for the referee:
 ---
 
 # Card 2 — the three gaps card 1 left, 2026-07-31
+
+## STATUS: FLOWN 2026-08-01 — read this before flying any of it again
+
+A and B were flown; C crashed at gate 0 and D was not flown. The plant was refitted on
+what came back (`pilot/control/README.md`, `pilot/control/HANDOFF_SURROGATE.md`).
+
+| maneuver | session | outcome |
+|---|---|---|
+| A — apex reads | `20260801-004843` | **Retired gap 1 and gap 2.** `kz = 0.04359 ± 0.00016` from four wide arcs, thrust as a 21-knot measured table. The hand clamp is gone. |
+| B — terminal up/down | `20260801-005059` (+ `005518` rerun) | Terminal descents agree with the arcs at 0.0435 / 0.0436. In the fit. |
+| C — a complete lap | `20260801-005715` | **Crashed ~14 s in at gate 0.** No usable lap. But the *geometry* gap it was aimed at is closed anyway: `20260731-195307` and `20260731-204841-vq1-lap-slow` both flew the whole 6-gate VQ1 map, crossing points agreeing to 0.5–1.2 m, and the second carries 2937 frames. |
+| D | not flown | **Do not fly it.** Not a piloting problem — see below. |
+
+**Do not fly D.** The two sessions it would extend (`20260731-130744`, `20260731-233219`)
+fail the kinematic referee because `LOCAL_POSITION_NED` velocity repeats bit-identically
+in 53% / 43% of rows while the drone manoeuvres hard, and the referee differentiates a
+held signal. That is a recording artefact and re-flying reproduces it.
+
+**What is actually left**, and none of it blocks anything: throttle 0.50–0.82 is thin
+(~240 samples), so terminal holds at 0.6 and 0.8 for ~30 s each would thicken the middle
+of the thrust table; and `kz` varies ~7% with forward speed (0.0443 at `|u| < 2`, 0.0412
+at 10–15), which a body-lift `c·u²` term captures — measured, +0.043 held-out R², not yet
+in `plant.json` because it has not been through the replay gate.
+
+The rest of this card is kept as the procedure, not as a work item.
 
 **~3 minutes of flying, ~10 on the clock.** Written *after* the plant fit closed
 (`pilot/control/plant.json`), so unlike card 1 every maneuver here is aimed at a weakness

@@ -150,4 +150,4 @@ python pilot/control/evalsuite/run_policy.py --policy baseline --seeds 0-9 --dif
 Training logs: `pilot/control/train/checkpoints/run1_log.csv`  
 Latest archived checkpoint sidecar: `…/run1_s5046272.json` (weights in the matching `.pt`)
 
-For a machine-oriented contract dump (constants, APIs, gotchas), see `CONTROL_STATE_AGENTS.md` beside this file.
+For a machine-oriented contract dump (constants, APIs, gotchas), see `CONTROL_STATE_AGENTS.md` beside this file. For the deep read on the plant fit and the surrogate specifically — every number verified by *running* the checks, not by reading source — see `STATE_PLANT_SURROGATE.md`.
