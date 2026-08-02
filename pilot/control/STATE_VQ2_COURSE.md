@@ -82,6 +82,11 @@ verified by stepping two `vq2_frac=0` envs on the same seed and comparing observ
 Measured from `course_vq2.json` (16 race edges, gates 0→16). **Numbers below are the
 2026-08-02 corrected package** — see §2b for what the correction moved.
 
+Distances here are **`d_3d_m`** — what the aircraft actually flies. `course/README.md`'s
+per-edge table quotes **`d_horiz_m`**, so the two differ wherever an edge has real
+elevation: edge 10-11 is 16.49 m horizontal but 16.91 m in 3-D across a −3.66 m drop.
+Check the field name before comparing a number here against one there.
+
 | | `course.generate` | measured VQ2 |
 |---|---|---|
 | gates | 18–22 | **17** |
