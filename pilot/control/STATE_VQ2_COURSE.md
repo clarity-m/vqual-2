@@ -5,7 +5,55 @@ surrogate training, plus a spec audit of the collision model done along the way.
 
 **Authority order:** code + `course/course_vq2.json` + checkpoint sidecars > this file >
 `TRAINING_ARCHITECTURE.md` / handoff markdown. Where this file and the architecture doc
-disagree about course generation, this one is newer.
+disagree about course generation, this one is newer. For anything about the **reward,
+curriculum or evaluation**, `STATE_RL_TRAINING.md` is the authority — see §0.
+
+---
+
+## 0. Merged with `reward-tuning` — read this before §6 or §9
+
+*Added 2026-08-02, after the merge.*
+
+This document was written on a branch that forked from `a76c2a4` **in parallel with**
+`reward-tuning`, and therefore described a surrogate with none of the reward work in it:
+no clearance potential, `γ=0.99`, curriculum promoting on **completion** at 0.70,
+`margin_range_m=(0.10, 0.40)`, the wall-clock and per-gate timeouts ORed into one flag that
+`ppo.py` bootstrapped wholesale. That is the configuration `STATE_RL_TRAINING.md` records
+as producing 0% completion for 77 updates with **55.5% of episodes ending on the floor**.
+
+The branches are now merged. `env.py` merged without conflict — the two sides touched
+disjoint regions — and the three `evalsuite/` conflicts were union merges of orthogonal
+keyword arguments. What that changes for this document:
+
+* **§6's run command was the pre-fix one.** Replaced; see §6.
+* **§9's training rows are not evidence of learning.** `ev` is value-function fit and rises
+  whenever the critic learns to predict return, *including* a return the policy is farming
+  — `STATE_RL_TRAINING.md` §"The reward-hacking episode" is the worked example. Those rows
+  are retained below as plumbing checks and relabelled.
+* **"all episodes 17-gate" was misleading.** `start_probs=(0.50, 0.25, ...)` spawns 25% of
+  training episodes at a uniformly random gate index. `n_gates` is 17; the number of gates
+  *flown* is not. Evaluation no longer inherits this — `run_policy.EVAL_START_PROBS` pins
+  eval to the start line, with the randomized starts opt-in behind `--random-starts`.
+* **Completion is still the wrong promotion signal here, and is now unused.** 16 crossings
+  means promoting at 0.70 completion needs a per-gate rate of **0.978**, against a
+  best-ever measured 0.705. The merged curriculum promotes on pooled per-gate accuracy
+  instead, and `select.py` ranks on it.
+* **A `reward-tuning` checkpoint could not previously be loaded here at all.**
+  `restore_env_config` iterates `dataclasses.fields(cls)` and *silently skips* unknown
+  keys, so a `runB1` sidecar would have come back carrying the old reward config with no
+  error. Post-merge the field sets agree.
+
+Two consequences for VQ2-only that were not visible before the merge, both open:
+
+1. **Nothing trains for time.** §5 justifies VQ2-only on the grounds that ranking is on
+   time (spec §9.4), but `k_time` sits behind `enable_time_penalty`, which
+   `curriculum.py` flips on at 80% completion — unreachable. A course-memorizing policy is
+   never optimized for the objective that motivates memorizing it.
+2. **Two independent conservatisms on the pass test now compound.** §4 finds the
+   circle-vs-square test credits roughly a third to a half of the real aperture; the merge
+   moves `margin_range_m` to `(0.0, 0.40)` so difficulty 0 is at least the *physical*
+   aperture rather than 30% inside it. That removes one of the two, not both. Under
+   VQ2-only the remainder applies at the same gates every episode.
 
 ---
 
@@ -192,15 +240,20 @@ for.
 ## 6. How to run
 
 ```bash
-# local, ~35–40 min for 20M steps at ~9.4k FPS on a laptop CPU
-python pilot/control/train/train.py --env surrogate --total-steps 20000000 \
-    --n-envs 256 --n-steps 128 --frame-stack 6 --name vq2_run1 \
+# post-merge. --gates-per-episode and --ent-coef are NOT optional: see STATE_RL_TRAINING.md
+python pilot/control/train/train.py --env surrogate --name vq2_run1 \
+    --total-steps 200000000 --n-envs 2048 --n-steps 128 \
+    --curriculum-window 1000 --gates-per-episode 17 --ent-coef 0.001 \
     --env-kwarg vq2_frac=1.0
 
 # rank checkpoints — --vq2-frac MUST match training
 python pilot/control/evalsuite/select.py --baseline \
     --ckpt vq2_run1_s5046272 --vq2-frac 1.0 --seeds 0-49
 ```
+
+`--gamma` now defaults to 0.997 and is wired through to the env, so shaping and PPO cannot
+disagree. `--gates-per-episode 17` matches the VQ2 course length; the curriculum grows K
+from `gates_start` regardless, so a smaller value is a legitimate warm start, not a cap.
 
 **Colab:** `train/colab_vq2.ipynb`, or open it directly at
 `colab.research.google.com/github/clarity-m/vqual-2/blob/worktree-vq2-course-training/pilot/control/train/colab_vq2.ipynb`.
@@ -258,6 +311,20 @@ depend on this, but anything else importing `course` does.
    `NOTES.md` mentions support columns in the hangar. Largest remaining fidelity gap.
 5. **Square-aperture collision test.** Worth doing regardless of item 1 — see §4.
 6. **`RIBBON_LOOKAHEAD` retune** against 16.8 m real mean spacing, not the assumed 28 m.
+   `[4, 8, 14, 22, 32, 45]` against a 15.3 m median edge puts the last two slots 2–3 gates
+   downcourse. On a *fixed* course that is either free information or wasted capacity, and
+   which one is untested.
+6b. **Spawn back-off uses a course mean on a 4:1 edge spread.** `vq2course` sets `seg_len`
+   to the per-course mean edge and `_reset_envs` draws `back = U(0.45, 0.95) × seg_len`
+   → 7.5–15.9 m, against real edges of 8.3–33.9 m. Measured: **22% of mid-course spawns
+   (~5% of all training episodes) back off farther than the preceding gate is away**,
+   concentrated on `a0` = 2, 8, 10 (P = 0.90, 0.54, 0.70) — and 8 and 10 are the exits from
+   two of the three sharp corners §2 identifies as deciding the course. At a 73° corner the
+   back-off vector does not point at the previous gate, so this is not necessarily a spawn
+   *through* a frame and may read as useful recovery randomization; it is nonetheless
+   unintended and lands hardest on the gates that matter. Fix is to use the per-gate
+   incoming edge rather than the course mean. Does not affect evaluation, which now pins
+   to the start line.
 7. **`pilot/PRODUCER.md`** referenced by perception but not in the repo.
 8. **Observation-stream comparison** — perception offered to diagnose input chatter. Note
    that a *surrogate* dump cannot show association flips, PnP normal flips or range-source
@@ -279,8 +346,27 @@ Run on this branch, 2026-08-02:
 | checkpoint config round-trip | survives `env_config_dict` → `restore_env_config`, incl. the tilt dict |
 | floor/ceiling clearance | all gates clear over 512 courses (lowest 2.603 m vs 2.55 m required) |
 | contested edge sampling | 258 of 1024 pool courses on the 13.0 m rival (~25%, as designed) |
-| training, `vq2_frac=0.8` | 131k steps, ~9.7k FPS, ev 0.07 → 0.82, coll 0.98 → 0.90 |
-| training, `vq2_frac=1.0` | 65k steps, ev 0.19 → 0.58, all episodes 17-gate |
+| training, `vq2_frac=0.8` | *plumbing only.* 131k steps, ~9.7k FPS. `ev` is critic fit, not performance |
+| training, `vq2_frac=1.0` | *plumbing only.* 65k steps. `n_gates == 17`; gates *flown* not measured |
+
+Re-run on the merged branch, 2026-08-02:
+
+| check | result |
+|---|---|
+| `surrogate/selfcheck.py` | **17/17 PASS** |
+| `train/selftest.py` | **ALL CHECKS PASSED** (incl. both resume paths) |
+| `vq2_frac=0` regression | `n_gates` 18–22, obs finite — procedural path untouched |
+| `vq2_frac=1.0` on merged env | `n_gates == 17`, clearance potential finite, per-gate counters live |
+| training, `vq2_frac=1.0` | 393k steps, ~11.5k FPS, **`coll` 0.969 → 0.52**, `grate` 0 → 0.007, `ent` 2.75 stable, `kl` ~0.003 |
+
+That last row is a **plumbing check, not a result** — 393k steps is ~0.2% of a real run and
+`grate` 0.007 means nothing yet. What it does show is the collision rate falling under the
+merged reward where the pre-merge reward had no altitude term at all, and `gate_rate`
+driving the curriculum in place of completion.
+
+**Known pre-existing gap (not introduced by the merge):** `course/verify_course.py` part (b)
+raises `FileNotFoundError` on `pilot/control/perception/map_vq2.json`, which is not in the
+repo on any branch. Part (a) passes.
 | throughput | no regression vs procedural (~24.9k raw env-steps/s at n=256) |
 | eval CLI | `--vq2-frac` parses and forwards through all three entry points |
 

@@ -36,8 +36,8 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from pilot.control.evalsuite.run_policy import (                 # noqa: E402
-    add_common_args, build_config, config_dict, evaluate, make_policy, parse_pair,
-    parse_seeds, summarize, write_json)
+    add_batch_arg, add_common_args, build_config, config_dict, evaluate, make_policy,
+    parse_pair, parse_seeds, run_batched, summarize, write_json)
 
 DRAW_STRIDE = 997   # coprime with anything a human types into --seeds
 
@@ -118,6 +118,7 @@ def main(argv=None):
                     help="score on the hardest 100-P per cent of draws")
     ap.add_argument("--device", default="cpu")
     add_common_args(ap)
+    add_batch_arg(ap)
     args = ap.parse_args(argv)
 
     if not args.baseline and not args.ckpt:
@@ -127,20 +128,33 @@ def main(argv=None):
     cfg = build_config(args.difficulty, args.speed_cap,
                        decision_hz=parse_pair(args.decision_hz),
                        n_gates=parse_pair(args.n_gates),
-                       time_penalty=args.time_penalty, vq2_frac=args.vq2_frac)
+                       time_penalty=args.time_penalty, vq2_frac=args.vq2_frac,
+                       random_starts=args.random_starts)
 
     candidates = []
     if args.baseline:
-        candidates.append(make_policy("baseline", gains=args.gains,
-                                      supervisor=args.supervisor))
+        candidates.append(("baseline", None,
+                           make_policy("baseline", gains=args.gains,
+                                       supervisor=args.supervisor)))
     for c in args.ckpt:
-        candidates.append(make_policy("rl", ckpt=c, supervisor=args.supervisor,
-                                      device=args.device))
+        candidates.append(("rl", c, make_policy("rl", ckpt=c, supervisor=args.supervisor,
+                                                device=args.device)))
 
+    # Every candidate must fly the SAME draw list -- `hard_subset` calls a draw hard
+    # because several candidates failed it, which is meaningless across different worlds.
+    # Both paths hold that: `evaluate` replays the seed list, and `evaluate_batch` is
+    # deterministic in (config, n_lanes, seed) and scores only the policy-independent
+    # first episode of each lane.
     per_candidate = {}
-    for policy, name in candidates:
+    for kind, ckpt, (policy, name) in candidates:
         print("\nflying %s over %d draws ..." % (name, len(seeds)))
-        results = evaluate(policy, cfg, seeds, max_steps=args.max_steps)
+        if args.batch:
+            shim = argparse.Namespace(policy=kind, ckpt=ckpt, gains=args.gains,
+                                      supervisor=args.supervisor, device=args.device,
+                                      max_steps=args.max_steps)
+            results = run_batched(shim, cfg, policy, seeds)
+        else:
+            results = evaluate(policy, cfg, seeds, max_steps=args.max_steps)
         per_candidate[name] = results
         s = summarize(results)
         print("  completion %.3f | gates %.2f | time %s"
