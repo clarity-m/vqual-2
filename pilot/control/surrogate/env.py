@@ -64,6 +64,7 @@ import course  # noqa: E402
 import detect  # noqa: E402
 import noise as noise_mod  # noqa: E402
 import vmath  # noqa: E402
+import vq2course  # noqa: E402
 
 G = plant_mod.G
 N_SLOTS = interface.N_GATES
@@ -130,6 +131,23 @@ class EnvConfig:
     thrust_jitter: float = 0.15
     rate_gain_jitter: float = 0.10
     delay_jitter: tuple = (0.7, 1.4)
+
+    # -- the measured VQ2 course, see vq2course.py ---------------------------
+    # 0 keeps the surrogate exactly as it was: every course procedural. Above 0, that
+    # share of episodes runs the measured 17-gate VQ2 layout instead. Keep some
+    # procedural share: the map cannot help a policy that is lost, so gate-SEEKING has
+    # to survive alongside the track.
+    vq2_frac: float = 0.0
+    vq2_pool_size: int = 2048
+    vq2_pool_seed: int = 0
+    vq2_yaw_mode: str = "mixed"       # 'mixed' (randomize the disagreement) | 'bisector'
+    vq2_yaw_jitter_deg: float = 4.0
+    vq2_tilt_deg: object = None       # {gate: (lo_deg, hi_deg)}; None = all vertical
+    # ASSUMED -- the map's z is relative to gate 0, not to the floor, so where the floor
+    # sits is a free parameter. Randomized rather than guessed. The lower bound must clear
+    # floor_clear_m plus half the aperture or gates start underground.
+    vq2_floor_clear_m: tuple = (2.6, 4.5)     # lowest gate's height above the floor
+    vq2_headroom_m: tuple = (1.75, 4.0)       # ceiling above the course's own high point
 
     # -- collision -----------------------------------------------------------
     margin_range_m: tuple = (0.10, 0.40)   # architecture T4: the main transfer trick
@@ -273,6 +291,10 @@ class VecSurrogate:
 
         mk = self.cfg.attention_factory or (
             lambda: attn_mod.AttentionPolicy(r_commit_m=self.cfg.r_commit_m))
+        # Built once per process and cached across curriculum rebuilds; None unless
+        # cfg.vq2_frac > 0, in which case this is the measured VQ2 layout.
+        self.vq2_pool = vq2course.get_pool(self.cfg)
+
         self.attn = mk()
         self.attn.reset(n)
         self._yaw_cmd = np.zeros(n)
@@ -295,7 +317,7 @@ class VecSurrogate:
             return
         cfg, rng = self.cfg, self.rng
 
-        c = course.generate(rng, m, cfg)
+        c = vq2course.mix(rng, m, cfg, self.vq2_pool)
         self.g_pos[mask] = c["pos"]
         self.g_nrm[mask] = c["nrm"]
         self.n_gates[mask] = c["n_gates"]

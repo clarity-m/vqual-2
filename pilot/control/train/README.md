@@ -24,6 +24,32 @@ field (python literal value), e.g. `--env-kwarg decision_hz_range=(28.0,34.0)` f
 low-rate stress runs E5 wants; unknown fields are reported and ignored rather than
 crashing, so this harness does not break when the surrogate's config grows.
 
+## Training on the measured VQ2 course
+
+    python pilot/control/train/train.py --env surrogate --total-steps 20000000 \
+        --n-envs 256 --n-steps 128 --frame-stack 6 --name vq2_run1 \
+        --env-kwarg vq2_frac=0.8
+
+`vq2_frac` is the share of episodes flown on the **measured** 17-gate VQ2 layout
+(`../course/`) instead of a procedurally generated one. It defaults to `0` — the surrogate
+is unchanged until you ask for it. Rationale, and the full measured-vs-assumed split, is in
+`../surrogate/vq2course.py`; the short version is that the generator's shortest segment is
+18 m while 10 of VQ2's 16 race edges are shorter than that, and the corners that decide
+this course pair a sharp turn with a ~10 m exit — a combination the generator never draws.
+
+Keep some procedural share. The map cannot help a policy that is lost, so gate-seeking has
+to survive alongside the track.
+
+Other knobs (all `--env-kwarg`): `vq2_yaw_mode` (`'mixed'` randomizes across the three
+disagreeing gate-yaw hypotheses, `'bisector'` fixes them), `vq2_pool_size`,
+`vq2_floor_clear_m`, `vq2_headroom_m`, `vq2_tilt_deg`.
+
+**On Colab:** open `colab_vq2.ipynb`. It clones the repo, runs both verification suites,
+symlinks `checkpoints/` to Drive so a disconnect does not lose the run, and launches
+training with the knobs as form fields. Use a CPU runtime — the env is vectorized NumPy and
+dominates the step, so a GPU only speeds the PPO update. The win from Colab is running
+several configs in parallel, not one run faster.
+
 ## Files
 
 | file | what |
@@ -37,6 +63,7 @@ crashing, so this harness does not break when the surrogate's config grows.
 | `train.py` | entry point: CLI, curriculum loop, logging, checkpointing |
 | `testenv.py` | throwaway 2-D point-mass stub exposing the `VecSurrogate` API. Test only |
 | `selftest.py` | the verification above: stacking, normalization, hover init, curriculum, PPO learning, checkpoint round-trip |
+| `colab_vq2.ipynb` | Colab runner: clone, verify, checkpoints to Drive, train on the measured VQ2 course |
 
 ## The three things that are easy to get silently wrong
 
