@@ -64,6 +64,13 @@ class RolloutStats:
     episode_lengths: list[float] = field(default_factory=list)
     gates_passed: list[float] = field(default_factory=list)
     collisions: list[bool] = field(default_factory=list)
+    # Collisions PER EPISODE, from the env's own counter. `collisions` above is the
+    # terminal `collision` flag sampled on `done`, which only means anything while
+    # `EnvConfig.collision_terminates` is True -- with contact non-terminal an episode
+    # ends on a timeout or a corridor exit, and the flag reads ~0 no matter how many
+    # times the aircraft hit something. That is exactly the regime where collisions are
+    # the thing worth watching, so count them properly.
+    collision_counts: list[float] = field(default_factory=list)
     completions: list[bool] = field(default_factory=list)
     # Active-gate plane crossings and clean passes, per finished episode. Their pooled
     # ratio is the per-gate accuracy the curriculum promotes on: whole-course completion
@@ -282,6 +289,9 @@ class PPO:
             stats.gates_passed += [float(v) for v in gates[done]]
         if coll is not None:
             stats.collisions += [bool(v) for v in coll[done]]
+        cn = info_array(info, "collision_episodes", n)
+        if cn is not None:
+            stats.collision_counts += [float(v) for v in cn[done]]
         if self.completion_fn is not None:
             stats.completions += [bool(v) for v in self.completion_fn(info, done)]
 

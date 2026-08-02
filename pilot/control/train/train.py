@@ -474,15 +474,28 @@ def run(args: argparse.Namespace) -> dict:
     log_path = CHECKPOINT_DIR / f"{args.name}_log.csv"
     log_fields = [
         "step", "update", "sps", "ep_return", "ep_len", "gates", "collision_rate",
-        "gate_rate", "gates_per_episode",
+        "collisions_per_ep", "gate_rate", "gates_per_episode",
         "completion_rate", "difficulty", "speed_cap", "time_penalty", "policy_loss",
         "value_loss", "entropy", "approx_kl", "clip_frac", "explained_var", "reward_scale",
     ]
     # Append on resume: opening "w" here would silently destroy the history of the run
     # being continued (run1_log.csv is 77 updates of the only training evidence there is).
     append = resumed_log and log_path.exists() and log_path.stat().st_size > 0
+    if append:
+        # Adopt the EXISTING header rather than this build's. A column added since the run
+        # started would otherwise write rows one field wider than the header they sit
+        # under, which reads as a silent off-by-one in every column after it. Dropping the
+        # new column for the rest of a resumed run is the recoverable failure.
+        with log_path.open("r", newline="", encoding="utf-8") as f:
+            existing = next(csv.reader(f), None)
+        if existing:
+            missing = [c for c in log_fields if c not in existing]
+            if missing and not args.quiet:
+                print(f"[train] {log_path.name}: appending under its original header; "
+                      f"not logging {', '.join(missing)}", flush=True)
+            log_fields = existing
     log_file = log_path.open("a" if append else "w", newline="", encoding="utf-8")
-    log_writer = csv.DictWriter(log_file, fieldnames=log_fields)
+    log_writer = csv.DictWriter(log_file, fieldnames=log_fields, extrasaction="ignore")
     if not append:
         log_writer.writeheader()
 
@@ -532,6 +545,10 @@ def run(args: argparse.Namespace) -> dict:
             "ep_len": round(float(np.mean(stats.episode_lengths)), 1) if stats.episode_lengths else "",
             "gates": round(float(np.mean(stats.gates_passed)), 2) if stats.gates_passed else "",
             "collision_rate": round(float(np.mean(stats.collisions)), 3) if stats.collisions else "",
+            # Collisions per episode. Prefer this to `collision_rate` whenever contact is
+            # non-terminal: the flag above is sampled on `done` and reads ~0 in that mode.
+            "collisions_per_ep": (round(float(np.mean(stats.collision_counts)), 3)
+                                  if stats.collision_counts else ""),
             "gate_rate": round(curriculum.gate_rate_raw, 4),
             "gates_per_episode": curriculum.gates_per_episode,
             "completion_rate": round(curriculum.completion_rate_raw, 3),
@@ -554,7 +571,10 @@ def run(args: argparse.Namespace) -> dict:
             print(
                 f"[{update:5d}/{total_updates}] step={row['step']:>9} "
                 f"fps={row['sps']:>8} ret={row['ep_return']!s:>8} "
-                f"gates={row['gates']!s:>6} coll={row['collision_rate']!s:>5} "
+                f"gates={row['gates']!s:>6} "
+                # `coll` is the terminal-flag rate while contact ends an episode, and
+                # collisions-per-episode once it does not. Same column, right meaning.
+                f"coll={(row['collisions_per_ep'] if row['collisions_per_ep'] != '' else row['collision_rate'])!s:>5} "
                 f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} | "
                 f"{curriculum.summary()} | "
                 f"pl={row['policy_loss']:+.4f} vl={row['value_loss']:.4f} "
