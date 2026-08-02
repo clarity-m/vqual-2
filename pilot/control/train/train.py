@@ -74,6 +74,8 @@ def build_env(kind: str, n_envs: int, seed: int, spec: dict, extra: dict):
         raise ValueError(f"unknown --env {kind!r}")
 
     _set_if_present(cfg, "enable_time_penalty", spec["enable_time_penalty"], _WARNED_FIELDS)
+    if spec.get("gates_per_episode") is not None:
+        _set_if_present(cfg, "gates_per_episode", spec["gates_per_episode"], _WARNED_FIELDS)
     if spec.get("progress_gate_scale", 1.0) != 1.0:
         _set_if_present(cfg, "progress_gate_scale", spec["progress_gate_scale"], _WARNED_FIELDS)
     for k, v in extra.items():
@@ -245,7 +247,14 @@ def parse_args(argv=None) -> argparse.Namespace:
 
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--anneal-lr", action="store_true")
-    p.add_argument("--gamma", type=float, default=0.99)
+    # 0.99 at a 45-65 Hz decision rate is a ~1.8 s horizon, shorter than the ~2.8 s
+    # between gates at cruise. Measured on `run1`: the aircraft committed to a ~2.1 m/s^2
+    # sink and hit the floor ~2.4 s later, by which point the -8 terminal was discounted
+    # to 0.27 of face value -- so "keep flying" was worth ~10 against a crash costing ~18,
+    # and the policy was nearly indifferent to dying. At 0.997 (~6 s) those become ~33 and
+    # ~41. This is the cheapest way to strengthen the effective collision penalty without
+    # touching `k_collision`, which the architecture forbids weakening.
+    p.add_argument("--gamma", type=float, default=0.997)
     p.add_argument("--gae-lambda", type=float, default=0.95)
     p.add_argument("--clip-coef", type=float, default=0.2)
     p.add_argument("--ent-coef", type=float, default=0.005)
@@ -257,6 +266,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--log-std-init", type=float, default=-0.5)
     p.add_argument("--no-reward-scaling", action="store_true")
 
+    p.add_argument("--gates-per-episode", type=int, default=3,
+                   help="STARTING episode length in gates; the curriculum grows it from "
+                        "here. Each episode is cut after K gates as a truncation, not a "
+                        "finish, and the course is still generated at full length. The "
+                        "old behaviour is --gates-per-episode 22, which at 18-22 gates "
+                        "makes completion per-gate-rate^20 and is why run1 logged 0.000 "
+                        "for 77 straight updates")
     p.add_argument("--difficulty-start", type=float, default=0.0)
     p.add_argument("--speed-cap-start", type=float, default=0.5)
     p.add_argument("--no-curriculum", action="store_true")
@@ -297,6 +313,10 @@ def run(args: argparse.Namespace) -> dict:
     torch.set_num_threads(max(1, min(8, torch.get_num_threads())))
 
     extra_env = _parse_env_kwargs(args.env_kwarg)
+    # The env's potential-based shaping must telescope against the SAME discount PPO
+    # uses, or `gamma*PHI(s') - PHI(s)` stops being policy-preserving. An explicit
+    # --env-kwarg still wins, so the coupling can be broken deliberately.
+    extra_env.setdefault("gamma_shaping", args.gamma)
     hidden = tuple(int(h) for h in str(args.hidden).replace(" ", "").split(",") if h)
 
     # --- resume: load before anything is built, so the checkpoint governs the shapes ----
@@ -331,6 +351,7 @@ def run(args: argparse.Namespace) -> dict:
             time_penalty_off=max(0.0, args.time_penalty_rate - 0.2),
             window=args.curriculum_window,
             hold_updates=args.curriculum_hold,
+            gates_start=args.gates_per_episode,
             frozen=args.no_curriculum,
         )
     )
@@ -453,6 +474,7 @@ def run(args: argparse.Namespace) -> dict:
     log_path = CHECKPOINT_DIR / f"{args.name}_log.csv"
     log_fields = [
         "step", "update", "sps", "ep_return", "ep_len", "gates", "collision_rate",
+        "gate_rate", "gates_per_episode",
         "completion_rate", "difficulty", "speed_cap", "time_penalty", "policy_loss",
         "value_loss", "entropy", "approx_kl", "clip_frac", "explained_var", "reward_scale",
     ]
@@ -489,7 +511,7 @@ def run(args: argparse.Namespace) -> dict:
 
         stats = agent.collect()
         losses = agent.update()
-        curriculum.record(stats.completions)
+        curriculum.record(stats.completions, stats.gate_passes, stats.gate_attempts)
 
         if curriculum.step():
             n_rebuilds += 1
@@ -510,6 +532,8 @@ def run(args: argparse.Namespace) -> dict:
             "ep_len": round(float(np.mean(stats.episode_lengths)), 1) if stats.episode_lengths else "",
             "gates": round(float(np.mean(stats.gates_passed)), 2) if stats.gates_passed else "",
             "collision_rate": round(float(np.mean(stats.collisions)), 3) if stats.collisions else "",
+            "gate_rate": round(curriculum.gate_rate_raw, 4),
+            "gates_per_episode": curriculum.gates_per_episode,
             "completion_rate": round(curriculum.completion_rate_raw, 3),
             "difficulty": round(curriculum.difficulty, 3),
             "speed_cap": round(curriculum.speed_cap, 3),
@@ -531,7 +555,8 @@ def run(args: argparse.Namespace) -> dict:
                 f"[{update:5d}/{total_updates}] step={row['step']:>9} "
                 f"fps={row['sps']:>8} ret={row['ep_return']!s:>8} "
                 f"gates={row['gates']!s:>6} coll={row['collision_rate']!s:>5} "
-                f"compl={row['completion_rate']:.2f} | {curriculum.summary()} | "
+                f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} | "
+                f"{curriculum.summary()} | "
                 f"pl={row['policy_loss']:+.4f} vl={row['value_loss']:.4f} "
                 f"ent={row['entropy']:.3f} kl={row['approx_kl']:.4f} "
                 f"ev={row['explained_var']:+.3f}",

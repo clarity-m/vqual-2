@@ -65,6 +65,12 @@ class RolloutStats:
     gates_passed: list[float] = field(default_factory=list)
     collisions: list[bool] = field(default_factory=list)
     completions: list[bool] = field(default_factory=list)
+    # Active-gate plane crossings and clean passes, per finished episode. Their pooled
+    # ratio is the per-gate accuracy the curriculum promotes on: whole-course completion
+    # is that ratio raised to the gate count, which stays at 0.000 long after the ratio
+    # has started moving, and is why `run1` never promoted in 77 updates.
+    gate_passes: list[float] = field(default_factory=list)
+    gate_attempts: list[float] = field(default_factory=list)
 
 
 def info_array(info: dict, key: str, n_envs: int) -> np.ndarray | None:
@@ -224,7 +230,11 @@ class PPO:
         # A genuine terminal wins: env.py ORs the flags, so one step can be both a
         # collision and a timeout, and that episode's future value really is zero.
         # "finished" is the surrogate's name for it, "completed" is testenv's.
-        for key in ("collision", "corridor_exit", "finished", "completed"):
+        # `gate_timeout` is a genuine terminal, not a time limit: the policy failed to
+        # reach its gate, and its future really is worth zero. The surrogate used to OR it
+        # into `timeout`, so this bootstrapped a stuck policy with the value of the course
+        # it was never going to fly.
+        for key in ("collision", "corridor_exit", "finished", "completed", "gate_timeout"):
             flag = info_array(info, key, self.n_envs)
             if flag is not None:
                 trunc &= ~flag.astype(bool)
@@ -251,8 +261,19 @@ class PPO:
         n = self.n_envs
         ep_ret = info_array(info, "episode_return", n)
         ep_len = info_array(info, "episode_length", n)
-        gates = info_array(info, "gates_passed", n)
+        # `gates_this_episode` where the env reports it: `gates_passed` is the ABSOLUTE
+        # gate index and 25% of episodes spawn mid-course, so it credits the policy with
+        # the spawn offset. At update 1 of `run1` a freshly initialised network logged
+        # 2.05 "gates", which is exactly the mean offset and nothing the policy did.
+        gates = info_array(info, "gates_this_episode", n)
+        if gates is None:
+            gates = info_array(info, "gates_passed", n)
         coll = info_array(info, "collision", n)
+        gp = info_array(info, "gate_passes", n)
+        ga = info_array(info, "gate_attempts", n)
+        if gp is not None and ga is not None:
+            stats.gate_passes += [float(v) for v in gp[done]]
+            stats.gate_attempts += [float(v) for v in ga[done]]
         if ep_ret is not None:
             stats.episode_returns += [float(v) for v in ep_ret[done]]
         if ep_len is not None:

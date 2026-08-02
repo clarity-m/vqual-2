@@ -116,7 +116,15 @@ def test_curriculum() -> None:
     check("no completions: speed_cap never drops below the start", never.speed_cap >= 0.5,
           f"speed_cap={never.speed_cap:.2f}")
     check("no completions: time penalty stays off", not never.enable_time_penalty)
-    check("stall weakens the progress term near gates", never.progress_gate_scale < 1.0,
+    # The stall detector still has to FIRE -- that half is load-bearing and is what backs
+    # speed_cap off. What it no longer does is touch `progress_gate_scale`: that response
+    # assumed a stall means the policy is diving at gates, whereas the measured cause was
+    # that completion over 18-22 gates is per-gate-rate^20 and unreachable. It is also
+    # the only shaping term that is not potential-based, i.e. the only one that can move
+    # the optimal policy rather than just the learning dynamics.
+    check("stall detector still fires when completion never moves", never.n_stalls > 0,
+          f"n_stalls={never.n_stalls}")
+    check("stall leaves the progress term alone", never.progress_gate_scale == 1.0,
           f"progress_gate_scale={never.progress_gate_scale:.2f} after {never.n_stalls} stalls")
 
     always = Curriculum(CurriculumConfig(speed_cap_start=0.5, **base))
