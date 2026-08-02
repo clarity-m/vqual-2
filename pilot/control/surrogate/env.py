@@ -269,6 +269,10 @@ class EnvConfig:
 
     # -- perception ----------------------------------------------------------
     noise: noise_mod.NoiseParams = field(default_factory=noise_mod.NoiseParams)
+    # Sensor-error strength, independent of `difficulty`. 1.0 is the measured model;
+    # 0.0 is a PERFECT sensor. Meant to be ramped up over a run, not left low --
+    # architecture P3: clean detections are a bug, a policy will exploit them.
+    noise_scale: float = 1.0
     r_commit_m: float = attn_mod.R_COMMIT_M     # TBD, see attention.py
     attention_factory: object = None            # () -> object with reset/step_batch
 
@@ -410,7 +414,7 @@ class VecSurrogate:
         self.z_ceil[mask] = c["z_ceil"]
         self.corridor_r[mask] = c["corridor_r"]
 
-        nz = noise_mod.sample(cfg.noise, rng, m, cfg.difficulty)
+        nz = noise_mod.sample(cfg.noise, rng, m, cfg.difficulty, cfg.noise_scale)
         for k, val in nz.items():
             self.nz[k][mask] = val
 

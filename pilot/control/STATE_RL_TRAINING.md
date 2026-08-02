@@ -59,6 +59,20 @@ measured, none of them the optimiser:
   `ppo.py` bootstrapped wholesale, crediting a stuck policy with the rest of the course.
 * **`gates_this_episode`** reported instead of the absolute index, which had credited a
   freshly initialised network with 2.05 gates — the mean spawn offset.
+* **A sensor-noise ramp** (`EnvConfig.noise_scale`, `--noise-scale-start` /
+  `--noise-ramp-from` / `--noise-ramp-to`), separate from `difficulty`. `difficulty` only
+  ever narrows each noise range toward its pessimistic end, so difficulty 0 is still
+  noticeably noisy; `noise_scale` interpolates every range from a **perfect sensor** to the
+  measured model, so 0 really is zero error. Verified: `p_detect` 1.000, latency 0.0000 s,
+  `p_pose_fail` 0.000, false-positive rate 0.000 at scale 0, and bit-unchanged behaviour at
+  the default 1.0. `cam_fps` is deliberately exempt — the frame rate is physical, not error.
+
+  **This is in tension with architecture P3** ("clean detections are a bug: a policy will
+  exploit any regularity in synthetic tracks") and the tension is real, not a technicality.
+  A policy that *converges* on a perfect sensor learns to trust `pos_body` exactly and then
+  has to unlearn it, and unlearning is usually harder than learning. The knob exists to be
+  **ramped through**, not parked at. Anchored on absolute `global_step` so a resume rejoins
+  the schedule instead of restarting it at zero — checked across a resume, 0.16 → 0.38.
 
 ## The reward-hacking episode, because it will recur
 

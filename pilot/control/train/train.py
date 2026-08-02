@@ -107,6 +107,25 @@ def env_config_dict(cfg) -> dict:
     return {k: conv(v) for k, v in raw.items()}
 
 
+def noise_scale_at(args, step: int):
+    """The sensor-noise scale for this global step, or None if no ramp was asked for.
+
+    Linear from `--noise-scale-start` at `--noise-ramp-from` to 1.0 (the full measured
+    noise model) at `--noise-ramp-to`, flat outside. Steps are ABSOLUTE, which is what
+    makes the ramp survive a resume: the scale is a pure function of `global_step`, so an
+    interrupted run rejoins the schedule where it left off rather than restarting it.
+    """
+    if args.noise_ramp_to is None:
+        return None if args.noise_scale_start >= 1.0 else float(args.noise_scale_start)
+    a = int(args.noise_ramp_from or 0)
+    b = int(args.noise_ramp_to)
+    s0 = float(args.noise_scale_start)
+    if b <= a:
+        return 1.0 if step >= b else s0
+    f = (float(step) - a) / float(b - a)
+    return float(min(max(s0 + (1.0 - s0) * min(max(f, 0.0), 1.0), 0.0), 1.0))
+
+
 def restore_env_config(d: dict, cls=None):
     """Rebuild an EnvConfig from a checkpoint's `env_config` dict.
 
@@ -273,6 +292,16 @@ def parse_args(argv=None) -> argparse.Namespace:
                         "old behaviour is --gates-per-episode 22, which at 18-22 gates "
                         "makes completion per-gate-rate^20 and is why run1 logged 0.000 "
                         "for 77 straight updates")
+    p.add_argument("--noise-scale-start", type=float, default=1.0,
+                   help="sensor-noise strength at --noise-ramp-from. 1.0 is the measured "
+                        "model (default, unchanged behaviour); 0.0 is a PERFECT sensor. "
+                        "Architecture P3 warns clean detections are exploitable, so this "
+                        "is for ramping, not for parking a run at.")
+    p.add_argument("--noise-ramp-from", type=int, default=None,
+                   help="ABSOLUTE global step where the noise ramp begins (default 0)")
+    p.add_argument("--noise-ramp-to", type=int, default=None,
+                   help="ABSOLUTE global step where noise reaches full strength. Absolute "
+                        "so the ramp survives a resume instead of restarting.")
     p.add_argument("--difficulty-start", type=float, default=0.0)
     p.add_argument("--speed-cap-start", type=float, default=0.5)
     p.add_argument("--no-curriculum", action="store_true")
@@ -474,7 +503,7 @@ def run(args: argparse.Namespace) -> dict:
     log_path = CHECKPOINT_DIR / f"{args.name}_log.csv"
     log_fields = [
         "step", "update", "sps", "ep_return", "ep_len", "gates", "collision_rate",
-        "collisions_per_ep", "gate_rate", "gates_per_episode",
+        "collisions_per_ep", "gate_rate", "gates_per_episode", "noise_scale",
         "completion_rate", "difficulty", "speed_cap", "time_penalty", "policy_loss",
         "value_loss", "entropy", "approx_kl", "clip_frac", "explained_var", "reward_scale",
     ]
@@ -522,6 +551,15 @@ def run(args: argparse.Namespace) -> dict:
             for g in agent.opt.param_groups:
                 g["lr"] = args.lr * frac
 
+        # Sensor-noise ramp. Anchored on the ABSOLUTE global step, not on where this
+        # process happened to start, so a resume lands at the same point on the ramp that
+        # an uninterrupted run would have -- a ramp measured from the resume point would
+        # restart every disconnect and the policy would see clean detections again.
+        # Mutating the live config is enough: `_reset_envs` re-draws noise per episode.
+        ns = noise_scale_at(args, agent.global_step)
+        if ns is not None:
+            env_cfg.noise_scale = ns
+
         stats = agent.collect()
         losses = agent.update()
         curriculum.record(stats.completions, stats.gate_passes, stats.gate_attempts)
@@ -550,6 +588,7 @@ def run(args: argparse.Namespace) -> dict:
             "collisions_per_ep": (round(float(np.mean(stats.collision_counts)), 3)
                                   if stats.collision_counts else ""),
             "gate_rate": round(curriculum.gate_rate_raw, 4),
+            "noise_scale": round(float(getattr(env_cfg, "noise_scale", 1.0)), 4),
             "gates_per_episode": curriculum.gates_per_episode,
             "completion_rate": round(curriculum.completion_rate_raw, 3),
             "difficulty": round(curriculum.difficulty, 3),
@@ -575,7 +614,7 @@ def run(args: argparse.Namespace) -> dict:
                 # `coll` is the terminal-flag rate while contact ends an episode, and
                 # collisions-per-episode once it does not. Same column, right meaning.
                 f"coll={(row['collisions_per_ep'] if row['collisions_per_ep'] != '' else row['collision_rate'])!s:>5} "
-                f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} | "
+                f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} "+ (f"nz={row['noise_scale']:.2f} " if row['noise_scale'] < 1.0 else "") + "| "
                 f"{curriculum.summary()} | "
                 f"pl={row['policy_loss']:+.4f} vl={row['value_loss']:.4f} "
                 f"ent={row['entropy']:.3f} kl={row['approx_kl']:.4f} "
