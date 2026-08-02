@@ -1,0 +1,703 @@
+<meta charset="utf-8">
+<title>surrogate rollouts</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b23; --line:#252c37; --ink:#c9d3e0; --dim:#7d8899;
+    --accent:#6db3ff; --warn:#ffb454; --bad:#ff6b6b; --good:#5fd38d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+  #app{display:grid;grid-template-columns:1fr 232px;grid-template-rows:1fr auto;
+    height:100vh;gap:1px;background:var(--line)}
+  #left{display:flex;flex-direction:column;background:var(--bg);min-width:0}
+  #sceneWrap{position:relative;flex:1;min-height:0}
+  canvas{display:block;width:100%;height:100%}
+  #cam{position:absolute;right:8px;bottom:8px;width:320px;height:180px;
+    background:#05070a;border:1px solid var(--line);border-radius:2px}
+  #camNote{position:absolute;right:8px;bottom:190px;width:320px;color:var(--dim);
+    font-size:11px;text-align:right;white-space:nowrap;overflow:hidden}
+  #watermark{position:absolute;left:10px;top:8px;color:var(--dim);font-size:11px}
+  #legend{position:absolute;left:10px;bottom:8px;color:var(--dim);font-size:11px}
+  .strip{height:104px;border-top:1px solid var(--line)}
+  #rail{background:var(--panel);overflow-y:auto;padding:8px}
+  #bar{grid-column:1/3;background:var(--panel);padding:6px 10px;display:flex;
+    align-items:center;gap:10px}
+  h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+    margin:12px 0 5px}
+  h2:first-child{margin-top:0}
+  .ep{display:block;width:100%;text-align:left;margin-bottom:3px;padding:4px 6px;
+    background:#1b212b;border:1px solid transparent;border-left:3px solid var(--dim);
+    color:var(--ink);cursor:pointer;font:inherit;border-radius:2px}
+  .ep:hover{background:#222a36}
+  .ep.sel{border-color:var(--accent);background:#20293a}
+  .ep small{display:block;color:var(--dim)}
+  label.row{display:flex;align-items:center;gap:6px;margin:3px 0;cursor:pointer}
+  input[type=range]{width:100%}
+  select,button{background:#1b212b;color:var(--ink);border:1px solid var(--line);
+    font:inherit;padding:2px 6px;border-radius:2px;cursor:pointer}
+  table{border-collapse:collapse;width:100%}
+  td{padding:1px 0;color:var(--dim)}
+  td+td{text-align:right;color:var(--ink)}
+  #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--dim);text-align:center;padding:20px}
+  kbd{background:#1b212b;border:1px solid var(--line);border-radius:2px;padding:0 3px}
+</style>
+
+<div id="app">
+  <div id="left">
+    <div id="sceneWrap">
+      <canvas id="scene"></canvas>
+      <div id="watermark"></div>
+      <div id="legend"></div>
+      <div id="camNote"></div>
+      <canvas id="cam" width="640" height="360"></canvas>
+      <div id="empty" hidden></div>
+    </div>
+    <canvas id="alt" class="strip"></canvas>
+    <canvas id="lat" class="strip"></canvas>
+  </div>
+  <div id="rail">
+    <h2>episodes</h2><div id="eps"></div>
+    <h2>episode</h2><table id="stats"></table>
+    <h2>view</h2>
+    <label class="row">altitude &times;<span id="kzv">1</span>
+      <input id="kz" type="range" min="1" max="20" step="1" value="1"></label>
+    <label class="row">path colour
+      <select id="colour">
+        <option value="margin">altitude margin</option>
+        <option value="spd">speed</option>
+        <option value="u2">thrust</option>
+        <option value="cue">cue</option>
+      </select></label>
+    <label class="row"><input id="tCorr" type="checkbox"> corridor hull</label>
+    <label class="row"><input id="tGrid" type="checkbox" checked> floor / ceiling</label>
+    <label class="row"><input id="tShadow" type="checkbox" checked> shadow + drops</label>
+    <label class="row"><input id="tFrustum" type="checkbox" checked> camera frustum</label>
+    <label class="row"><input id="tRunout" type="checkbox" checked> runout gates</label>
+    <h2>keys</h2>
+    <div style="color:var(--dim)">
+      <kbd>1</kbd> top <kbd>2</kbd> side <kbd>3</kbd> impact<br>
+      <kbd>F</kbd> fit flown &nbsp; <kbd>G</kbd> fit whole course<br>
+      <kbd>&larr;</kbd><kbd>&rarr;</kbd> episode &nbsp; <kbd>,</kbd><kbd>.</kbd> step
+      &nbsp; <kbd>space</kbd> play<br>
+      drag orbit &middot; shift-drag pan &middot; wheel zoom
+    </div>
+    <div id="diag" style="color:var(--warn);margin-top:8px"></div>
+  </div>
+  <div id="bar">
+    <button id="play">&#9654;</button>
+    <input id="time" type="range" min="0" max="0" value="0" style="flex:1">
+    <span id="tlabel" style="min-width:290px"></span>
+  </div>
+</div>
+
+<script id="payload" type="application/json">{"episodes":[]}</script>
+
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("payload").textContent);
+const EPS = DATA.episodes || [];
+const META = DATA.meta || {};
+const CAM = META.cam || {fx:320,fy:320,cx:320,cy:180,w:640,h:360,fwd_v:296,
+  R_CB:[[0,1,0],[-0.342,0,0.940],[0.940,0,0.342]]};
+
+/* ---------- vector helpers ---------- */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const norm=a=>{const n=len(a)||1e-12;return [a[0]/n,a[1]/n,a[2]/n];};
+const clamp=(x,a,b)=>x<a?a:(x>b?b:x);
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* NED (north, east, down) -> display (east, north, up*KZ). The ONLY frame change.
+   Circle points are generated in NED and converted per-vertex, so exaggeration turns a
+   gate circle into the correct ellipse instead of merely scaling its radius. */
+let KZ = 1;
+const disp = (x,y,z)=>[y, x, -z*KZ];
+const dispV = p=>disp(p[0],p[1],p[2]);
+
+/* ---------- state ---------- */
+let ei=0, ti=0, playing=false, fovMismatch=0;
+let yaw=0.9, pitch=0.45, dist=200, target=[0,0,0];
+const FOVY = 50*Math.PI/180, ZN = 0.05;
+
+const el = id=>document.getElementById(id);
+const sceneC=el("scene"), altC=el("alt"), latC=el("lat"), camC=el("cam");
+
+/* ---------- per-episode derived geometry ---------- */
+let E=null, G=null, PATH=null, CENTRE=null, ARC=null;
+
+function gateVec(g,k,pre){return [g[pre+"x"][k], g[pre+"y"][k], g[pre+"z"][k]];}
+
+function loadEpisode(i){
+  ei=clamp(i,0,EPS.length-1); E=EPS[ei]; fovMismatch=0;
+  const g=E.world.g, n=g.cx.length;
+  G=[];
+  for(let k=0;k<n;k++)G.push({c:[g.cx[k],g.cy[k],g.cz[k]], n:gateVec(g,k,"n"),
+                              s:gateVec(g,k,"s"), u:gateVec(g,k,"u"), raced:k<E.world.raced});
+  const p=E.path;
+  PATH=[]; for(let i2=0;i2<p.x.length;i2++)PATH.push([p.x[i2],p.y[i2],p.z[i2]]);
+  /* centreline for the two strips and the corridor hull */
+  CENTRE=[E.world.start]; for(let k=0;k<E.world.raced;k++)CENTRE.push(G[k].c);
+  ARC=[0]; for(let k=1;k<CENTRE.length;k++)ARC.push(ARC[k-1]+len(sub(CENTRE[k],CENTRE[k-1])));
+  ti=Math.max(PATH.length-1,0);
+  el("time").max=String(Math.max(PATH.length-1,0)); el("time").value=String(ti);
+  fitAll=!PATH.length; fit(); renderRail(); draw();
+}
+
+/* nearest point on the centreline: returns {s: arclength, lat: signed offset} */
+function onCentre(p){
+  let best={d:1e18,s:0,lat:0};
+  for(let k=0;k<CENTRE.length-1;k++){
+    const a=CENTRE[k], b=CENTRE[k+1], ab=sub(b,a), L2=dot(ab,ab)||1e-12;
+    const t=clamp(dot(sub(p,a),ab)/L2,0,1), q=add(a,mul(ab,t)), d=len(sub(p,q));
+    if(d<best.d){
+      const dir=norm(ab), perp=norm(cross([0,0,-1],dir));
+      best={d:d, s:ARC[k]+t*Math.sqrt(L2), lat:dot(sub(p,q),perp)};
+    }
+  }
+  return best;
+}
+
+/* ---------- camera / projection ---------- */
+function basis(){
+  const cp=Math.cos(pitch), fwd=[cp*Math.cos(yaw),cp*Math.sin(yaw),Math.sin(pitch)];
+  const right=norm(cross([0,0,1],fwd));
+  return {fwd, right, up:cross(fwd,right), eye:sub(target,mul(fwd,dist))};
+}
+function view(P,B){const d=sub(P,B.eye);return [dot(d,B.right),dot(d,B.up),dot(d,B.fwd)];}
+function scr(c,W,H){const f=0.5*H/Math.tan(0.5*FOVY);
+  return [W/2+f*c[0]/c[2], H/2-f*c[1]/c[2]];}
+
+function clipSeg(a,b){
+  if(a[2]>=ZN&&b[2]>=ZN)return [a,b];
+  if(a[2]<ZN&&b[2]<ZN)return null;
+  const t=(ZN-a[2])/(b[2]-a[2]);
+  const m=[lerp(a[0],b[0],t),lerp(a[1],b[1],t),ZN];
+  return a[2]>=ZN?[a,m]:[m,b];
+}
+function clipPoly(vs){
+  const out=[];
+  for(let i=0;i<vs.length;i++){
+    const a=vs[i], b=vs[(i+1)%vs.length], ain=a[2]>=ZN, bin=b[2]>=ZN;
+    if(ain)out.push(a);
+    if(ain!==bin){const t=(ZN-a[2])/(b[2]-a[2]);
+      out.push([lerp(a[0],b[0],t),lerp(a[1],b[1],t),ZN]);}
+  }
+  return out;
+}
+
+/* ---------- fitting ---------- */
+/* Fit to where the episode actually happened, not to all ~700 m of course: at full
+   extent a 1.5 m aperture is sub-pixel and the picture says nothing. The window is the
+   flown path plus the gates it was working on, which is what you came to look at.
+   `G` widens to the whole course. */
+let fitAll=false;
+function bounds(){
+  const last=PATH.length?E.path.a[PATH.length-1]:E.world.raced;
+  const k0=fitAll?0:Math.max(E.start_gate-1,0);
+  const k1=fitAll?E.world.raced:Math.min(last+3,E.world.raced);
+  const pts=PATH.map(dispV);
+  for(let k=k0;k<Math.max(k1,k0+1);k++)if(G[k])pts.push(dispV(G[k].c));
+  if(!PATH.length||fitAll||k0===0)pts.push(dispV(E.world.start));
+  if(E.term)pts.push(dispV(E.term.p));
+  const lo=[1e18,1e18,1e18], hi=[-1e18,-1e18,-1e18];
+  for(const p of pts)for(let i=0;i<3;i++){lo[i]=Math.min(lo[i],p[i]);hi[i]=Math.max(hi[i],p[i]);}
+  const pad=Math.min(E.world.corridor_r,12);
+  return {lo:[lo[0]-pad,lo[1]-pad,Math.min(lo[2],0)], hi:[hi[0]+pad,hi[1]+pad,hi[2]]};
+}
+function fit(){
+  const b=bounds();
+  target=[(b.lo[0]+b.hi[0])/2,(b.lo[1]+b.hi[1])/2,(b.lo[2]+b.hi[2])/2];
+  const diag=len(sub(b.hi,b.lo));
+  dist=clamp(0.5*diag/Math.tan(0.5*FOVY)*1.15,4,4000);
+}
+
+/* ---------- palette ---------- */
+const CAUSE_COL={"FINISHED":"#5fd38d","GATE FRAME":"#ff6b6b","FLOOR":"#ffb454",
+  "CEILING":"#c08cff","CORRIDOR":"#4fd0d8","TIMEOUT":"#8f9bb0","FRAME?":"#ff6b6b",
+  "MAX STEPS":"#8f9bb0","COURSE ONLY":"#6db3ff"};
+function ramp(t){ /* red -> amber -> green, for "how much room is left" */
+  t=clamp(t,0,1);
+  const stops=[[255,90,90],[255,180,84],[95,211,141]];
+  const x=t*2, i=Math.min(Math.floor(x),1), f=x-i, a=stops[i], b=stops[i+1];
+  return "rgb("+Math.round(lerp(a[0],b[0],f))+","+Math.round(lerp(a[1],b[1],f))+","+
+         Math.round(lerp(a[2],b[2],f))+")";
+}
+function pathColour(i){
+  const p=E.path, mode=el("colour").value;
+  if(mode==="spd"){let m=1;for(const v of p.spd)m=Math.max(m,v);return ramp(p.spd[i]/m);}
+  if(mode==="u2")return ramp(clamp(p.u2[i],0,1));
+  if(mode==="cue"){const d=detailAt(i);
+    return d===null?"#8f9bb0":["#6db3ff","#4fd0d8","#ff6b6b"][E.detail.cue[d]]||"#8f9bb0";}
+  const alt=-p.z[i], r=E.world.sphere_r, ceil=-E.world.z_ceil;
+  return ramp(clamp(Math.min(alt-r, ceil-alt)/3.0,0,1));
+}
+function detailAt(i){const a=E.detail.i;let lo=0,hi=a.length-1,best=null;
+  while(lo<=hi){const m=(lo+hi)>>1; if(a[m]<=i){best=m;lo=m+1;}else hi=m-1;}
+  return best;}
+
+/* ---------- scene ---------- */
+function sized(c){
+  const dpr=window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight;
+  if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){
+    c.width=Math.round(w*dpr); c.height=Math.round(h*dpr);}
+  const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h); return {g,w,h};
+}
+
+function drawScene(){
+  const {g,w,h}=sized(sceneC);
+  if(!E)return;
+  const B=basis(), items=[];
+  const P=p=>view(dispV(p),B);
+  const push=(z,fn)=>items.push({z,fn});
+  const line=(a,b,col,wid,dash)=>{
+    const s=clipSeg(a,b); if(!s)return;
+    const p0=scr(s[0],w,h), p1=scr(s[1],w,h);
+    g.strokeStyle=col; g.lineWidth=wid||1; g.setLineDash(dash||[]);
+    g.beginPath(); g.moveTo(p0[0],p0[1]); g.lineTo(p1[0],p1[1]); g.stroke();
+    g.setLineDash([]);
+  };
+
+  /* floor grid first, always: a floor strike ends the episode at sphere_r, so nothing
+     can ever be behind it. Ceiling last at low alpha, for the mirror reason. */
+  const bb=bounds(), step=10;
+  const grid=(zUp,col)=>{
+    const x0=Math.floor(bb.lo[0]/step)*step, x1=Math.ceil(bb.hi[0]/step)*step;
+    const y0=Math.floor(bb.lo[1]/step)*step, y1=Math.ceil(bb.hi[1]/step)*step;
+    g.strokeStyle=col; g.lineWidth=1;
+    for(let x=x0;x<=x1;x+=step){const a=view([x,y0,zUp],B),b=view([x,y1,zUp],B);
+      const s=clipSeg(a,b); if(s){const p0=scr(s[0],w,h),p1=scr(s[1],w,h);
+        g.beginPath();g.moveTo(p0[0],p0[1]);g.lineTo(p1[0],p1[1]);g.stroke();}}
+    for(let y=y0;y<=y1;y+=step){const a=view([x0,y,zUp],B),b=view([x1,y,zUp],B);
+      const s=clipSeg(a,b); if(s){const p0=scr(s[0],w,h),p1=scr(s[1],w,h);
+        g.beginPath();g.moveTo(p0[0],p0[1]);g.lineTo(p1[0],p1[1]);g.stroke();}}
+  };
+  if(el("tGrid").checked) grid(0,"rgba(90,105,130,0.30)");
+
+  const activeGate = PATH.length? E.path.a[ti] : 0;
+
+  /* corridor: a hull of rings, plus the BRIGHT live pair -- the only segments that can
+     actually end the episode (env._corridor_exit measures against those two alone). */
+  const R=E.world.corridor_r;
+  if(el("tCorr").checked){
+    /* The full hull is off by default: at corridor_r ~ 15 m and the vertical
+       exaggeration applied, the rings are larger than everything they contain and hide
+       the course. The live pair below is what actually matters and always draws. */
+    const ring=(centre,axis,col,wid)=>{
+      const s=norm(cross([0,0,-1],axis)), u=cross(axis,s), pts=[];
+      for(let a=0;a<24;a++){const th=a/24*2*Math.PI;
+        pts.push(P(add(centre,add(mul(s,R*Math.cos(th)),mul(u,R*Math.sin(th))))));}
+      push(pts.reduce((m,p)=>m+p[2],0)/pts.length,()=>{
+        for(let a=0;a<24;a++)line(pts[a],pts[(a+1)%24],col,wid);});
+    };
+    for(let k=0;k<=E.world.raced;k++){
+      const c=k===0?E.world.start:G[k-1].c;
+      const ax=k===0?norm(sub(G[0].c,E.world.start)):G[k-1].n;
+      ring(c,ax,"rgba(109,179,255,0.16)",1);
+    }
+  }
+  {
+    /* env._corridor_exit measures against exactly these two segments (env.py:607-615):
+       prev->g[active] and g[active]->g[active+1], with prev = start_p when active <= 0.
+       No other part of the corridor can end the episode. */
+    const a=clamp(activeGate,0,G.length-1);
+    const prev=a<=0?E.world.start:G[a-1].c;
+    const gb=G[Math.min(a+1,G.length-1)].c;
+    for(const seg of [[prev,G[a].c],[G[a].c,gb]]){
+      const dir=norm(sub(seg[1],seg[0])), s=norm(cross([0,0,-1],dir)), u=cross(dir,s);
+      for(let q=0;q<4;q++){
+        const off=mul([s,u,mul(s,-1),mul(u,-1)][q],R);
+        push(-1e9+q,()=>line(P(add(seg[0],off)),P(add(seg[1],off)),
+                             "rgba(109,179,255,0.45)",1.2));
+      }
+    }
+  }
+
+  /* gates as annuli: outer and inner circles wound oppositely and filled evenodd, which
+     produces the aperture as a real hole. Runout slots are NOT physical. */
+  const inner=META.gate_inner_m/2, outer=META.gate_outer_m/2;
+  for(let k=0;k<G.length;k++){
+    const gt=G[k];
+    if(!gt.raced && !el("tRunout").checked) continue;
+    const ringPts=r=>{const o=[];for(let a=0;a<48;a++){const th=a/48*2*Math.PI;
+      o.push(P(add(gt.c,add(mul(gt.s,r*Math.cos(th)),mul(gt.u,r*Math.sin(th))))));}return o;};
+    const vo=ringPts(outer), vi=ringPts(inner);
+    const zc=vo.reduce((m,p)=>m+p[2],0)/vo.length;
+    const passed=k<activeGate, isAct=k===activeGate;
+    push(zc,()=>{
+      if(!gt.raced){
+        const c=clipPoly(vo); if(c.length<3)return;
+        g.strokeStyle="rgba(140,150,165,0.30)"; g.lineWidth=1; g.setLineDash([3,3]);
+        g.beginPath(); c.forEach((p,i)=>{const q=scr(p,w,h);
+          i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);}); g.closePath(); g.stroke();
+        g.setLineDash([]); return;
+      }
+      const co=clipPoly(vo), ci=clipPoly(vi);
+      if(co.length>=3){
+        g.beginPath();
+        co.forEach((p,i)=>{const q=scr(p,w,h); i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);});
+        g.closePath();
+        if(ci.length>=3){ci.slice().reverse().forEach((p,i)=>{const q=scr(p,w,h);
+          i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);}); g.closePath();}
+        g.fillStyle=isAct?"rgba(109,179,255,0.34)":
+                    (passed?"rgba(120,140,170,0.10)":"rgba(109,179,255,0.20)");
+        g.fill("evenodd");
+        g.strokeStyle=isAct?"#6db3ff":(passed?"rgba(140,155,180,0.35)":"rgba(150,190,240,0.6)");
+        g.lineWidth=isAct?1.8:1; g.stroke();
+      }
+      if(isAct||k===(E.term&&E.term.gate)){
+        const q=scr(P(gt.c),w,h);
+        g.fillStyle=isAct?"#6db3ff":"#ff6b6b"; g.font="11px monospace";
+        g.fillText("g"+k,q[0]+6,q[1]-6);
+      }
+    });
+    /* travel-direction quill */
+    push(zc-0.01,()=>line(P(gt.c),P(add(gt.c,mul(gt.n,2))),
+                          gt.raced?"rgba(150,190,240,0.5)":"rgba(140,150,165,0.25)",1));
+  }
+
+  /* flown path, its ground shadow and the drop lines that carry the depth cue */
+  if(PATH.length>1){
+    const CH=8;
+    for(let i=0;i<PATH.length-1;i+=CH){
+      const j=Math.min(i+CH,PATH.length-1), pts=[];
+      for(let k=i;k<=j;k++)pts.push(P(PATH[k]));
+      const zc=pts.reduce((m,p)=>m+p[2],0)/pts.length, i0=i;
+      push(zc,()=>{for(let k=0;k<pts.length-1;k++)
+        line(pts[k],pts[k+1],pathColour(Math.min(i0+k,PATH.length-1)),2);});
+    }
+    if(el("tShadow").checked){
+      for(let i=0;i<PATH.length-1;i+=CH){
+        const j=Math.min(i+CH,PATH.length-1), pts=[];
+        for(let k=i;k<=j;k++)pts.push(view([dispV(PATH[k])[0],dispV(PATH[k])[1],0],B));
+        push(pts.reduce((m,p)=>m+p[2],0)/pts.length,
+             ()=>{for(let k=0;k<pts.length-1;k++)line(pts[k],pts[k+1],"rgba(150,160,175,0.22)",1);});
+      }
+      for(let i=0;i<PATH.length;i+=25){
+        const a=P(PATH[i]), d=dispV(PATH[i]), b=view([d[0],d[1],0],B);
+        push((a[2]+b[2])/2,()=>line(a,b,"rgba(150,160,175,0.14)",1));
+      }
+    }
+  }
+
+  /* drone: body triad and the camera frustum, so "was the gate even in view" is
+     answerable without reading the panel */
+  const d=PATH.length?detailAt(ti):null;
+  if(d!==null){
+    const q=[E.detail.qw[d],E.detail.qx[d],E.detail.qy[d],E.detail.qz[d]];
+    const R=quatToRot(q), p0=PATH[ti];
+    const axis=(col,v,L)=>{const a=P(p0), b=P(add(p0,mul(v,L)));
+      push((a[2]+b[2])/2,()=>line(a,b,col,2));};
+    axis("#ff6b6b",[R[0][0],R[1][0],R[2][0]],3);
+    axis("#5fd38d",[R[0][1],R[1][1],R[2][1]],2);
+    axis("#6db3ff",[R[0][2],R[1][2],R[2][2]],2);
+    if(el("tFrustum").checked){
+      const L=8, corners=[[0,0],[CAM.w,0],[CAM.w,CAM.h],[0,CAM.h]].map(uv=>{
+        const cx=(uv[0]-CAM.cx)/CAM.fx, cy=(uv[1]-CAM.cy)/CAM.fy;
+        const cvec=norm([cx,cy,1]);
+        /* camera -> body is R_CB^T, then body -> world is R */
+        const b=[0,1,2].map(i=>CAM.R_CB[0][i]*cvec[0]+CAM.R_CB[1][i]*cvec[1]+
+                               CAM.R_CB[2][i]*cvec[2]);
+        const wv=[0,1,2].map(i=>R[i][0]*b[0]+R[i][1]*b[1]+R[i][2]*b[2]);
+        return add(p0,mul(wv,L));
+      });
+      const cs=corners.map(P), o=P(p0);
+      push(o[2],()=>{for(let i=0;i<4;i++){line(o,cs[i],"rgba(109,179,255,0.30)",1);
+        line(cs[i],cs[(i+1)%4],"rgba(109,179,255,0.30)",1);}});
+    }
+  }
+
+  /* termination marker, drawn last so it is never hidden */
+  if(E.term){
+    const tp=E.term.p, col=CAUSE_COL[E.term.kind]||"#fff";
+    const a=P(tp);
+    push(-1e12,()=>{
+      for(const ax of [[1,0,0],[0,1,0],[0,0,1]])
+        line(P(sub(tp,ax)),P(add(tp,ax)),col,1.5);
+      if(a[2]>ZN){
+        const q=scr(a,w,h);
+        g.fillStyle=col; g.beginPath(); g.arc(q[0],q[1],4,0,7); g.fill();
+        g.strokeStyle=col; g.lineWidth=1;
+        g.beginPath(); g.moveTo(q[0],q[1]); g.lineTo(q[0]+26,q[1]-26); g.stroke();
+        g.font="bold 12px monospace"; g.fillText(E.term.kind,q[0]+30,q[1]-28);
+        if(E.term.lat!=null){
+          g.font="11px monospace"; g.fillStyle="rgba(255,255,255,0.75)";
+          g.fillText("side "+E.term.miss_side.toFixed(2)+"  up "+E.term.miss_up.toFixed(2)+
+                     "  |"+E.term.lat.toFixed(2)+"|", q[0]+30,q[1]-14);
+        }
+      }
+      if(E.term.gate>=0&&G[E.term.gate]){
+        const gt=G[E.term.gate];
+        line(P(gt.c),P(tp),col,1.5);
+      }
+    });
+  }
+
+  items.sort((a,b)=>b.z-a.z);
+  for(const it of items) it.fn();
+  if(el("tGrid").checked) grid(-E.world.z_ceil*KZ,"rgba(140,120,190,0.10)");
+
+  el("watermark").textContent = (KZ===1?"true scale":"×"+KZ+" vertical")+"  ·  ceiling "+
+    (-E.world.z_ceil).toFixed(1)+" m  ·  corridor r "+E.world.corridor_r.toFixed(1)+" m";
+  el("legend").innerHTML = "solid = raced gate (1.5 m aperture / 2.7 m frame) &nbsp;|&nbsp; "+
+    "dashed = runout, <b>non-physical: cannot be hit or seen</b><br>"+
+    "bright corridor rails = the only pair that can end the episode";
+}
+
+/* ---------- camera panel ---------- */
+function quatToRot(q){const [w,x,y,z]=q;return [
+  [1-2*(y*y+z*z), 2*(x*y-w*z), 2*(x*z+w*y)],
+  [2*(x*y+w*z), 1-2*(x*x+z*z), 2*(y*z-w*x)],
+  [2*(x*z-w*y), 2*(y*z+w*x), 1-2*(x*x+y*y)]];}
+function toBody(R,p,pt){const d=sub(pt,p);
+  return [0,1,2].map(i=>R[0][i]*d[0]+R[1][i]*d[1]+R[2][i]*d[2]);}
+function projCam(b){
+  const c=[0,1,2].map(i=>CAM.R_CB[i][0]*b[0]+CAM.R_CB[i][1]*b[1]+CAM.R_CB[i][2]*b[2]);
+  const z=Math.abs(c[2])<1e-9?1e-9:c[2];
+  return [CAM.cx+CAM.fx*c[0]/z, CAM.cy+CAM.fy*c[1]/z, c[2]];
+}
+function drawCam(){
+  const g=camC.getContext("2d");
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,CAM.w,CAM.h);
+  g.fillStyle="#05070a"; g.fillRect(0,0,CAM.w,CAM.h);
+  const d=E&&PATH.length?detailAt(ti):null;
+  /* no drone flown (--policy none): an empty black rectangle claims a view exists */
+  camC.style.display=d===null?"none":"";
+  if(d===null){el("camNote").textContent="";return;}
+  const R=quatToRot([E.detail.qw[d],E.detail.qx[d],E.detail.qy[d],E.detail.qz[d]]);
+  const p0=PATH[ti];
+
+  /* reticles: principal point, and body-forward at v = 296 -- BELOW centre, because the
+     20 deg tilt is UP. camera.py calls that "the whole trap". */
+  g.strokeStyle="rgba(120,135,155,0.5)"; g.lineWidth=1;
+  g.beginPath();g.moveTo(CAM.cx-8,CAM.cy);g.lineTo(CAM.cx+8,CAM.cy);
+  g.moveTo(CAM.cx,CAM.cy-8);g.lineTo(CAM.cx,CAM.cy+8);g.stroke();
+  g.strokeStyle="rgba(255,180,84,0.75)";
+  g.beginPath();g.arc(CAM.cx,CAM.fwd_v,6,0,7);g.stroke();
+  g.fillStyle="rgba(255,180,84,0.75)";g.font="11px monospace";
+  g.fillText("body fwd v="+CAM.fwd_v,CAM.cx+10,CAM.fwd_v+4);
+  g.strokeStyle="rgba(120,135,155,0.22)";
+  for(const deg of [-20,-10,0,10,20]){
+    const v=CAM.fwd_v-CAM.fy*Math.tan(deg*Math.PI/180);
+    g.beginPath();g.moveTo(0,v);g.lineTo(14,v);g.stroke();
+    g.fillStyle="rgba(120,135,155,0.6)";g.fillText(deg+"°",17,v+3);
+  }
+
+  /* ground truth: outlines. Only raced gates exist to the detector. */
+  let actIn=false;
+  for(let k=0;k<E.world.raced;k++){
+    const gt=G[k], pts=[];
+    for(let a=0;a<24;a++){const th=a/24*2*Math.PI;
+      const wpt=add(gt.c,add(mul(gt.s,META.gate_inner_m/2*Math.cos(th)),
+                             mul(gt.u,META.gate_inner_m/2*Math.sin(th))));
+      pts.push(projCam(toBody(R,p0,wpt)));}
+    if(pts.some(p=>p[2]<=0.05))continue;
+    const cen=projCam(toBody(R,p0,gt.c));
+    const on=cen[0]>=0&&cen[0]<=CAM.w&&cen[1]>=0&&cen[1]<=CAM.h;
+    if(k===E.path.a[ti]) actIn=on;
+    if(on){
+      g.strokeStyle=k===E.path.a[ti]?"#6db3ff":"rgba(150,190,240,0.45)";
+      g.lineWidth=k===E.path.a[ti]?2:1;
+      g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));
+      g.closePath();g.stroke();
+      g.fillStyle=g.strokeStyle;g.font="11px monospace";
+      g.fillText("g"+k,cen[0]+6,cen[1]-6);
+    }else if(k===E.path.a[ti]){
+      /* in front but out of frame: put an arrow on the nearest edge with the angle, which
+         is how the -9.4 deg lower limit shows itself */
+      const ex=clamp(cen[0],6,CAM.w-6), ey=clamp(cen[1],6,CAM.h-6);
+      g.fillStyle="#ffb454";g.beginPath();g.arc(ex,ey,5,0,7);g.fill();
+      const b=toBody(R,p0,gt.c);
+      const elev=Math.atan2(-b[2],Math.hypot(b[0],b[1]))*180/Math.PI;
+      g.font="11px monospace";
+      g.fillText("g"+k+" off-frame  elev "+elev.toFixed(1)+"°",
+                 clamp(ex-70,4,CAM.w-190), clamp(ey-10,12,CAM.h-4));
+    }
+  }
+
+  /* detections: filled. Red where the surrogate knows it is a phantom. */
+  const det=E.detail.det||[];
+  for(let j=0;j<det.length;j++){
+    const s=det[j];
+    if(!(s.f[d]&1))continue;
+    const b=[s.x[d],s.y[d],s.z[d]], q=projCam(b);
+    if(q[2]<=0.05)continue;
+    const fp=!!(s.f[d]&8), r=Math.max(s.px[d]/2,2);
+    g.globalAlpha=clamp(s.c[d],0.15,1);
+    g.fillStyle=fp?"rgba(255,107,107,0.55)":"rgba(95,211,141,0.40)";
+    g.beginPath();g.arc(q[0],q[1],r,0,7);g.fill();
+    g.globalAlpha=1;
+    g.strokeStyle=fp?"#ff6b6b":"#5fd38d"; g.lineWidth=1;
+    g.setLineDash(s.s[d]>0.05?[3,3]:[]);
+    g.beginPath();g.arc(q[0],q[1],r,0,7);g.stroke();g.setLineDash([]);
+  }
+  g.strokeStyle="rgba(120,135,155,0.6)";g.lineWidth=2;g.strokeRect(1,1,CAM.w-2,CAM.h-2);
+
+  /* the one Python<->JS duplication in this tool, and the flag that pins it */
+  if(actIn!==!!E.detail.fov[d]) fovMismatch++;
+  const s0=det[0];
+  el("camNote").textContent = s0
+    ? ("slot0 g"+s0.gi[d]+" r="+Math.hypot(s0.x[d],s0.y[d],s0.z[d]).toFixed(1)+
+       " conf "+s0.c[d].toFixed(2)+" stale "+s0.s[d].toFixed(2)+
+       (s0.f[d]&4?" pose✓":" pose✗")+(s0.f[d]&2?" nrm✓":" nrm✗")+
+       " | fov="+E.detail.fov[d])
+    : ("fov="+E.detail.fov[d]);
+  el("diag").textContent = fovMismatch?("fov mismatch ×"+fovMismatch):"";
+}
+
+/* ---------- strips ---------- */
+function strip(canvas,kind){
+  const {g,w,h}=sized(canvas);
+  if(!E||!PATH.length){g.fillStyle="#7d8899";g.font="11px monospace";
+    g.fillText(kind==="alt"?"altitude vs arclength":"lateral offset vs arclength",8,16);return;}
+  const S=ARC[ARC.length-1]||1, L=34, Rp=8, T=10, Bm=16;
+  const px=s=>L+(w-L-Rp)*clamp(s/S,0,1);
+  const ceil=-E.world.z_ceil, R=E.world.corridor_r;
+  const yr=kind==="alt"?[0,ceil]:[-R*1.15,R*1.15];
+  const py=v=>T+(h-T-Bm)*(1-(v-yr[0])/(yr[1]-yr[0]));
+
+  g.strokeStyle="#252c37";g.lineWidth=1;
+  g.beginPath();g.moveTo(L,T);g.lineTo(L,h-Bm);g.lineTo(w-Rp,h-Bm);g.stroke();
+  g.fillStyle="#7d8899";g.font="10px monospace";
+
+  if(kind==="alt"){
+    g.fillStyle="rgba(255,180,84,0.18)";g.fillRect(L,py(E.world.sphere_r),w-L-Rp,
+      (h-Bm)-py(E.world.sphere_r));
+    g.fillStyle="rgba(192,140,255,0.16)";g.fillRect(L,py(ceil),w-L-Rp,
+      py(ceil-E.world.sphere_r)-py(ceil));
+    g.fillStyle="#7d8899";
+    g.fillText(ceil.toFixed(0)+" m",2,py(ceil)+4); g.fillText("0",2,py(0));
+    for(let k=0;k<E.world.raced;k++){
+      const s=ARC[k+1], a=-G[k].c[2];
+      g.strokeStyle="rgba(150,190,240,0.35)";
+      g.beginPath();g.moveTo(px(s),py(a)-3);g.lineTo(px(s),py(a)+3);g.stroke();
+    }
+  }else{
+    g.strokeStyle="rgba(79,208,216,0.45)";g.setLineDash([4,3]);
+    for(const v of [-R,R]){g.beginPath();g.moveTo(L,py(v));g.lineTo(w-Rp,py(v));g.stroke();}
+    g.setLineDash([]);
+    g.fillText("+"+R.toFixed(0),2,py(R)+4); g.fillText("-"+R.toFixed(0),2,py(-R)+4);
+  }
+
+  g.lineWidth=1.6;
+  let prev=null;
+  for(let i=0;i<PATH.length;i++){
+    const o=onCentre(PATH[i]);
+    const v=kind==="alt"?-PATH[i][2]:o.lat;
+    const q=[px(o.s),py(v)];
+    if(prev){g.strokeStyle=pathColour(i);g.beginPath();
+      g.moveTo(prev[0],prev[1]);g.lineTo(q[0],q[1]);g.stroke();}
+    prev=q;
+  }
+  if(E.term){
+    const o=onCentre(E.term.p), v=kind==="alt"?-E.term.p[2]:o.lat;
+    g.fillStyle=CAUSE_COL[E.term.kind]||"#fff";
+    g.beginPath();g.arc(px(o.s),py(v),3.5,0,7);g.fill();
+  }
+  if(PATH.length){
+    const o=onCentre(PATH[ti]);
+    g.strokeStyle="rgba(255,255,255,0.35)";
+    g.beginPath();g.moveTo(px(o.s),T);g.lineTo(px(o.s),h-Bm);g.stroke();
+  }
+  g.fillStyle="#7d8899";
+  g.fillText(kind==="alt"?"altitude vs arclength (m)":"lateral offset vs arclength (m)",
+             L+4,h-4);
+}
+
+/* ---------- rail ---------- */
+function renderRail(){
+  el("eps").innerHTML="";
+  EPS.forEach((e,i)=>{
+    const b=document.createElement("button");
+    b.className="ep"+(i===ei?" sel":"");
+    b.style.borderLeftColor=CAUSE_COL[e.cause]||"#7d8899";
+    b.innerHTML="s"+e.seed+" &middot; "+e.cause+
+      "<small>"+e.gates+"/"+(e.n_gates-e.start_gate)+" gates &middot; "+
+      e.t_end.toFixed(1)+" s &middot; ret "+e.ret.toFixed(1)+"</small>";
+    b.onclick=()=>loadEpisode(i);
+    el("eps").appendChild(b);
+  });
+  if(!E)return;
+  const f=E.flags, rows=[
+    ["seed",E.seed],["cause",E.cause],["gates",E.gates+" / "+(E.n_gates-E.start_gate)],
+    ["steps",E.steps],["t_end",E.t_end.toFixed(2)+" s"],["return",E.ret.toFixed(2)],
+    ["ceiling",(-E.world.z_ceil).toFixed(1)+" m"],
+    ["corridor",E.world.corridor_r.toFixed(1)+" m"],
+    ["sphere",E.world.sphere_r.toFixed(3)+" m"],
+    ["raw flags","fin"+f.finished+" col"+f.collision+" cor"+f.corridor+" to"+f.timeout]];
+  if(E.term&&E.term.sub)rows.push(["timeout",E.term.sub]);
+  if(E.term&&E.term.lat!=null)rows.push(["miss","|"+E.term.lat.toFixed(2)+"| m"]);
+  if(E.world.approx_start)rows.push(["note","start_p approximated"]);
+  el("stats").innerHTML=rows.map(r=>"<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>").join("");
+}
+
+function draw(){drawScene();drawCam();strip(altC,"alt");strip(latC,"lat");
+  if(E&&PATH.length){
+    const d=detailAt(ti);
+    el("tlabel").textContent="t="+E.path.t[ti].toFixed(2)+" s  gate "+E.path.a[ti]+
+      "  alt "+(-E.path.z[ti]).toFixed(2)+" m  spd "+E.path.spd[ti].toFixed(1)+" m/s"+
+      (d!==null?"  fov "+E.detail.fov[d]:"");
+  }else el("tlabel").textContent="";}
+
+/* ---------- interaction ---------- */
+let drag=null;
+sceneC.addEventListener("pointerdown",e=>{
+  sceneC.setPointerCapture(e.pointerId);
+  drag={x:e.clientX,y:e.clientY,pan:e.shiftKey||e.button===2};});
+sceneC.addEventListener("pointermove",e=>{
+  if(!drag)return;
+  const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
+  if(drag.pan){const B=basis();
+    target=add(target,add(mul(B.right,-dx*dist*0.0015),mul(B.up,dy*dist*0.0015)));}
+  else{yaw-=dx*0.006; pitch=clamp(pitch+dy*0.006,-1.5533,1.5533);}
+  draw();});
+sceneC.addEventListener("pointerup",e=>{drag=null;});
+sceneC.addEventListener("contextmenu",e=>e.preventDefault());
+sceneC.addEventListener("wheel",e=>{e.preventDefault();
+  dist=clamp(dist*Math.exp(e.deltaY*0.0012),2,4000);draw();},{passive:false});
+
+el("time").addEventListener("input",e=>{ti=+e.target.value;draw();});
+el("kz").addEventListener("input",e=>{KZ=+e.target.value;el("kzv").textContent=KZ;fit();draw();});
+for(const id of ["colour","tCorr","tGrid","tShadow","tFrustum","tRunout"])
+  el(id).addEventListener("change",draw);
+el("play").onclick=()=>{playing=!playing;el("play").innerHTML=playing?"&#10074;&#10074;":"&#9654;";
+  if(playing)tick();};
+function tick(){if(!playing)return;
+  ti=(ti+1)%Math.max(PATH.length,1); el("time").value=String(ti); draw();
+  requestAnimationFrame(()=>setTimeout(tick,16));}
+
+addEventListener("keydown",e=>{
+  if(!E)return;
+  const k=e.key;
+  if(k==="1"){yaw=Math.PI/2;pitch=1.5;fit();}
+  else if(k==="2"){const d=norm(sub(dispV(G[0].c),dispV(E.world.start)));
+    yaw=Math.atan2(d[1],d[0]);pitch=0.05;fit();}
+  else if(k==="3"&&E.term){target=dispV(E.term.p);dist=25;pitch=0.3;}
+  else if(k==="f"||k==="F"){fitAll=false;fit();}
+  else if(k==="g"||k==="G"){fitAll=true;fit();}
+  else if(k==="ArrowLeft")return loadEpisode(ei-1);
+  else if(k==="ArrowRight")return loadEpisode(ei+1);
+  else if(k===","){ti=Math.max(ti-1,0);el("time").value=String(ti);}
+  else if(k==="."){ti=Math.min(ti+1,PATH.length-1);el("time").value=String(ti);}
+  else if(k===" "){e.preventDefault();el("play").onclick();return;}
+  else return;
+  draw();});
+addEventListener("resize",draw);
+
+if(!EPS.length){
+  el("empty").hidden=false;
+  el("empty").innerHTML="no episodes in this page.<br><br>"+
+    "run <b>pilot/control/evalsuite/viz3d.py</b> to fill it, e.g.<br>"+
+    "<code>python pilot/control/evalsuite/viz3d.py --policy none --seeds 0-3</code>";
+  el("cam").hidden=true;
+}else{
+  document.title=(META.title||"rollouts")+" · "+EPS.length+" episode(s)";
+  loadEpisode(0);
+}
+</script>
