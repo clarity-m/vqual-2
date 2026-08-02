@@ -40,7 +40,11 @@ DONE_KEYS = ("done", "terminated", "termination", "episode_done", "finished_epis
 WIN_KEYS = ("finished", "completed", "complete", "success", "course_complete")
 # In the order they are reported, most specific first.
 REASON_FLAGS = (("finished", "completed"), ("collision", "collision"),
-                ("corridor_exit", "corridor"), ("timeout", "timeout"),
+                ("corridor_exit", "corridor"),
+                # Before the generic timeout, deliberately: a per-gate timeout is the
+                # policy failing to reach its gate, a different failure from the wall
+                # clock running out, and the env now reports them separately.
+                ("gate_timeout", "gate_timeout"), ("timeout", "timeout"),
                 ("crashed", "collision"), ("out_of_bounds", "corridor"),
                 ("truncated", "truncated"))
 GATE_KEYS = ("gates_passed", "gates", "n_passed")

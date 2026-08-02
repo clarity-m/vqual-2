@@ -208,6 +208,28 @@ class EnvConfig:
     # 1.0 = no effect. Touches neither the crossing bonus nor the collision penalty.
     progress_gate_scale: float = 1.0
 
+    # Does contact END the race, or merely cost time?
+    #
+    # `TRAINING_ARCHITECTURE.md` E5 lists this as an open question worth one live run,
+    # and it is not a detail: it decides what gets submitted. With contact terminal
+    # (True, the default and what every run so far trained on) a policy has to fly a
+    # whole course in one life. With contact merely expensive (False) the D6 recovery
+    # supervisor takes over, levels the aircraft, hands back, and the race continues --
+    # and an 8-minute budget against a ~1-2 minute lap makes a crash-prone but ACCURATE
+    # policy viable. At a measured per-gate rate of 0.705 that is ~2.4 gates per life,
+    # so ~10 recoveries clears 20 gates.
+    #
+    # The surrogate cannot answer the question, only model both regimes. Set False and
+    # a collision costs `k_collision`, resets the collision clock, increments
+    # `collision_episodes` -- and the episode continues from a recovered state.
+    #
+    # WHAT "RECOVERED" MEANS IS AN ASSUMPTION, not a measurement: the aircraft is placed
+    # back inside the arena with zero velocity and a tumbled attitude. Nobody has watched
+    # a real collision in VQ2. This predicts the SHAPE of the answer, not the number.
+    collision_terminates: bool = True
+    # Attitude disturbance handed to the recovery, radians, when contact is not terminal.
+    recover_tumble_rad: float = 0.45
+
     # -- episode -------------------------------------------------------------
     max_time_s: float = 120.0
     gate_timeout_s: float = 12.0
@@ -531,6 +553,11 @@ class VecSurrogate:
         self.t_coll = np.where(collided, 0.0, self.t_coll + dt)
         self.ep_len = self.ep_len + 1
 
+        # When contact is not terminal the aircraft has to be put somewhere flyable, or
+        # the next step re-detects the same floor strike forever. See EnvConfig.
+        if not cfg.collision_terminates and np.any(collided):
+            self._collision_recover(collided)
+
         # -- pose history and the camera clock --------------------------------
         self._phead = (self._phead + 1) % _POSE_HIST
         self._phist[self._phead] = self.p
@@ -554,6 +581,9 @@ class VecSurrogate:
         else:
             capped = (self.active - self.a_start) >= int(cfg.gates_per_episode)
         capped = capped & ~finished
+        # Contact ends the race only if the config says it does. Everything else about a
+        # collision -- the reward, the clock, the counter -- is unchanged either way.
+        term_coll = collided if cfg.collision_terminates else np.zeros(self.n, dtype=bool)
         corridor = self._corridor_exit() & ~finished
         # A WALL-CLOCK cut and a K-gate cut are arbitrary: the race would have continued,
         # so both bootstrap from V(s_T). A PER-GATE timeout is not -- it is the policy
@@ -562,7 +592,7 @@ class VecSurrogate:
         # stuck policy with the rest of the course it was never going to fly.
         timeout = (self.t_s > cfg.max_time_s) | capped
         gate_timeout = (self.t_gate > cfg.gate_timeout_s) & ~timeout
-        done = collided | corridor | timeout | gate_timeout | finished
+        done = term_coll | corridor | timeout | gate_timeout | finished
 
         # -- reward, from TRUE state ------------------------------------------
         rem = self._remaining()
@@ -747,6 +777,54 @@ class VecSurrogate:
         rem = (w * (np.linalg.norm(self.p - ap, axis=1) + dd)
                + (1.0 - w) * np.linalg.norm(self.p - gp, axis=1))
         return np.where(self.active >= self.n_gates, 0.0, rem)
+
+    def _collision_recover(self, mask):
+        """Put a collided aircraft back into a flyable state, mid-episode.
+
+        Only reachable with `EnvConfig.collision_terminates = False`. Models the live
+        sequence the D6 supervisor exists for: contact, tumble, the scripted supervisor
+        levels and hovers, control is handed back. So the aircraft is pulled inside the
+        arena, its velocity is killed, and it is left with a tumbled attitude for the
+        supervisor to recover from. Yaw survives -- a graze does not reorient the
+        aircraft in the horizontal plane, and the attention servo owns that axis anyway.
+
+        `active` is deliberately NOT advanced: a gate you hit is a gate you still have to
+        fly. If the policy cannot ever pass it, `gate_timeout_s` ends the episode, which
+        is the correct outcome rather than an infinite grind.
+
+        THIS IS A MODELLING ASSUMPTION. Nobody has watched a real VQ2 collision; zero
+        velocity and a 0.45 rad tumble are a guess. It predicts the shape of the answer.
+        """
+        m = int(np.count_nonzero(mask))
+        if m == 0:
+            return
+        rng, cfg = self.rng, self.cfg
+
+        # Back inside the arena, with clearance at both ends. NED: z more negative is up,
+        # so `z_up` (nearest the ceiling) is the LOWER numeric bound.
+        z_up = self.z_ceil[mask] + 1.2
+        z_down = -(cfg.floor_clear_m + 0.6)
+        p = self.p[mask].copy()
+        p[:, 2] = np.clip(p[:, 2], z_up, z_down)
+        self.p[mask] = p
+        self.v[mask] = 0.0
+
+        _, _, yaw = vmath.euler_from_rot(vmath.quat_to_rot(self.q))
+        t = cfg.recover_tumble_rad
+        self.q[mask] = vmath.quat_from_euler(
+            rng.uniform(-t, t, m), rng.uniform(-t, t, m), yaw[mask])
+        self.gyro_true[mask] = 0.0
+        self.accel_body[mask] = np.array([0.0, 0.0, -G])
+
+        # In-flight commands belong to the life that just ended.
+        self._cbuf[:, mask] = 0.0
+        self._tbuf[:, mask] = 0.0
+
+        # Re-anchor BOTH shaping potentials on the recovered pose. Without this the next
+        # step books the teleport itself as progress -- which would pay the policy for
+        # crashing, the exact hack this whole flag exists to measure honestly.
+        self.rem_prev[mask] = self._remaining()[mask]
+        self.phi_prev[mask] = self._clearance_potential()[mask]
 
     def _clearance_potential(self):
         """PHI for the floor/ceiling shaping term. Saturating, so it only has a gradient

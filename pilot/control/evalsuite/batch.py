@@ -42,7 +42,7 @@ import numpy as np
 from pilot.control.evalsuite.run_policy import REASON_FLAGS, steps_for
 
 # Info keys the surrogate publishes, in the order `run_policy.REASON_FLAGS` reports them.
-_TERMINAL_KEYS = ("finished", "collision", "corridor_exit", "timeout")
+_TERMINAL_KEYS = ("finished", "collision", "corridor_exit", "gate_timeout", "timeout")
 
 
 def _load_vec():
