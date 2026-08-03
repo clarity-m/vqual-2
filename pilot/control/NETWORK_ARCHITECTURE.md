@@ -157,6 +157,62 @@ mode this whole area invites. Both options are therefore recorded in the checkpo
 
 End-to-end training runs with both options on.
 
+## Is a recurrent network still necessary? — no, and that is measured
+
+Predicting true vertical velocity by linear probe (a lower bound for both a stack and a
+GRU):
+
+| input | inputs | R² | RMSE |
+|---|---|---|---|
+| 6 contiguous frames (the default) | 438 | 0.460 | 1.62 m/s |
+| 6 dilated frames, 0.70 s span | 438 | 0.562 | 1.48 m/s |
+| **32 frames at FULL RATE, same span** | **2336** | **0.556** | 1.49 m/s |
+| **1 frame + 4 derived channels** | **77** | **0.630** | **1.34 m/s** |
+
+Full-rate access to the window — exactly what recurrence adds over a stack — **buys
+nothing** (0.556 against 0.562 at five times the width). The stack was not losing
+information by subsampling.
+
+What was missing is a nonlinear step no amount of stacking performs: rotate body-frame
+specific force into the world frame by the measured attitude, add gravity, integrate.
+That is bilinear in (attitude, accel), so a linear read of raw frames cannot form it and
+an MLP would have to learn it from reward. Computed explicitly, **four leaky integrators
+alone score 0.451 — better than all 438 inputs of the shipping stack.**
+
+So the architecture's "stack, don't GRU" call was right, for a different reason than it
+gives. We *do* need recurrent state — an integrator has memory — but not a **learned**
+one: four scalars with fixed time constants, resettable, checkpointable, no hidden state
+to get wrong at deployment.
+
+`train/derived.py` implements it behind `--vertical-rate`. `interface.Observation` does
+not move — the channels derive from fields the policy already receives (roll 54, pitch 55,
+accel 51–53) using only noisy observed values, so training and deployment compute them
+identically. The network sees 77-D; the interface stays 73-D.
+
+## What `perception-error.md` settled
+
+The measurements came back, and corrected one of this review's own intermediate claims:
+
+* **ρ(0.1 s) = 0.43 measured, against 0.954 in the surrogate.** The surrogate is about
+  twice as correlated as reality at short lag, because its `pose_fail_bias` is drawn
+  per-episode while reality redraws per *sighting*. Differencing therefore gains
+  √(2(1−ρ)) = 1.07 — essentially nothing. An intermediate estimate here claimed 3–10×;
+  that was wrong, and wrong because it trusted a surrogate parameter with no measurement
+  behind it. The original white-noise estimate was approximately right.
+* **Vertical gross-error rate 0.12** — inside the guessed 0.04–0.28 band, so there is
+  headroom above the measured 0.705 per-gate rate.
+* **`p_detect` 0.53–0.60** on the contour path, below the guessed 0.62–0.92, with 0.57 s
+  p90 blackouts. Memory matters more than the guess implied.
+* **Latency ~28–50 ms**, the low end of the guess — latency alone does not justify
+  spreading the frames.
+* **Size-fallback range bias is −3.5 m SHORT, not long.** The documented claim does not
+  reproduce, which inverts the frame-strike prediction: a short bias predicts *early*
+  braking.
+
+Three of these say the surrogate's noise model is optimistic in ways that make
+perception-derived estimates worse in reality than in training — which strengthens the
+case for a channel that does not depend on perception at all.
+
 ## Still open
 
 1. **Perception noise is a hand-specified guess.** `p_pose_fail` is 0.04–0.28 — a 7×
@@ -167,10 +223,10 @@ End-to-end training runs with both options on.
    becomes far more observable — differenced noise goes as `σ√(2(1−ρ))`, so ρ=0.9 is a
    3.2× improvement. This is the one measurement that could overturn the finding, and it
    is obtainable from recordings with known ground truth.
-3. **An explicit vertical-rate estimator** — a complementary filter on accel plus
-   attitude, fed in as a derived channel. Justified by the ablation: the information is in
-   the IMU and needs integration, which a fixed window cannot do however wide. This is the
-   real fix for Finding 1 and is not implemented.
+3. ~~An explicit vertical-rate estimator~~ — **implemented**, `--vertical-rate`, R² 0.630
+   against 0.460 for the shipping stack. Not yet trained to convergence, and not a full
+   fix: a pure integrator drifts on accelerometer bias (hence the leaky form), and per
+   `perception-error.md` the vision channels are too noisy to correct that drift.
 4. **Neither change has been trained to convergence.** They are wired, tested for
    agreement, and smoke-tested — not yet shown to help.
 5. **Spawn attitude** is a separate finding, handed to the environment work: the surrogate
