@@ -10,11 +10,11 @@ the self-check that claims it. The other state documents were assembled by readi
 source. Where they and this file disagree, re-run the two commands in §4 and believe
 the output.
 
-Verified this session:
+Verified this session (re-run 2026-08-01 evening):
 
 | command | result |
 |---|---|
-| `python pilot/control/plant.py` | **PASS** |
+| `python pilot/control/plant.py` | **PASS** (terminal climb 30.99 == 30.99; hover drift +0.182 m/s) |
 | `python pilot/control/surrogate/selfcheck.py` | **17/17 PASS** (9 stages: 8 asserting, #9 report-only) |
 
 ---
@@ -119,22 +119,30 @@ a synthetic detection producer. Only the first is measured.
   25–30 m.
 
   Self-check stage 9 (report-only) shows the error the policy is handed: median
-  |reported − true| `pos_body` **1.00 m at a median range of 12.4 m**, p90 4.39 m.
+  |reported − true| `pos_body` **1.00 m at a median range of 12.4 m**, p90 4.39 m
+  (re-verified). Stage 9's own validity rates on random rollouts are higher
+  (~85% current-gate valid / ~48% `normal_valid` at difficulty 0.0) than the
+  privileged-guidance probe above — different flight distribution, same noise
+  model.
 
   The **visibility half of P3 is measurable from data already on disk and is not blocked
   on Claire's detector** — `perception/label.py` already projects gate corners from truth
   pose, and `perception/detect.py --score` already scores against those labels. What does
   still need a real detector is the error model of a PnP fit: normal validity, hangar
   false positives.
-* **Course generator, structural miss.** `EnvConfig.alt_revert = 0.9` makes altitude
-  mean-reverting inside a ceiling band, so the generator **cannot** produce the measured
-  monotone **24 m descent over 140 m** of path that the real 6-gate map flies — which is
-  exactly the case `CONVENTIONS.md` calls the binding camera constraint. The measured map
-  also has a 39.4 m segment against the easy draw's 34 m ceiling, and its turns
-  **alternate** (+5.7 / −12.1 / +15.6 / −19.4°) where the generator draws a persistent
-  sign with a flip probability. Caveat: this is VQ1's map and VQ2 winds more, so it
-  calibrates the vertical prior and the segment range only — it must **not** be used to
-  pull turn magnitudes down.
+* **Course generator, vertical prior.** `EnvConfig.alt_revert = 0.3` (was 0.9)
+  mean-reverts altitude inside a ceiling band. Lowering it lengthens consecutive
+  downhill runs only slightly (at difficulty 1.0, runs of ≥6 segments go from
+  ~0.1% → ~0.3% of courses). The hard limit on drop magnitude is the hangar band
+  itself: ceilings draw from 9–16 m, so max gate-to-gate altitude span is ~12 m —
+  VQ1's monotone **24 m descent over 140 m** is geometrically unreachable until
+  `ceiling_range_m` / clearances change, regardless of `alt_revert`. There is
+  still no dedicated sustained-slope prior. The measured map also has a 39.4 m
+  segment against the easy draw's 34 m ceiling, and its turns **alternate**
+  (+5.7 / −12.1 / +15.6 / −19.4°) where the generator draws a persistent sign with
+  a flip probability. Caveat: this is VQ1's map and VQ2 winds more, so it
+  calibrates the vertical prior and the segment range only — it must **not** be
+  used to pull turn magnitudes down.
 * **No fixed evaluation course.** Every episode is generated and thrown away: right for
   training, useless for validation, because no surrogate lap time is comparable to a live
   one. The measured 6-gate map is the only course that can be flown in both places.
@@ -187,7 +195,9 @@ Two things that are *contributory* and worth knowing:
 **The root cause is not isolated.** What is established is the negative: it is not the
 plant, not the detection noise, and not the collision margin. It sits somewhere in the
 controllers, the reward, or the course/termination geometry, and finding it is the
-gating task — not more fidelity work.
+gating task — not more fidelity work. (T4's time-limit truncation bootstrap now
+consumes `terminal_obs`; that is a harness correctness fix after `run1`, not an
+explanation of zero completions — see `CONTROL_STATE_AGENTS.md`.)
 
 ---
 
@@ -198,7 +208,9 @@ gating task — not more fidelity work.
 | `HANDOFF_SURROGATE.md`: "`surrogate/selfcheck.py` 15/15" | **17/17**, over 9 stages |
 | `HANDOFF_SURROGATE.md` / `README.md`: lap-slow session has 2937 JPEGs | `frames.csv` has 2937 rows; **1235 JPEGs are on this machine** (42%). The rest are on the other laptop. Also present: `20260731-233219` 2397 frames, `20260801-005715` 508 |
 | `HANDOFF_SURROGATE.md` §Doc sync: "`SYSID.md` not updated, still reads as pre-flight" | Already updated in the working tree (uncommitted) — card 2 is marked FLOWN |
-| `TRAINING_ARCHITECTURE.md`: P3 is the hand-specified fallback | Still true — but the *visibility* half is measurable without Claire (see §2) |
+| `TRAINING_ARCHITECTURE.md`: P3 is the hand-specified fallback | Still true — planned method is measured; current is `noise.py` fallback (see that doc's planned-vs-current callouts) |
+| `TRAINING_ARCHITECTURE.md` P1 "still open": thrust clamp + joint `kz` | **Retired by card 2** — measured knot table; `kz` from apex arcs (this file §1). Architecture doc updated. |
+| Older agent state: PPO ignores `terminal_obs` | **Stale** — `ppo._truncation_values` bootstraps timeouts (out of P1/P2 scope; noted because §2a cites `run1`) |
 
 The frame count matters: a visibility measurement over the lap-slow session runs on 1235
 frames here, not 2937, unless the other laptop's copy is retrieved first.

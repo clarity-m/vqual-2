@@ -135,7 +135,10 @@ class EnvConfig:
     turn_flip_p: float = 0.35
     elev_deg_easy: float = 8.0
     elev_deg_hard: float = 22.0       # the ~20 deg descent that hides gates below -9.4 deg
-    alt_revert: float = 0.9
+    # Mean-reversion toward mid-band altitude. 0.9 cancelled VQ1-style monotone
+    # descents (~24 m over 140 m); 0.3 still keeps courses in the hangar without
+    # fighting every downhill segment.
+    alt_revert: float = 0.3
     ceiling_range_m: tuple = (9.0, 16.0)
     floor_clear_m: float = 1.8
     ceil_clear_m: float = 1.0

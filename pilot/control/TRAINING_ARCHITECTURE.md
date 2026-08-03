@@ -4,7 +4,9 @@ Owner: Alex (kongalex@umich.edu). Deadline 2026-08-03 06:00 PST.
 
 **Status, 2026-08-02. → `STATE_RL_TRAINING.md` holds the measured state; read it
 first.** P1 done and validated (`README.md`), refitted on card 2. P2 built and
-self-checking 17/17. P3 is still the hand-specified fallback, not measured. T4
+self-checking 17/17 — course generator, synthetic detections and the vector env
+all exist. P3 is still the hand-specified fallback, not measured. T4's harness
+self-tests pass (including the truncation bootstrap and `--resume`), and it
 **now trains a policy that beats the reactive baseline 2.3–2.5× on per-gate
 accuracy** — 0.705 against 0.307 at the physical aperture, `runB1` at 207M steps.
 But **neither policy completes a course**: completion over 20 gates needs a
@@ -22,16 +24,14 @@ all while 55.5% of episodes ended on the floor. Measurements in
 
 **Nothing below has been flown live.**
 
-*(An earlier version of this header said the course generator, synthetic
-detections, P3 and T4 "do not" exist. That was true when it was written and is
-no longer; the code on disk is ahead of it. Where this document and the code
-disagree, the code and `plant.json` win — the stale sentences that are known to
-remain are flagged in place.)*
+This document is the *design intent* for the learned route. Where intent and
+disk disagree, the code and `plant.json` win; state dumps live in
+`CONTROL_STATE_*.md` / `STATE_PLANT_SURROGATE.md`. Planned vs currently
+implemented is called out in place when they diverge.
 
-The deliverable is an `interface.Policy` that beats the baseline. This document
-describes the *learned* route to one. The reactive baseline (PID off the gate
-approach point) shares every component here except stage T4 and is built first —
-it is the floor, RL is the upside.
+The deliverable is an `interface.Policy` that beats the baseline. The reactive
+baseline (PID off the gate approach point) shares every component here except
+stage T4 and is built first — it is the floor, RL is the upside.
 
 Read first: `../interface.py` (frozen contract), `README.md` (sign traps, dead
 ends), `../NOTES.md` (measured facts), `../SYSID.md` (data collection),
@@ -43,18 +43,28 @@ The policy is trained entirely offline, inside a fitted NumPy surrogate — neve
 against the live sim, which is a serialized evaluation resource (~15–25
 runs/session). The surrogate steps the fitted plant over procedurally generated
 courses and emits the exact 73-D observation vector the live pilot sees,
-corrupted by a detection-noise model measured from real frames. PPO trains a
-small recurrent policy on dense progress reward, over roll/pitch/thrust only
-(yaw stays with the `AUTO_ATTENTION` servo). Checkpoints are selected on
-held-out randomized courses under worst-case noise, then evaluated live in
-Training mode.
+corrupted by a detection-noise model.
+
+**Noise — planned vs current.** *Planned:* corruptions drawn from statistics
+measured on real frames (Claire's perception scored against VQ1 truth),
+randomized over measurement uncertainty. *Current:* `surrogate/noise.py` is
+still the hand-specified, deliberately pessimistic fallback — not measured.
+Visibility from orange-mask probes already suggests the fallback
+`max_range_m=(14,30)` is too short; the PnP / false-positive half still waits
+on Claire. Training proceeds on the fallback and any such checkpoint is
+flagged riskier at model selection.
+
+PPO trains a small MLP with frame-stack memory on dense progress reward, over
+roll/pitch/thrust only (yaw stays with the `AUTO_ATTENTION` servo). Checkpoints
+are selected on held-out randomized courses under worst-case noise, then
+evaluated live in Training mode.
 
 ## Pipeline stages
 
     P0 data           P1 plant fit        P2 surrogate         P3 noise model
-    recordings   -->  fit + VALIDATE  --> env over random  --> measured detection
-    (CSVs in git;     (replay gate,       courses              stats (real frames)
-     frames: laptop)   DONE 07-31)            |                     |
+    recordings   -->  fit + VALIDATE  --> env over random  --> planned: measured
+    (CSVs in git;     (replay gate,       courses              from real frames
+     frames: laptop)   DONE + card 2)         |                current: fallback
                                               v                     v
                                         T4 PPO training  <--  randomization
                                               |
@@ -62,190 +72,164 @@ Training mode.
                                         E5 evaluation --> D6 deployment
                                         (surrogate held-out, then live sim)
 
-Stages P0–P2 are the critical path and are exactly the work the reactive
-baseline needs too. T4 is the only RL-specific stage. P1 has passed its
-validation gate, so the open critical path is P2's course generator and
-synthetic detections, then P3.
+Stages P0–P2 are exactly the work the reactive baseline needs too. T4 is the
+only RL-specific stage. P1 and P2 are built; the open critical path is now
+**getting any controller (baseline or RL) to finish surrogate courses**, then
+measured P3 / attention swap / live E5–D6.
 
 ### P0 — Data
 
 * Recordings: `pilot/sessions/<timestamp>/` — the telemetry CSVs are now
   tracked in git, so the plant fit no longer depends on any one machine. The
-  frame JPEGs are still unbacked-up on one laptop; they gate P3 only.
+  frame JPEGs are still unbacked-up on one laptop; they gate measured P3.
 * Ground truth comes from the VQ1 build (identical physics, pose not blocked).
-  Existing sessions: `20260731-143025` (doublets), `20260731-144815` (taps,
-  frames), `20260731-150712` (thrust/cruise/skids). See `../SYSID.md`.
-* Still missing: one clean completed lap for held-out validation — no session has
-  ever finished one (`race_finish_time_ns` is −1 in all eight, and `active_gate_index`
-  never got past 1). It is maneuver C of card 2 in `../SYSID.md`, along with the two
-  measurements that would retire the low-throttle thrust clamp and the jointly-fitted
-  `kz`. Three minutes of flying, and the only remaining lever on plant accuracy.
+  Fit / hold-out session lists live in `plant.json` meta; see `../SYSID.md`
+  and `STATE_PLANT_SURROGATE.md`.
+* Still missing: one clean completed lap for end-to-end plant validation — no
+  session has ever finished one (`race_finish_time_ns` is −1 everywhere).
+  Furthest recorded is `active_gate_index` **5**, not a full course. Card 2's
+  apex / terminal / low-throttle flights that retire the old thrust clamp and
+  joint `kz` **have been flown** and are in the current `plant.json`; the
+  remaining data gap is the finished lap, not those two measurements.
 
-### P1 — Plant fit — DONE 2026-07-31
+### P1 — Plant fit — DONE (card-2 refit on disk)
 
 Fitted, validated, recorded in `plant.json` / `plant.py`; the pipeline, the
-numbers and the dead ends are in `README.md`. Held-out R² 0.92–0.999,
-open-loop replay drifts 2.6 m over a 5 s / 35 m window, and every sign
-corruption of the model is caught by 17x or more. Two stale worries from the
-design draft, retired: the yaw truth sign is settled (`sysid_frames.py`,
-sixteen candidate conventions scored against the kinematic identity, 6x
-margin), and the lags are bracketed interior (+15 ms thrust cmd → motor,
-+10 ms rate cmd → gyro) — the old −15-sample edge peak was a symptom of the
-missing vertical-drag term, not of the correlation window.
+numbers and the dead ends are in `README.md` / `STATE_PLANT_SURROGATE.md`.
+Held-out R² ≈ 0.99 / 0.99 / 0.90, open-loop replay is the mandatory gate, and
+every sign corruption of the model is caught by a large margin. Yaw truth
+sign and rate/thrust lags are settled.
 
 The validation gate stands for any REFIT: replay recorded commands open-loop
 through the fitted model, overlay predicted vs recorded pose AND IMU
-(`sysid_replay.py`), validate on the designated hold-out (`20260731-131305`,
-nine minutes of ordinary flying — a completed lap would be better and does not
-exist yet, see P0). NOTHING trains on the surrogate until the replay passes.
+(`sysid_replay.py`), validate on the designated hold-out (`20260731-131305`).
+NOTHING trains on the surrogate until the replay passes.
 
-Still open on the plant — exactly what card 2 in `../SYSID.md` flies:
+**Retired by card 2** (do not re-open as if unflown):
 
-* the thrust curve is unmeasured below throttle 0.10 and hand-clamped at zero,
-  the one unmeasured hack in the model (see T4 for the training-side guard)
-* `kz` is fitted jointly with thrust — the collinearity that broke the first
-  attempt is modelled, not broken; the apex arcs read it independently
+* thrust is a **measured** 21-knot table (`np.interp`, no hand clamp); idle ≈
+  0.35 m/s², hover throttle 0.270, full ≈ 51.67 m/s²
+* `kz` from apex arcs (≈ 0.04359), not a joint racing-flight fit with thrust
 
-### P2 — Surrogate environment
+**Still open on the plant:** forward-speed dependence of `kz` / optional
+body-lift `c·u²` (helps hold-out z, not in `plant.json`); thin mid-table
+samples 0.50–0.82; no completed-lap validation.
 
-A vectorized NumPy (or JAX) gym-style environment, thousands of instances in
-parallel. Renders no pixels; emits `Observation.to_vector()` (73-D) exactly.
+### P2 — Surrogate environment — BUILT
 
-* **Dynamics:** fitted plant at 120 Hz internal step; policy decisions at a
+A vectorized NumPy gym-style environment (`surrogate/`), thousands of
+instances in parallel. Renders no pixels; emits `Observation.to_vector()`
+(73-D) exactly. Self-check: `python pilot/control/surrogate/selfcheck.py`
+→ 17/17.
+
+* **Dynamics:** fitted plant at high internal rate; policy decisions at a
   per-episode randomized 45–65 Hz (matches the measured load-dependent rate).
   The recordings also show a ~32 Hz IMU tier on loaded sessions; checkpoints
-  get stress-tested at ~30 Hz even though training stays at 45–65.
+  get stress-tested at ~30 Hz (`evalsuite/stress.py`) even though training
+  stays at 45–65.
 * **Courses: procedurally generated, fresh every episode.** The real map is
   unobservable under VQ2, so the policy must learn gate-seeking, not a track.
-  Sample ~18–22 gates; winding turns (VQ2 winds far more than VQ1); segment
-  lengths consistent with the observed ~2.76 s/station cruise; vertical
-  profiles including ~20° descents — the case that pushes gates below the
-  camera's −9.4° lower frame edge, which is the binding constraint.
+  Sample ~18–22 gates; winding turns; segment lengths and turn/elev ranges
+  anneal with difficulty.
+  *Planned:* vertical profiles including sustained ~20° descents — the case
+  that pushes gates below the camera's −9.4° lower frame edge.
+  *Current:* `EnvConfig.alt_revert = 0.9` mean-reverts altitude inside a
+  ceiling band, so the generator cannot reproduce the measured monotone
+  ~24 m descent over ~140 m of path on the VQ1 6-gate map. Fix the prior;
+  optionally also lock that map as a fixed eval course.
 * **Synthetic detections tick at the camera's measured ~30 fps, not per
   policy step** — at 45–65 Hz decisions, roughly every other step sees an
-  unchanged detection with `staleness_s` grown by ~33 ms, and that rhythm is
-  part of what the policy must learn. Project true gates through the camera
-  model (20° up-tilt, +49.4°/−9.4° vertical span, fx=fy=320), then corrupt:
-  visibility only in-frustum and in-range; dropout; latency; staleness
-  accumulation while tracks coast; position/normal noise growing with range
-  and obliquity; `normal_valid` failing near head-on (the PnP tilt
-  degeneracy); `pose_valid=False` fallback with long-biased range on oblique
-  gates; occasional false positives. Parameter values come from P3, drawn
-  per-episode from their uncertainty — never fixed at point estimates.
+  unchanged detection with `staleness_s` grown by ~33 ms. Project true gates
+  through the camera model (20° up-tilt, +49.4°/−9.4° vertical span,
+  fx=fy=320), then corrupt with the P3 parameter set (see below).
 * **Own-state channel:** IMU noise from parked recordings; gravity roll/pitch
   with confidence degrading under acceleration; drag-bearing `vel_bearing`
   invalid near hover; `speed_est` uncertainty tied to the drag-fit residual.
-* **Attention + yaw servo: run the REAL attention code, not a
-  re-implementation.** The observation carries `Attention.kind` and
-  `target_dir_body`, produced by perception's attention policy — what to look
-  at, when to hand off, what SEARCH does. A behavioural mismatch there is a
-  transfer risk on par with the noise model, so the surrogate imports Claire's
-  actual attention module and runs it over the synthetic detections, and its
-  version is frozen with every checkpoint. The azimuth-only servo the live
-  stack runs under `YawMode.AUTO_ATTENTION` is simulated with it, including
-  the `R_COMMIT` handoff (value TBD — currently an open measurement).
-* **Initial states cover the recovery handback.** D6's supervisor hands
-  control back at hover: low speed, level, possibly no gate in frustum,
-  arbitrary offset from the corridor. If every episode starts in a sane
-  course-following state, the handback lands out of distribution exactly when
-  it matters. Episodes therefore randomize their starts: mid-course spawns,
-  hover starts, corridor offsets, no-gate-visible starts.
+* **Attention + yaw servo — planned vs current.**
+  *Planned:* import Claire's real attention module over synthetic detections,
+  freeze its version with every checkpoint; behavioural mismatch is a
+  transfer risk on par with the noise model.
+  *Current:* parameterized stub in `surrogate/attention.py` (`R_COMMIT_M =
+  6.0` placeholder, `EnvConfig.attention_factory = None`). Azimuth servo
+  under `AUTO_ATTENTION` runs against that stub. Swap when the real module
+  exists.
+* **Initial states cover the recovery handback.** Mid-course, hover,
+  corridor-offset, and no-gate-visible starts (default probs
+  0.50 / 0.25 / 0.12 / 0.08 / 0.05 with normal).
 * **World frame exists only in here.** It computes reward and collision tests
-  and is never encoded into the observation.
+  and is never encoded into the observation. `info["terminal_obs"]` preserves
+  the pre-reset ending observation for PPO truncation bootstrap.
 
 ### P3 — Noise model (the transfer risk)
 
-Dropout, latency, false-positive and range-error statistics measured by
-running the real perception pipeline (Claire's) over recorded frames and
-scoring against VQ1 ground truth. Randomized over their measurement
-uncertainty at training time. This is the component the README warns about:
-a policy exploits any regularity in synthetic detections, so clean detections
-are a bug, not a simplification. Scoring is blocked on perception existing
-well enough to score — coordinate with Claire early.
+**Planned method.** Dropout, latency, false-positive and range-error
+statistics measured by running the real perception pipeline (Claire's) over
+recorded frames and scoring against VQ1 ground truth. Randomized over their
+measurement uncertainty at training time. Clean detections are a bug: a
+policy will exploit any regularity in synthetic tracks.
 
-Training does NOT wait on P3. Fallback: a hand-specified, deliberately
-pessimistic noise model with wide randomization — worse than anything
-measured, far better than clean — swapped for measured parameters the moment
-they exist. A policy trained on the fallback is riskier and is flagged as
-such at model selection.
+**Current method.** Training does *not* wait on that measurement.
+`surrogate/noise.py` is a hand-specified, deliberately pessimistic fallback
+(`max_range_m=(14,30)`, `p_detect=(0.62,0.92)`, bursty dropout, etc.), drawn
+per episode and scaled toward the worse end with difficulty. A policy trained
+on the fallback is riskier and must be flagged as such at model selection.
+Swap for measured parameters when they exist — same `NoiseParams` surface.
 
-**Half of P3 is not blocked on Claire and never was (2026-08-01).** Scoring a
-*detector* needs a detector, but the visibility half needs only geometry: the
-gate centres of the 6-gate map are measured to 0.5–1.2 m from `gate_advance`
-plus truth pose, so every recorded frame has a known true range, obliquity and
-projected position. Running the `NOTES.md` orange HSV mask over
-`20260731-204841-vq1-lap-slow` finds a blob at the predicted place on 95% of
-in-frustum (gate, frame) pairs — including 95% at 30–45 m, against a fallback
-`max_range_m` of 14–30. That measures detectability against range, the burst
-structure of the misses, and the size-to-range calibration, and it needs no
-perception pipeline. What still waits on Claire is the error model of a real
-fit: PnP failure rate, normal validity, and the hangar false positives, none of
-which an HSV mask on VQ1 can speak to.
+**Visibility half is not blocked on Claire (2026-08-01).** Scoring a
+*detector* needs a detector, but detectability vs range needs only geometry:
+gate centres from `gate_advance` + truth pose, scored with the `NOTES.md`
+orange HSV mask. On `20260731-204841-vq1-lap-slow`, a blob sits where geometry
+predicts on ~95% of in-frustum pairs — including ~95% at 30–45 m, against the
+fallback's 14–30 m band. What still waits on Claire is the error model of a
+real fit: PnP failure rate, normal validity, hangar false positives.
 
-### T4 — Training
+### T4 — Training — HARNESS BUILT; no flyable policy yet
 
 * **Actions (3-DoF):** roll rate, pitch rate, thrust. Yaw stays with
-  `AUTO_ATTENTION` — it has almost no reward signal (free gimbal), so
-  learning it is wasted samples. Outputs squashed to the envelope the plant
-  fit actually saw, ~±2.5–3 rad/s — at `MAX_RATE_RPS = 6.0` the rate-loop
-  model is extrapolation. Thrust head initialized to bias near hover
-  (`interface.HOVER_THRUST` = 0.27, measured; 0.25 was the early low
-  estimate — reference the constant, this number has drifted once already).
-  Thrust output floored at ~0.10 until card 2's apex data replaces the hand
-  clamp: below that the model has no data at all, randomization cannot cover
-  a region with nothing measured in it, and a policy living there is
-  exploiting an artefact.
-* **Network:** small MLP (~2×256) with short memory — stack the last 4–8
-  observations or a small GRU. Detections drop out and coast; a memoryless
-  policy flies blind through every dropout.
-* **Algorithm:** PPO, standard settings. Steps are 73 floats; millions of
-  steps are cheap. Running observation normalization (statistics frozen into
-  the deployed checkpoint) and reward scaling are mandatory, not tuning: the
-  73-D vector mixes metres in the tens, m/s² up to ~50, radians and one-hot
-  flags, and PPO is fragile to that.
-* **Reward** (computed from privileged surrogate state — legitimate, reward
-  exists only at training time):
-  * dense per-step progress toward the TRUE gate's approach point, computed
-    from surrogate world state — never from the observation's `pos_body` /
-    `normal_valid`, which are noisy and droppable; a reward that follows the
-    detections silently changes target on every dropout. Approach distance
-    `d` is TBD. Estimating the target from noisy observations is the
-    policy's problem, not the reward's. The dominant term; ~20
-    crossings/episode is far too sparse alone
-  * crossing bonus on `active_gate_index` advancing
-  * terminal penalty: collision, or leaving a generous course corridor
-  * small regularizers: action-rate (jerk) penalty; mild penalty when no gate
-    is in frustum (substitutes for learning yaw/visibility management)
-  * time penalty only after completion is reliable — the leaderboard counts
-    completed runs first, fast runs second
-* **Collisions — geometry, not physics.** The surrogate never simulates a
-  bounce; it hit-tests and terminates:
-  * gate plane crossed outside the 1500 mm inner aperture (spec-exact; the
-    dominant hazard, negotiated ~20×/run) — tested as a plane although the
-    frame is 260 mm deep; the randomized sphere margin below is what absorbs
-    that simplification
-  * floor / randomized ceiling bound
-  * optional randomized clutter just outside the corridor
-  * drone = bounding sphere inflated by a per-episode randomized margin
-    (10–40 cm) — the main transfer trick; the policy learns clearance that
-    absorbs plant error and detection noise
-  * KNOWN GAP: the 73-D observation has no obstacle channel; columns and
-    walls are invisible until `t_since_collision_s` resets. Defense is
-    corridor discipline (the gate-to-gate corridor is flyable by
-    construction) + the ribbon as a pre-turn prior. If real flights show
-    in-corridor collisions, that is an `interface.py` change proposal, not a
-    control fix.
-* **Curriculum:** (1) difficulty — gentle wide courses and low noise first,
-  anneal to tight turns and full measured noise; (2) speed — cap commanded
-  aggressiveness early so exploration survives the collision terminations,
-  relax as completion rate rises. If completion stalls, weaken the progress
-  term near gates; do not weaken the collision penalty.
-* **Domain randomization, per episode:** plant parameters at ±10–20% (thrust
-  gain, drag, loop time constants, latency) — deliberately much wider than
-  the fit's measured residuals now that those exist; a transfer choice, not
-  a leftover placeholder. Also randomized: control period, detection-noise
-  parameters, collision margin. The real sim should be indistinguishable
-  from one more draw.
+  `AUTO_ATTENTION`. Squash home is `surrogate/actions.policy_to_action`:
+  `RATE_CAP_RPS = 2.75` (not `MAX_RATE_RPS = 6.0`), thrust in
+  `[THRUST_FLOOR, 1.0]` with `THRUST_FLOOR = 0.10`. Thrust head bias-init at
+  `interface.HOVER_THRUST` (0.27); `u=0` maps to thrust **0.55**, not hover.
+  *Floor — planned vs current:* the original reason for 0.10 was an
+  unmeasured / hand-clamped low-throttle region. Card 2 retired that; the
+  floor remains as a deliberate training guard (lower only in one commit +
+  retrain).
+* **Network:** MLP 2×256, frame stack k=6 (default). Stacking, not GRU, is
+  what shipped — no hidden state across deploy reset / recovery handback.
+* **Algorithm:** PPO (`gamma=0.99`, `gae_lambda=0.95`, …). Obs norm + reward
+  scaling mandatory. Time-limit truncations bootstrap from `V(s_T)` via
+  `info["terminal_obs"]`; genuine terminals (collision / corridor / finish)
+  bootstrap at 0. Opt-in `--resume` restores a `<stem>_resume.pt` sidecar
+  when present.
+* **Discount / reward-horizon — planned note vs current.**
+  *Planned (the header used to point here):* a written analysis of whether
+  `gamma=0.99` and the dense-progress timescale are wrong for ~20-gate,
+  collision-dominated episodes — i.e. whether value targets are too
+  short-sighted (or shaping too local) to ever credit finishing.
+  *Current:* that write-up was never added; `gamma=0.99` is simply the
+  CLI/PPO default. Empirically `run1` (~5.05M steps) and the baseline both
+  sit at **0% completion** on easy surrogate seeds. Treat discount /
+  horizon as an **open hypothesis** alongside gate-pass tolerance, course
+  geometry, and the fallback noise model — not as a settled diagnosis.
+  Truncation bootstrap is a separate, already-landed correctness fix and
+  does not substitute for that analysis.
+* **Reward** (privileged world state only):
+  * dense progress toward the TRUE gate approach point (`approach_d_m=2.0`
+    in `EnvConfig`; architecture once marked `d` TBD — the code picked 2.0)
+  * crossing bonus; collision / corridor terminals; finish bonus
+  * jerk + no-gate regularizers; time penalty only after completion is
+    reliable (~80% rolling); stall path may lower `progress_gate_scale`
+    (never `k_collision`)
+* **Collisions — geometry, not physics.** Gate plane vs 1500 mm inner
+  aperture; floor / ceiling; sphere margin 10–40 cm per episode. Pass
+  requires `lat + sphere_r ≤ 0.75 m` — tight against observed miss
+  distributions. KNOWN GAP: no obstacle channel in the 73-D obs.
+* **Curriculum:** difficulty + `speed_cap` from rolling completion
+  (promote ≥0.70, demote ≤0.25); stall weakens near-gate progress scale
+  toward 0.4. Training starts at difficulty 0.0 / speed_cap 0.5.
+* **Domain randomization, per episode:** plant ±~10–15% (drag/thrust),
+  rate_gain ±10%, delay ×(0.7–1.4), control period, noise draws, collision
+  margin.
 
 ### E5 — Evaluation
 
@@ -281,28 +265,30 @@ which an HSV mask on VQ1 can speak to.
 | failure | guard |
 |---|---|
 | mirrored surrogate (silent sign error) | P1 replay validation gate before any training |
-| policy exploits clean synthetic detections | P3 measured noise, randomized over uncertainty |
+| policy exploits clean synthetic detections | *Planned:* P3 measured noise. *Current:* pessimistic fallback in `noise.py`, flagged at selection |
 | overfit to a guessed course map | fresh procedural course every episode |
-| overfit to one plant point-estimate | per-episode plant randomization, deliberately wider than fit residuals |
+| overfit to one plant point-estimate | per-episode plant randomization, wider than fit residuals |
 | corner-shaving through gate frames | inflated randomized collision margin + hard termination |
 | timid hovering under crash penalties | speed curriculum, not penalty reduction |
-| blind flight through detection dropout | observation stacking / GRU memory |
+| blind flight through detection dropout | observation stacking (k=6 shipped; GRU was the alternative) |
 | unseen obstacles off the racing line | corridor termination in training; ribbon prior |
 | dead policy after a graze at race time | scripted recovery supervisor outside the network |
-| surrogate attention diverges from the real attention policy | run Claire's actual attention code in the surrogate; freeze its version with the checkpoint |
-| policy exploits the unmeasured low-throttle clamp | thrust output floored at 0.10 until card 2 data lands |
+| surrogate attention diverges from real attention | *Planned:* Claire's module, frozen with ckpt. *Current:* stub — transfer risk until swap |
+| policy exploits unmeasured low-throttle region | floor at 0.10; card 2 measured the region, floor kept as training guard |
 | recovery handback lands out of distribution | randomized episode starts: hover, mid-course, no-gate-visible |
+| time-limit truncations bias value targets | bootstrap `V(s_T)` from `info["terminal_obs"]` (shipped) |
 
 ## Schedule risk, stated plainly
 
-P1 is done and validated; its first failure (thrust R² ≈ 0.05) is diagnosed
-and written down in `README.md`, and the remaining plant risk is narrow — the
-low-throttle clamp and the jointly-fitted `kz`, both retired by card 2 if it
-gets flown. The open critical path is P2's course generator and synthetic
-detections, with P3 on the fallback noise model until Claire's pipeline can
-be scored. The reactive baseline uses the identical P0–P2 infrastructure and
-tunes in minutes; it is built first and is the submission floor.
+P1 is done (card-2 refit on disk); the old plant risks (low-throttle clamp,
+joint `kz`) are retired. P2 is built and self-checking. P3 is still the
+fallback. T4 trains but has **not** produced completions (`run1` at ~5M
+steps is 0% throughout; baseline likewise fails easy surrogate seeds). The
+open critical path is finishing courses on the surrogate (baseline floor
+first), then measured P3 / real attention / live E5–D6.
 
-Go/no-go, pre-committed rather than judged at 3 a.m.: if PPO is not training
-against the surrogate by 2026-08-02 06:00 PST (T−24 h), T4 is abandoned and
-all remaining time goes to baseline tuning and live evaluation.
+The pre-committed go/no-go (abandon T4 if PPO is not training by
+2026-08-02 06:00 PST) is **met on the harness side** — PPO trains against
+the surrogate. The remaining judgment call is whether further RL budget is
+worth it while completion is still zero, versus spending the deadline on
+baseline tuning and live evaluation.
