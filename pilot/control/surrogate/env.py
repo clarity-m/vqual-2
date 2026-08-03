@@ -260,6 +260,37 @@ class EnvConfig:
     # Attitude disturbance handed to the recovery, radians, when contact is not terminal.
     recover_tumble_rad: float = 0.45
 
+    # Per-CAUSE override, orthogonal to `collision_terminates` above. False makes gate-frame
+    # contact alone non-terminal, leaving the floor and the ceiling exactly as they were:
+    # hard terminals. `collision_terminates=False` cannot express that -- it is one switch
+    # over the pooled flag, so turning it off frees the FLOOR too, and the floor is the one
+    # surface that must stay expensive (55.5% of `run1` episodes ended on it).
+    #
+    # This exists for COVERAGE. With every contact terminal and all spawns now on the pad,
+    # a policy that clips gate 3 never sees gates 4-16 at all, so back-half exposure is
+    # gated on front-half reliability. Letting the aircraft fly on through a clipped gate
+    # buys that exposure without the mid-episode teleport that `_collision_recover` does.
+    #
+    # It CANNOT be set alone. `newly` is gated on `~collided`, so a clipped gate normally
+    # scores no pass: the aircraft would fly on, get no credit, and spend `gate_timeout_s`
+    # chasing a gate now behind it -- worse than the terminal it replaced. So when this is
+    # False a clipped gate DOES advance, and the pass is bought at `k_collision_gate`.
+    #
+    # THE TRADE, stated once: this trains a policy that treats clipping as a priced cost,
+    # and it will clip on the live sim. It is a training-time coverage device. Turning it
+    # back on late is a fourth curriculum axis, which the architecture does not have.
+    gate_contact_terminates: bool = True
+    # What a clipped gate costs when `gate_contact_terminates` is False. SEPARATE from
+    # `k_collision` on purpose: the price of clipping has to dominate the progress a clip
+    # buys, without also re-pricing the floor, whose penalty is already tuned and terminal.
+    #
+    # Sized so contact never pays. A 17-gate lap at ~1870 steps earns roughly +168 of
+    # progress at ~0.09/step; clipping every gate at 20.0 costs -340, so a fully-clipping
+    # lap is dominated about 2:1 by the penalty. At `k_collision`'s own 8.0 it would be
+    # -136 against +168 and clipping would be the better strategy whenever it is faster.
+    # Raising a collision penalty is permitted; only weakening one is not.
+    k_collision_gate: float = 20.0
+
     # -- episode -------------------------------------------------------------
     max_time_s: float = 120.0
     gate_timeout_s: float = 12.0
@@ -407,6 +438,9 @@ class VecSurrogate:
         self.n_attempt = np.zeros(n, dtype=np.int64)
         self.n_pass = np.zeros(n, dtype=np.int64)
         self._cross0 = np.zeros(n, dtype=bool)
+        # Lenient active-gate pass, set by `_gate_geometry`; see there. Initialised for
+        # the same reason as `_cross0`: it is read in `step` and must exist before one.
+        self._pass_graze = np.zeros(n, dtype=bool)
         self.phi_prev = np.zeros(n)
         self.ep_ret = np.zeros(n)
         self.ep_len = np.zeros(n, dtype=np.int64)
@@ -647,6 +681,10 @@ class VecSurrogate:
 
         collided = np.zeros(self.n, dtype=bool)
         advanced = np.zeros(self.n, dtype=bool)
+        # Gate-frame contact, kept SEPARATE from the pooled `collided`. Once the floor and
+        # ceiling are OR-ed in below, cause is no longer recoverable from `collided`, and
+        # both the per-cause termination and the per-cause penalty need it.
+        gate_hit = np.zeros(self.n, dtype=bool)
 
         for _ in range(cfg.substeps):
             p0 = self.p.copy()
@@ -655,7 +693,20 @@ class VecSurrogate:
             self.n_attempt = self.n_attempt + self._cross0
             self.n_pass = self.n_pass + passed
             collided |= hit
-            newly = passed & ~advanced & ~collided
+            gate_hit |= hit
+            # A clipped gate scores no pass while gate contact is terminal -- the episode
+            # is ending anyway. When it is NOT terminal the aircraft flies on through, so
+            # the pass has to count: otherwise it is credited with nothing and burns
+            # `gate_timeout_s` chasing a gate behind it. It is charged `k_collision_gate`.
+            #
+            # `_pass_graze`, not `passed`: the strict test requires the whole sphere to
+            # clear the aperture and is False for every clip, so advancing on it would
+            # change nothing. `n_pass` keeps the STRICT count either way, so `grate` means
+            # the same thing in both modes and the two remain comparable.
+            if cfg.gate_contact_terminates:
+                newly = passed & ~advanced & ~collided
+            else:
+                newly = self._pass_graze & ~advanced
             self.active = self.active + newly.astype(np.int64)
             self.det.shift(newly)
             advanced |= newly
@@ -693,8 +744,18 @@ class VecSurrogate:
 
         # When contact is not terminal the aircraft has to be put somewhere flyable, or
         # the next step re-detects the same floor strike forever. See EnvConfig.
+        #
+        # A pass-through gate clip is deliberately NOT recovered: the aircraft is already
+        # somewhere flyable -- it flew through the aperture -- and teleporting it would
+        # destroy the continuous trajectory that is the entire point of the mode. The
+        # floor and the ceiling are different: they are surfaces, and a body left inside
+        # one re-detects the same contact every step until it is moved.
         if not cfg.collision_terminates and np.any(collided):
             self._collision_recover(collided)
+        elif not cfg.gate_contact_terminates and np.any(floor_hit | ceil_hit):
+            # Unreachable while floor/ceiling stay terminal below; kept so the two flags
+            # remain independently settable rather than silently coupled.
+            self._collision_recover(floor_hit | ceil_hit)
 
         # -- pose history and the camera clock --------------------------------
         self._phead = (self._phead + 1) % _POSE_HIST
@@ -721,7 +782,18 @@ class VecSurrogate:
         capped = capped & ~finished
         # Contact ends the race only if the config says it does. Everything else about a
         # collision -- the reward, the clock, the counter -- is unchanged either way.
-        term_coll = collided if cfg.collision_terminates else np.zeros(self.n, dtype=bool)
+        #
+        # `collision_terminates` is the global switch and wins: False means nothing
+        # terminates. With it True, `gate_contact_terminates` subtracts the gate frame
+        # alone, leaving floor and ceiling terminal. There is no configuration in which
+        # the floor is passable while a gate is not -- that direction has no use and
+        # would let a policy fly under the course.
+        if not cfg.collision_terminates:
+            term_coll = np.zeros(self.n, dtype=bool)
+        elif cfg.gate_contact_terminates:
+            term_coll = collided
+        else:
+            term_coll = floor_hit | ceil_hit
         corridor = self._corridor_exit() & ~finished
         # A WALL-CLOCK cut and a K-gate cut are arbitrary: the race would have continued,
         # so both bootstrap from V(s_T). A PER-GATE timeout is not -- it is the policy
@@ -765,7 +837,17 @@ class VecSurrogate:
         rew = cfg.k_progress * prog + clear_term
         rew = rew + cfg.k_cross * advanced
         rew = rew + cfg.k_finish * finished
-        rew = rew - cfg.k_collision * collided
+        # Contact is priced by CAUSE only when the causes are treated differently. While
+        # gate contact is terminal the pooled `collided` keeps the original single price,
+        # so a default run is bit-identical to before. Once a clipped gate is survivable
+        # it is charged `k_collision_gate` instead -- higher, because it now buys a pass
+        # and has to stay a losing trade. Floor and ceiling keep `k_collision` either way.
+        if cfg.gate_contact_terminates:
+            rew = rew - cfg.k_collision * collided
+        else:
+            surface = floor_hit | ceil_hit
+            rew = rew - cfg.k_collision * surface
+            rew = rew - cfg.k_collision_gate * (gate_hit & ~surface)
         rew = rew - cfg.k_corridor * corridor
         rew = rew - cfg.k_jerk * np.sum((u - self.u_prev) ** 2, axis=1)
         rew = rew - cfg.k_nogate * (~self._gate_in_frustum())
@@ -906,6 +988,16 @@ class VecSurrogate:
         # not so wide that it missed the 2700 mm structure entirely.
         hit = cross & (lat + r > inner) & (lat - r < outer)
         passed = cross[:, 0] & (lat[:, 0] + r[:, 0] <= inner)
+        # The LENIENT pass, for `gate_contact_terminates=False` only: the CENTRE went
+        # through the aperture, so the aircraft is on the far side having grazed the frame.
+        # `passed` above demands the whole sphere clear the opening and is therefore False
+        # for exactly the clips that mode exists to survive -- gating advance on it would
+        # let the aircraft fly through and still be chasing the gate behind it.
+        #
+        # `lat <= inner` and not `<= outer`: past the aperture edge the path goes through
+        # the 2700 mm STRUCTURE, which is a wall, not a gate. Stashed rather than returned
+        # so the signature stays what `selfcheck.py` and the probes already call.
+        self._pass_graze = cross[:, 0] & (lat[:, 0] <= inner)
         return np.any(hit, axis=1), passed
 
     def _corridor_exit(self):
