@@ -1,0 +1,29 @@
+All measurements are in. Here are the five answers for the control stack, measured on the real pipeline over recorded flights with pose ground truth (two VQ1-rig laps, 13008 ground-truth gate instances; the contour detector path — gatenet and the producer tracker were not in the loop, stated per-question where it matters). Analysis scripts and the 13008-row table are in the job tmp dir; nothing in the repo was touched.
+
+1. Is the gate-position error correlated in time? — Yes, but not in the way that helps you
+
+The correlated part is a per-sighting DC bias, not a slow drift. Vertical-axis autocorrelation of the residual as the policy sees it: ρ(0.1 s) = 0.43, ρ(0.5 s) = 0.13 (n ≈ 5300 / 3400 pairs, computed within contiguous same-gate segments so boundaries don't fake decorrelation). Differencing noise factors √(2(1−ρ)): 1.07 at 0.1 s, 1.32 at 0.5 s — nowhere near the 3.2×–10× improvement the ρ=0.9–0.99 scenario needed. Once the per-segment mean is removed, the fast residual is nearly white (ρ ≈ 0.19 at 0.1 s, ~0 by 0.5 s).
+
+Variance split on the vertical axis: per-viewpoint bias ~0.61 m (1σ) + white fast noise ~0.53 m (1σ). The bias is uncorrelated with viewing angle, range, and apparent size (|corr| ≤ 0.04) — it's a per-track offset that a new viewpoint redraws, so you can't average or difference it away within a sighting. Model it as: bias ~0.6 m redrawn per sighting, plus ~0.5 m white on top (some of which is label noise in the ground truth itself). Verdict: differencing at 0.1 s costs almost nothing but also cancels almost nothing you care about; stacking is a modest freebie, not the fix.
+
+2. How often is a detection grossly wrong? — Depends entirely on which axis
+
+n = 6313 size-consistent matches. Full-3D error > 0.5 m: 0.71 — but that's dominated by the along-range axis at 24 m median range. Split by axis: vertical |z| > 0.75 m = 0.12 (inside your guessed 0.04–0.28 band), bearing-plane (lateral+vertical) > 0.5 m = 0.34, forward/range > 0.5 m = 0.66. p99 total error 11.2 m. One structural correction to the question: there is no PnP-vs-size split for position — pos_body is always PnP (inner and outer source both); apparent size is a range-only channel. Recommendation: split the noise model into range failure (common, range-dependent) and bearing failure (~0.1–0.3, within your guess, with headroom above 0.705).
+
+3. Detection continuity — worse than the optimistic guess, on the contour path
+
+Per-frame detect probability among frustum-visible gates: 0.53 overall, 0.60 for cleanly visible unclipped gates, 0.37 for clipped — at or below the low end of the guessed 0.62–0.92, and well below the "likely >0.9" note. Miss runs (753 runs): median 3 frames (0.10 s), p90 17 frames (0.57 s), max 12.3 s; restricted to misses while genuinely visible and unclipped: median 2 frames, p90 0.47 s. Verdict: memory matters — half-second blackouts happen mid-track at p90. Caveat: this is the contour detector alone; gatenet exists precisely to fill this hole, so the flight stack's true p_detect is higher — but 0.53–0.60 is the floor if the net's confidence gate rejects.
+
+4. Latency — low end of your band
+
+~28 ms median nominal (19.3 ms measured frame transport + 9.0 ms measured producer.step with the net idle), ~45–50 ms median on a real lap with gatenet firing (repo flight instrumentation: 29.2 ms median producer total), ~80–130 ms only under thermal throttle plus frame queuing. Frame period 33.4 ms. Note the producer runs gatenet on CPU by explicit choice (~4–9 ms/crop); the freshest observation is not older than your 0.111 s frame stack in the common case, so latency alone doesn't justify spreading the frames.
+
+5. Range bias — real, but the opposite direction to the docs
+
+The apparent-size range path is biased SHORT, not long: median signed error −3.52 m (IQR [−7.35, −0.78]), vs PnP at −0.10 m (IQR 2.0 m) — the size path is ~3–4× noisier and its bias grows with obliquity while PnP stays within ±0.2 m across all obliquity bands. The documented "biased long" claim does not reproduce; the short bias is consistent with the mask/morphology enlarging the measured aperture. Implication for the frame-strike hypothesis: inverted — a short-biased fallback predicts early braking, not late. If the size fallback is used at all, it needs a −3.5 m offset correction and a much larger σ; prefer PnP whenever the pose fit is valid.
+
+Caveats that apply across all five: ground truth requires pose, so everything above is VQ1 imagery — VQ2-specific failure modes (decoration false positives, hangar clutter) are underrepresented, which biases Q2 optimistic. Gatenet and the producer's tracking/coasting were not in the measured loop for Q1–3/5, so these characterize the raw geometry sensor the tracker consumes, not the tracked output.
+
+Sanity check: the residual agent reproduced autolabel's own 13008-instance count exactly before trusting its table, matched detections with the same rule as detect.py --score, verified in code that outer-source detections are scored against the 2700 mm boundary (so the Q5 bias isn't the artifact flagged in the earlier review), and computed autocorrelation within segments only. The latency numbers combine on-machine benchmarks with the repo's own flight-time instrumentation and agree with each other.
+
+result: All five control-team questions answered with measurements: vertical error is per-sighting bias (0.6 m) + near-white noise so differencing gains only ~1.07-1.3x not 3-10x; vertical gross-error rate 0.12 (in-band); contour-path p_detect 0.53-0.60 with 0.5 s p90 blackouts (memory matters); latency ~28-50 ms median (low end of guess); size-fallback range bias is -3.5 m SHORT, refuting "biased long".
