@@ -31,8 +31,16 @@ label-*/
 #   autolabels_vq1.json  <- autolabel.py + the tracked VQ1 telemetry CSVs + gate truth
 #                           (projection needs pose and gate centres, NOT the JPEGs)
 #   verify_autolabel/    <- overlay sheets, rendered on demand
+#   autolabels_vq1_negatives.json  <- same run: the instances the VISIBILITY test says hold
+#                           no gate, kept as hard negatives for a future confidence head
+#   autolabels_vq1_verdicts.csv    <- same run: per-instance visibility verdicts, joinable
+#                           to either label file on (key, set, idx)
+#   sweep_vis/           <- threshold-sweep contact sheets + metrics.json, rendered on demand
 pilot/perception/autolabels_vq1.json
+pilot/perception/autolabels_vq1_negatives.json
+pilot/perception/autolabels_vq1_verdicts.csv
 pilot/perception/verify_autolabel/
+pilot/perception/sweep_vis/
 
 # Training checkpoints: ~38 MB of .pt per run, regenerable from gatenet.py + autolabel.py.
 # The RESULTS live in perception/TRAINING.md, which is tracked; the weights are not.
@@ -41,3 +49,31 @@ pilot/perception/gatenet_runs/
 # Pre-rendered crop cache for gatenet training (packcrops.py). 4.4 GB of uint8 tiles,
 # rebuildable in ~45 s from the frames + autolabels_vq1.json. Never in git.
 pilot/perception/crop_cache*/
+
+# Colab upload staging: copies of tracked files, rebuilt by mkcolab.py
+pilot/perception/colab_upload/
+
+# ---- added 2026-08-03, first commit after the 08-02/03 work ----
+
+# Screen captures of laps: ~1.1 GB across four takes, regenerable by flying again.
+*.mp4
+# Frame dumps extracted from those videos
+lap.mp*_frames/
+
+# Producer replay outputs: obs.npy + diag.csv + strips + replay.mp4 per session, ~1 GB.
+# Regenerable with `producer.py --replay <session>`; the CONCLUSIONS live in
+# perception/NOTES.md, which is tracked.
+pilot/perception/producer_runs/
+# Verification / triage / smoke-test render dirs, all rendered on demand (~450 MB)
+pilot/perception/vercheck/
+pilot/perception/smoke_tmp/
+pilot/perception/triage/
+pilot/perception/uitest/
+# Working cache for the perception tooling
+pilot/perception/cache/
+# Label-UI frame dumps; the label JSON and the policy notes beside them ARE tracked
+pilot/perception/vq2_label/frames/
+
+# Per-machine Claude Code settings. The SHARED project settings live in
+# .claude/settings.json, which is tracked deliberately — see the note there.
+.claude/settings.local.json

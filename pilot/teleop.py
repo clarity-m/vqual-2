@@ -462,7 +462,13 @@ KEYS_AXIS = {                     # axis: (positive key, negative key)
     "pitch":    ("w", "s"),       # w = nose UP (flies backward), s = nose down
     "roll":     ("d", "a"),       # d = roll right, a = roll left
     "throttle": ("up", "down"),
-    "yaw":      ("e", "q"),
+    # SWAPPED 2026-08-01 (Claire, after the first successful slow session): q now yaws
+    # LEFT and e yaws RIGHT, which is what the letters read like. This is a BINDING
+    # change, not a sign change -- ACRO_YAW is untouched and no sign moved out of the
+    # link layer, so CONVENTIONS.md's rule still holds. Nothing about recorded data
+    # changes either: cmd.csv stores rates, not keys, and -2.0 still means nose-right in
+    # every session before and after this.
+    "yaw":      ("q", "e"),       # q = +2.0 = yaw LEFT, e = -2.0 = yaw RIGHT
 }
 KEYS_MODIFIER = {"boost": "ctrl", "precision": "alt", "align": "c"}
 KEYS_COMMAND = {                  # action: key
@@ -481,16 +487,16 @@ KEYMAP = """
   W     nose UP  (flies BACKWARD)  F5   arm
   S     nose down (flies forward)  F6   disarm
   A/D   roll left / roll right     F7   zero heading readout
-  Q/E   yaw RIGHT / yaw LEFT       F8   quit (disarms)
+  Q/E   yaw left / yaw right       F8   quit (disarms)
   UP    throttle up                F9   sim reset
   DOWN  throttle down              F10  throttle back to hover
   C     align nose to velocity     F11  levelling assist on/off (VQ1 only)
   LCTRL boost   LALT precision     F12  drop a marker
 
-  Q/E and W/S read backwards from the letters, and always have. That is the sim's
-  mirrored rate convention, measured against the pilot, not a typo (CONVENTIONS.md).
-  The keys are NOT being flipped hours before a lap - the labels above are what
-  they actually do.
+  Q/E were rebound 2026-08-01 and now read the way the letters suggest. W/S still
+  do not: W is nose UP, which flies BACKWARD. That is the sim's mirrored rate
+  convention, measured against the pilot, not a typo (CONVENTIONS.md). W/S is left
+  alone on purpose - it is the axis every recorded session was flown with.
 
   Throttle is an OFFSET, not an absolute: hold UP/DOWN to move it, let go and it
   snaps to the measured hover point. It sits at 0 on arm and after a reset, like
@@ -866,6 +872,12 @@ class Telemetry:
         self.last_collision = None
         self.clock_offset_ns = None
         self.imu_count = 0
+        # Raw HIGHRES_IMU rows buffered for the perception HUD's producer feed
+        # (--hud-producer). Tuples (t_wall_ns, ax, ay, az, gx, gy, gz), RAW exactly as
+        # the sim reports them -- producer.ImuFilter applies the gyro mirror itself, so
+        # these must NOT be pre-mirrored. Bounded so a detached/slow HUD cannot grow it
+        # without end; drain_imu() empties it each HUD frame.
+        self.imu_buf = collections.deque(maxlen=8192)
         self.heading_gyro = 0.0        # integrated zgyro, radians, relative
         self.gyro_live = False         # has zgyro ever been non-zero?
         # True once any blocked-under-VQ2 stream arrives, i.e. we are on the VQ1
@@ -976,6 +988,15 @@ class Telemetry:
                 self._track_chunks[msg.width] = {}
                 self._expected_chunks[msg.width] = msg.packets
 
+    def drain_imu(self):
+        """Pop and return every RAW IMU row buffered since the last call, oldest first,
+        for the perception HUD's producer feed. Tuples (t_wall_ns, ax,ay,az, gx,gy,gz),
+        NOT mirrored. Empties the buffer."""
+        with self.lock:
+            rows = list(self.imu_buf)
+            self.imu_buf.clear()
+        return rows
+
     def _on_imu(self, msg):
         # Integrate zgyro into a relative heading. This is the only orientation
         # signal VQ2 leaves us; it drifts and nothing here can correct it.
@@ -983,6 +1004,10 @@ class Telemetry:
             self.accel = (msg.xacc, msg.yacc, msg.zacc)
             self.gyro = (msg.xgyro, msg.ygyro, msg.zgyro)
             self.imu_count += 1
+            # RAW row for the producer HUD feed (see imu_buf note). time_ns() matches the
+            # recorder's t_wall_ns column, and producer only uses it for inter-sample dt.
+            self.imu_buf.append((time.time_ns(), msg.xacc, msg.yacc, msg.zacc,
+                                 msg.xgyro, msg.ygyro, msg.zgyro))
             if abs(msg.zgyro) > 1e-3:
                 self.gyro_live = True
             last = self._last_imu_us
@@ -1689,10 +1714,22 @@ def main():
     ap.add_argument("--listen", action="store_true",
                     help="record only: send no setpoints, no arm/disarm, no reset. "
                          "Safe to attach to a flight already in progress.")
+    ap.add_argument("--hud", action="store_true",
+                    help="overlay the perception HUD (pilot/hud.py) on the camera view. "
+                         "Runs in a background thread off the control loop; keys 1-6 "
+                         "toggle layers. No effect on the flight path.")
+    ap.add_argument("--hud-producer", action="store_true",
+                    help="drive the HUD from producer.Producer.step() and show a NUMERIC "
+                         "readout of the interface.Observation the control policy would "
+                         "consume (per-gate body position, range, approach normal + "
+                         "validity, attention). Implies --hud. Heavier: runs the full "
+                         "producer (gatenet on CPU) in the HUD worker, off the flight path.")
     args = ap.parse_args()
 
     if args.slow_lap:
         args.imu_level = True
+    if args.hud_producer:
+        args.hud = True
     shaping = Shaping.preset("slow" if args.slow_lap else args.shaping)
     if args.expo is not None:
         shaping.expo = args.expo
@@ -1723,6 +1760,22 @@ def main():
     boot_ms = int(time.time() * 1000)
     tel = Telemetry(conn, rec)
     vision = VisionRX(rec, decode=not args.no_view)
+
+    # Optional perception HUD. A background worker (pilot/hud.py) reads the SAME frame
+    # and telemetry teleop already has and publishes an annotated overlay; the control
+    # loop only blits the latest finished one, so a slow perception stack degrades the
+    # HUD rather than the flight. Imported lazily so plain teleop never touches torch.
+    hud_live = None
+    if args.hud and not args.no_view:
+        try:
+            from hud import LiveHUD
+            hud_live = LiveHUD(vision, tel, use_producer=args.hud_producer)
+            print("perception HUD on%s (keys 1-6 toggle layers, h help)"
+                  % (" [producer: numeric Observation]" if args.hud_producer else ""))
+        except Exception as e:
+            print("WARNING: --hud unavailable (%s); flying without it." % e)
+    elif args.hud and args.no_view:
+        print("WARNING: --hud needs the cv2 window; ignored under --no-view.")
     pilot = Pilot(conn, rec, boot_ms, listen_only=args.listen,
                   hover=args.hover, thrust_snap=not args.no_thrust_snap,
                   tilt_comp_imu=args.imu_tilt_comp, shaping=shaping)
@@ -1732,7 +1785,12 @@ def main():
     rec.event("session_start", control="body_rates", ip=args.ip, port=args.port,
               listen_only=args.listen, hover=pilot.hover,
               thrust_snap=pilot.thrust_snap, imu_tilt_comp=pilot.tilt_comp_imu,
-              imu_level=args.imu_level, shaping=shaping.as_dict())
+              imu_level=args.imu_level, shaping=shaping.as_dict(),
+              # Recorded because the yaw keys were rebound on 2026-08-01. It does not
+              # change what cmd.csv MEANS -- rates are stored, not keys -- but it does
+              # change which key produced a given trace, and that is worth being able
+              # to look up rather than infer.
+              keys_axis={k: list(v) for k, v in KEYS_AXIS.items()})
     # Written a SECOND time under its own kind as well as inside session_start, so that
     # anything scanning events.jsonl for what shaped the commands finds it by name
     # without having to know that session_start carries a nested dict.
@@ -1868,10 +1926,18 @@ def main():
             if not args.no_view:
                 latest = vision.take()
                 if latest is not None:
-                    cv2.imshow(WINDOW, draw_hud(latest[2], pilot, snap, vision,
+                    base = latest[2]
+                    if hud_live is not None:
+                        ov = hud_live.overlay()      # perception layers, drawn off-loop
+                        if ov is not None:
+                            base = ov
+                    cv2.imshow(WINDOW, draw_hud(base, pilot, snap, vision,
                                                 markers, head_now, steady_age))
-                if cv2.waitKey(1) & 0xFF == 27:
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27:
                     running = False
+                elif hud_live is not None and key != 255:
+                    hud_live.on_key(key)             # 1-6 toggle perception layers
 
             if wall - last_console >= 0.25:
                 console_line(pilot, snap, vision, head_now, steady_age)
@@ -1901,6 +1967,8 @@ def main():
                   duplicate_packets=vision.duplicate_packets,
                   contact_samples=tel.contact_samples,
                   contact_episodes=tel.collisions)
+        if hud_live is not None:
+            hud_live.stop()
         vision.stop()
         tel.stop()
         if not args.no_view:

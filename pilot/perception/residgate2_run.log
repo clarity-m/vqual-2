@@ -1,0 +1,57 @@
+VQ1 val: 2259 instances, good 2091 bad 51
+
+== NET, VQ1 val: pose-level classes by size bucket ==
+| bucket | n | good | resid med/p90 good | bad | resid med/p10 bad |
+| 0-15 | 613 | 550 | 0.014/0.034 | 19 | 0.127/0.062 |
+| 15-30 | 755 | 704 | 0.032/0.085 | 18 | 0.341/0.074 |
+| 30-60 | 500 | 495 | 0.121/0.273 | 1 | 1.063/1.063 |
+| 60-120 | 283 | 278 | 0.379/1.008 | 2 | 0.955/0.609 |
+| 120-250 | 52 | 51 | 1.191/2.361 | 0 | nan/nan |
+| >=250 | 56 | 13 | 4.637/8.023 | 11 | 8.290/0.289 |
+
+== rule sweep, NET VQ1 val (pose-level referee) ==
+  0.3 abs (HUD today)            catch  51.0%  keep good  86.6%  keep good>=120   4.7% (n=64)
+  max(6, .05s) (producer today)  catch   0.0%  keep good 100.0%  keep good>=120 100.0% (n=64)
+  max(0.3, 0.004*size)           catch  51.0%  keep good  87.4%  keep good>=120  18.8% (n=64)
+  max(0.3, 0.006*size)           catch  47.1%  keep good  91.2%  keep good>=120  29.7% (n=64)
+  max(0.3, 0.008*size)           catch  43.1%  keep good  95.1%  keep good>=120  43.8% (n=64)
+  max(0.3, 0.01*size)            catch  43.1%  keep good  96.7%  keep good>=120  60.9% (n=64)
+  max(0.3, 0.015*size)           catch  29.4%  keep good  99.0%  keep good>=120  87.5% (n=64)
+  max(0.5, 0.006*size)           catch  29.4%  keep good  93.8%  keep good>=120  29.7% (n=64)
+  max(0.5, 0.008*size)           catch  25.5%  keep good  95.4%  keep good>=120  43.8% (n=64)
+  max(0.5, 0.01*size)            catch  25.5%  keep good  96.8%  keep good>=120  60.9% (n=64)
+
+VQ2 hand: 278 instances, good 268 bad 0
+
+== NET, VQ2 hand: pose-level classes by size bucket ==
+| bucket | n | good | resid med/p90 good | bad | resid med/p10 bad |
+| 0-15 | 19 | 19 | 0.032/0.061 | 0 | nan/nan |
+| 15-30 | 99 | 99 | 0.061/0.193 | 0 | nan/nan |
+| 30-60 | 77 | 77 | 0.152/0.377 | 0 | nan/nan |
+| 60-120 | 41 | 41 | 0.363/0.682 | 0 | nan/nan |
+| 120-250 | 24 | 22 | 1.486/4.943 | 0 | nan/nan |
+| >=250 | 18 | 10 | 8.533/33.184 | 0 | nan/nan |
+
+== rule sweep, NET VQ2 hand (pose-level referee) ==
+  0.3 abs (HUD today)            catch   nan%  keep good  73.1%  keep good>=120   3.1% (n=32)
+  max(6, .05s) (producer today)  catch   nan%  keep good 100.0%  keep good>=120 100.0% (n=32)
+  max(0.3, 0.004*size)           catch   nan%  keep good  75.0%  keep good>=120   9.4% (n=32)
+  max(0.3, 0.006*size)           catch   nan%  keep good  80.6%  keep good>=120  18.8% (n=32)
+  max(0.3, 0.008*size)           catch   nan%  keep good  85.4%  keep good>=120  21.9% (n=32)
+  max(0.3, 0.01*size)            catch   nan%  keep good  89.9%  keep good>=120  43.8% (n=32)
+  max(0.3, 0.015*size)           catch   nan%  keep good  94.0%  keep good>=120  59.4% (n=32)
+  max(0.5, 0.006*size)           catch   nan%  keep good  85.8%  keep good>=120  18.8% (n=32)
+  max(0.5, 0.008*size)           catch   nan%  keep good  88.4%  keep good>=120  21.9% (n=32)
+  max(0.5, 0.01*size)            catch   nan%  keep good  91.4%  keep good>=120  43.8% (n=32)
+
+== rule sweep, POOLED (pose-level referee) ==
+  0.3 abs (HUD today)            catch  51.0%  keep good  85.1%  keep good>=120   4.2% (n=96)
+  max(6, .05s) (producer today)  catch   0.0%  keep good 100.0%  keep good>=120 100.0% (n=96)
+  max(0.3, 0.004*size)           catch  51.0%  keep good  86.0%  keep good>=120  15.6% (n=96)
+  max(0.3, 0.006*size)           catch  47.1%  keep good  90.0%  keep good>=120  26.0% (n=96)
+  max(0.3, 0.008*size)           catch  43.1%  keep good  94.0%  keep good>=120  36.5% (n=96)
+  max(0.3, 0.01*size)            catch  43.1%  keep good  96.0%  keep good>=120  55.2% (n=96)
+  max(0.3, 0.015*size)           catch  29.4%  keep good  98.5%  keep good>=120  78.1% (n=96)
+  max(0.5, 0.006*size)           catch  29.4%  keep good  92.9%  keep good>=120  26.0% (n=96)
+  max(0.5, 0.008*size)           catch  25.5%  keep good  94.6%  keep good>=120  36.5% (n=96)
+  max(0.5, 0.01*size)            catch  25.5%  keep good  96.2%  keep good>=120  55.2% (n=96)

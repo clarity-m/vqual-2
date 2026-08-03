@@ -1,0 +1,8 @@
+min_net 0.25: n= 37  H median 5.983  MAD 1.725  p10 4.077  p90 10.559  base_m median 1.69
+min_net 0.50: n= 31  H median 5.097  MAD 1.475  p10 0.532  p90 9.153  base_m median 2.57
+min_net 1.00: n=  4  H median 5.025  MAD 0.484  p10 4.426  p90 7.675  base_m median 5.27
+    H  8.725  base  9.15 m  steps 127
+    H  4.254  base  4.64 m  steps 113
+    H  5.223  base  5.53 m  steps 94
+    H  4.828  base  5.02 m  steps 77
+min_net 1.5: no windows

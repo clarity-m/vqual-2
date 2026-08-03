@@ -1,0 +1,126 @@
+20260801-121520-vq2-lap-0-15: 193 contour vector rows
+20260801-115735-vq2-lap-0-11: 293 contour vector rows
+20260801-144858-vqual2-lap-pausing: 152 contour vector rows
+20260801-202110-vq2-23-67-1314: 26 contour vector rows
+20260801-202923-vq2-1213-1214: 13 contour vector rows
+gatenet rebuilt rows: 353 (19 dropped-channel, kept for adjudication only)
+
+--- intent channel (155701)
+  marker  1: AUDIT-REFUSED (5 mini-tracks at 9m, 16m, 18m, 37m, 38m)
+  marker  2 (active 6, shift 0): tracks at 12m->g6, 12m->g7, 12m->g8  rows 0
+  marker  3 (active 6, shift 0): tracks at 9m->g6  rows 0
+  marker  5: AUDIT-REFUSED (5 mini-tracks at 8m, 17m, 18m, 31m, 33m)
+  marker  6: AUDIT-REFUSED (3 mini-tracks at 10m, 19m, 33m)
+  marker  7: AUDIT-REFUSED (4 mini-tracks at 18m, 21m, 31m, 35m)
+  marker  8 (active 7, shift audit): tracks at 16m->g8, 29m->g9, 31m->g9  rows 25
+  marker  9 (active 9, shift 0): tracks at 13m->g9, 16m->g10  rows 3
+  marker 10 (active 9, shift 0): tracks at 14m->g9, 18m->g10  rows 9
+  marker 12: AUDIT-REFUSED (3 mini-tracks at 16m, 24m, 32m)
+  marker 13 (active 13, shift 0): tracks at 20m->g13  rows 0
+  marker 14: AUDIT-MISMATCH, expected 3 tracks, found 4 at 13m, 21m, 22m, 44m
+  marker 15: AUDIT-REFUSED (10 mini-tracks at 14m, 20m, 20m, 21m, 22m, 33m, 34m, 34m, 36m, 36m)
+[intent] net-aspect=7  net-range-disagree=374  net-resid=12  net-small=449  net-unstable=51  rows=37  window-audit-mismatch=1  window-audit-refused=6  window-no-tracks=2
+   8-9  n= 25 (net-involved  25)  d med  15.27 MAD  0.47  p10-p90  14.4-15.8   horiz  15.53  |dz|  1.08
+   9-10 n= 12 (net-involved   1)  d med  10.10 MAD  0.13  p10-p90   9.9-10.3   horiz  10.06  |dz|  0.82
+
+--- hover channel (link laps)
+  3-67-1314 marker 1: 1 mini-tracks at 14m(net)
+    AUDIT-REFUSED
+  3-67-1314 marker 2: 0 mini-tracks at 
+    AUDIT-REFUSED
+  3-67-1314 marker 3: 2 mini-tracks at 24m(ctr), 26m(ctr)
+    AUDIT-REFUSED
+  3-67-1314 marker 4: 3 mini-tracks at 3m(ctr), 22m(ctr), 23m(ctr)
+    AUDIT-REFUSED
+  3-67-1314 marker 5: 4 mini-tracks at 12m(net), 20m(ctr), 21m(ctr), 21m(net)
+    rows 10  labels ['12->g13', '20->g14', '21->g14', '21->g14']
+  3-67-1314 marker 6: 4 mini-tracks at 12m(net), 21m(net), 31m(net), 32m(net)
+    rows 38  labels ['12->g13', '21->g14', '31->g15', '32->g15']
+  3-67-1314 extra window pre-crossing-12 pause (fid 627500-627611): 5 mini-tracks at 4m(ctr), 20m(net), 24m(net), 30m(ctr), 37m(net)
+    rows 77  labels ['4->g12', '20->g13', '24->g14']
+  1213-1214 marker 1: 2 mini-tracks at 19m(net), 26m(ctr)
+    rows 14  labels ['19->g13', '26->g14']
+  1213-1214 marker 2: 2 mini-tracks at 18m(net), 25m(net)
+    AUDIT-MISMATCH: expected 3 tracks, found 2
+  1213-1214 marker 3: 3 mini-tracks at 20m(ctr), 21m(net), 26m(net)
+    AUDIT-MISMATCH: expected 5 tracks, found 3
+  1213-1214 marker 4: 2 mini-tracks at 28m(net), 29m(ctr)
+    AUDIT-REFUSED
+  1213-1214 marker 5: 3 mini-tracks at 27m(net), 28m(ctr), 38m(ctr)
+    AUDIT-REFUSED
+  1213-1214 marker 6: 7 mini-tracks at 18m(net), 25m(net), 26m(net), 34m(ctr), 35m(ctr), 36m(net), 36m(ctr)
+    rows 54  labels ['18->g13', '25->g14', '26->g14', '34->g14', '35->g15', '36->g15', '36->g15']
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\hover_windows.png (11 windows)
+[hover] net-aspect=32  net-range-disagree=90  net-small=333  net-unstable=171  rows=193  window-audit-mismatch=2  window-audit-refused=6
+  12-13 n= 12 (net-involved   0)  d med  13.57 MAD  0.19 p10-p90  13.3-13.8   |dz|  0.20
+  12-14 n= 15 (net-involved   7)  d med  20.27 MAD  0.66 p10-p90  19.2-20.7   |dz|  0.57
+  13-14 n=133 (net-involved  99)  d med  12.33 MAD  0.37 p10-p90  11.6-13.1   |dz|  0.22
+  13-15 n= 24 (net-involved  24)  d med  26.08 MAD  0.80 p10-p90  25.1-28.7   |dz|  1.92
+  14-15 n=  9 (net-involved   6)  d med  13.35 MAD  0.32 p10-p90  13.0-14.1   |dz|  1.87
+
+--- staged-strafe channel (2026-08-02)
+  trafe-12-13-14 marker 1 (staged (12, 13, 14)): 9 mini-tracks at 12m(ctr), 24m(net), 31m(net), 31m(net), 31m(net), 32m(net), 39m(net), 40m(net), 42m(ctr)
+    AUDIT-REFUSED
+  trafe-12-13-14 marker 2 (staged (12, 13, 14)): 5 mini-tracks at 7m(ctr), 20m(ctr), 20m(net), 26m(net), 28m(ctr)
+    AUDIT-REFUSED
+  trafe-12-13-14 marker 3 (staged (12, 13, 14)): 10 mini-tracks at 10m(ctr), 23m(net), 27m(net), 29m(ctr), 30m(net), 36m(ctr), 39m(ctr), 42m(ctr), 43m(ctr), 47m(net)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_004153.png (3 windows)
+  vq2-strafe-2-3 marker 1 (staged (2, 3)): 5 mini-tracks at 17m(ctr), 37m(net), 39m(net), 40m(net), 41m(net)
+    AUDIT-REFUSED
+  vq2-strafe-2-3 marker 2 (staged (2, 3)): 4 mini-tracks at 36m(net), 37m(net), 38m(net), 39m(net)
+    AUDIT-REFUSED
+  vq2-strafe-2-3 marker 3 (staged (2, 3)): 4 mini-tracks at 16m(ctr), 17m(ctr), 32m(ctr), 38m(ctr)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005208.png (3 windows)
+  vq2-strafe-6-7 marker 1 (staged (6, 7)): 2 mini-tracks at 10m(ctr), 26m(ctr)
+    rows 120  labels ['10->g6', '26->g7']
+  vq2-strafe-6-7 marker 2 (staged (6, 7)): 2 mini-tracks at 8m(ctr), 24m(ctr)
+    rows 121  labels ['8->g6', '24->g7']
+  vq2-strafe-6-7 marker 3 (staged (6, 7)): 5 mini-tracks at 7m(ctr), 23m(ctr), 42m(net), 44m(ctr), 45m(ctr)
+    rows 75  labels ['7->g6', '23->g7']
+  vq2-strafe-6-7 marker 4 (staged (6, 7)): 2 mini-tracks at 7m(ctr), 22m(ctr)
+    rows 120  labels ['7->g6', '22->g7']
+  vq2-strafe-6-7 marker 5 (staged (6, 7)): 2 mini-tracks at 6m(ctr), 22m(ctr)
+    rows 120  labels ['6->g6', '22->g7']
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005431.png (5 windows)
+  5725-vq2-2-3-b marker 1 (staged (2, 3)): 5 mini-tracks at 9m(net), 18m(ctr), 19m(ctr), 37m(net), 38m(net)
+    rows 6  labels ['9->g2', '18->g3', '19->g3']
+  5725-vq2-2-3-b marker 2 (staged (2, 3)): 3 mini-tracks at 16m(ctr), 36m(net), 46m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 3 (staged (2, 3)): 5 mini-tracks at 17m(net), 17m(ctr), 34m(ctr), 38m(net), 39m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 4 (staged (2, 3)): 4 mini-tracks at 4m(ctr), 16m(ctr), 19m(net), 38m(net)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 5 (staged (2, 3)): 3 mini-tracks at 16m(ctr), 17m(ctr), 19m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 6 (staged (2, 3)): 5 mini-tracks at 14m(net), 17m(ctr), 37m(net), 38m(net), 40m(net)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 7 (staged (2, 3)): 1 mini-tracks at 15m(net)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005725.png (7 windows)
+  2-strafe-2-3-c marker 1 (staged (2, 3)): 4 mini-tracks at 18m(ctr), 20m(net), 39m(net), 40m(ctr)
+    AUDIT-REFUSED
+  2-strafe-2-3-c marker 2 (staged (2, 3)): 4 mini-tracks at 15m(ctr), 18m(ctr), 33m(ctr), 38m(net)
+    AUDIT-REFUSED
+  2-strafe-2-3-c marker 3 (staged (2, 3)): 2 mini-tracks at 17m(net), 17m(net)
+  2-strafe-2-3-c marker 4 (staged (2, 3)): 5 mini-tracks at 15m(ctr), 28m(ctr), 35m(ctr), 38m(net), 38m(net)
+    AUDIT-REFUSED
+  2-strafe-2-3-c extra gold cluster t~22-26s (fid 1142020-1142170): 7 mini-tracks at 9m(ctr), 10m(ctr), 12m(net), 12m(ctr), 22m(net), 41m(net), 42m(ctr)
+    rows 59  labels ['9->g2', '10->g2', '12->g2', '12->g2', '22->g3']
+  2-strafe-2-3-c extra gold cluster t~30-33s (fid 1142260-1142370): 3 mini-tracks at 10m(net), 22m(ctr), 39m(net)
+    rows 14  labels ['10->g2', '22->g3']
+  2-strafe-2-3-c extra gold cluster t~43-49s (fid 1142660-1142860): 9 mini-tracks at 7m(ctr), 15m(ctr), 15m(ctr), 18m(ctr), 20m(net), 37m(net), 39m(net), 40m(net), 40m(ctr)
+  2-strafe-2-3-c extra gold cluster t~57-61s (fid 1143080-1143220): 6 mini-tracks at 12m(ctr), 16m(ctr), 18m(ctr), 19m(ctr), 20m(ctr), 21m(ctr)
+    AUDIT-REFUSED
+  2-strafe-2-3-c extra gold cluster t~98-104s (fid 1144320-1144500): 8 mini-tracks at 14m(net), 14m(net), 25m(ctr), 25m(ctr), 27m(ctr), 29m(ctr), 32m(ctr), 42m(ctr)
+    AUDIT-REFUSED
+  2-strafe-2-3-c extra pre-crossing t~131-135s (fid 1145300-1145440): 1 mini-tracks at 4m(ctr)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_010914.png (10 windows)
+[strafe0802] net-aspect=3  net-range-disagree=303  net-resid=8  net-small=1737  net-unstable=315  rows=635  window-audit-refused=18
+   2-3  n= 79 (net-involved  33)  d med  13.34 MAD  0.59 p10-p90  12.6-15.0   |dz|  1.46
+   6-7  n=556 (net-involved   0)  d med  16.42 MAD  0.27 p10-p90  16.0-17.0   |dz|  5.29
+
+compass join: 2336 rows with bearing, 4 compass-unconfident, 0 without CSV
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\mapdir_rows.json (2340 rows)

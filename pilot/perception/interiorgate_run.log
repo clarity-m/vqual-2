@@ -1,0 +1,83 @@
+
+== TRUE gates (hand labels, all) (n=356) ==
+  white_frac  p10   0.000  med   0.000  p90   0.029  p98   0.070
+  mean_v      p10  19.248  med  59.632  p90 172.556  p98 246.239
+  dark_frac   p10   0.129  med   0.716  p90   0.946  p98   1.000
+  blob_frac   p10   0.000  med   0.077  p90   0.606  p98   0.977
+
+== TRUE gates REJECTED by today's strict rule (the bug population) (n=57) ==
+  white_frac  p10   0.000  med   0.000  p90   0.030  p98   0.077
+  mean_v      p10 154.380  med 187.780  p90 248.835  p98 250.801
+  dark_frac   p10   0.000  med   0.143  p90   0.324  p98   0.387
+  blob_frac   p10   0.363  med   0.650  p90   0.995  p98   1.000
+
+== DECO negatives (n=438) ==
+  white_frac  p10   0.089  med   0.726  p90   1.000  p98   1.000
+  mean_v      p10 241.684  med 245.452  p90 249.177  p98 253.673
+  dark_frac   p10   0.000  med   0.000  p90   0.000  p98   0.713
+  blob_frac   p10   0.995  med   1.000  p90   1.000  p98   1.000
+
+== empty-random negatives (n=48) ==
+  white_frac  p10   0.000  med   0.000  p90   0.017  p98   0.063
+  mean_v      p10   2.924  med  20.792  p90  42.317  p98  55.761
+  dark_frac   p10   0.727  med   0.930  p90   1.000  p98   1.000
+  blob_frac   p10   0.000  med   0.000  p90   0.008  p98   0.035
+
+== rules: reject-as-deco confusion (true gates vs deco) ==
+  TODAY: white>0.15 or v>150                                 deco rejected  96.8%   true lost 16.01% (57/356)
+  TODAY current-slot variant: white>0.60                     deco rejected  55.7%   true lost  0.00% (0/356)
+  dark_frac < 0.02 & (white>0.15 or v>150)                   deco rejected  96.8%   true lost  5.06% (18/356)
+  dark_frac < 0.03 & (white>0.15 or v>150)                   deco rejected  96.8%   true lost  5.06% (18/356)
+  dark_frac < 0.05 & (white>0.15 or v>150)                   deco rejected  96.8%   true lost  5.62% (20/356)
+  dark_frac < 0.08 & (white>0.15 or v>150)                   deco rejected  96.8%   true lost  6.18% (22/356)
+  blob_frac > 0.5                                            deco rejected  96.8%   true lost 12.08% (43/356)
+  blob_frac > 0.6                                            deco rejected  96.6%   true lost 10.11% (36/356)
+  blob_frac > 0.7                                            deco rejected  96.6%   true lost  6.18% (22/356)
+  blob_frac > 0.8                                            deco rejected  96.6%   true lost  5.06% (18/356)
+  dark<0.02 & blob>0.5                                       deco rejected  96.8%   true lost  4.21% (15/356)
+  dark<0.02 & blob>0.6                                       deco rejected  96.6%   true lost  4.21% (15/356)
+  dark<0.02 & blob>0.7                                       deco rejected  96.6%   true lost  3.93% (14/356)
+  dark<0.03 & blob>0.5                                       deco rejected  96.8%   true lost  4.21% (15/356)
+  dark<0.03 & blob>0.6                                       deco rejected  96.6%   true lost  4.21% (15/356)
+  dark<0.03 & blob>0.7                                       deco rejected  96.6%   true lost  3.93% (14/356)
+  dark<0.05 & blob>0.5                                       deco rejected  96.8%   true lost  4.78% (17/356)
+  dark<0.05 & blob>0.6                                       deco rejected  96.6%   true lost  4.78% (17/356)
+  dark<0.05 & blob>0.7                                       deco rejected  96.6%   true lost  4.49% (16/356)
+  dark_frac < 0.02 & white>0.15                              deco rejected  89.7%   true lost  0.00% (0/356)
+  dark_frac < 0.03 & white>0.15                              deco rejected  89.7%   true lost  0.00% (0/356)
+  dark_frac < 0.05 & white>0.15                              deco rejected  89.7%   true lost  0.00% (0/356)
+  dark_frac < 0.08 & white>0.15                              deco rejected  89.7%   true lost  0.00% (0/356)
+  dark_frac < 0.1 & white>0.15                               deco rejected  89.7%   true lost  0.00% (0/356)
+
+== shortlist on the BUG population (true gates today's rule rejects) ==
+  dark<0.03 & (white>0.15 or v>150)            still lost: 18/57
+    014_00103517.jpg size 23 w0.00 v250 d0.000 b1.00 unsure
+    016_00104755.jpg size 21 w0.00 v246 d0.009 b0.97 unsure
+    037_00073886.jpg size 14 w0.00 v158 d0.000 b0.09
+    037_00073886.jpg size 18 w0.00 v182 d0.012 b0.70 unsure
+    043_00075770.jpg size 23 w0.00 v245 d0.000 b0.95 unsure
+    044_00104919.jpg size 27 w0.03 v251 d0.000 b1.00 unsure occl
+    058_00104597.jpg size 28 w0.00 v243 d0.007 b0.95 unsure occl
+    059_00104889.jpg size 25 w0.01 v249 d0.000 b1.00 unsure occl
+  dark<0.05 & blob>0.6                         still lost: 17/57
+    014_00103517.jpg size 23 w0.00 v250 d0.000 b1.00 unsure
+    015_00074970.jpg size 24 w0.02 v240 d0.031 b0.96 occl
+    016_00104755.jpg size 21 w0.00 v246 d0.009 b0.97 unsure
+    037_00073886.jpg size 18 w0.00 v182 d0.012 b0.70 unsure
+    043_00075770.jpg size 23 w0.00 v245 d0.000 b0.95 unsure
+    044_00104919.jpg size 27 w0.03 v251 d0.000 b1.00 unsure occl
+    058_00104597.jpg size 28 w0.00 v243 d0.007 b0.95 unsure occl
+    059_00104889.jpg size 25 w0.01 v249 d0.000 b1.00 unsure occl
+
+== deco that SURVIVE the shortlisted rules ==
+  dark<0.03 & (white>0.15 or v>150): 14 survivors
+    20260801-115735-vq2-lap-0-11/00073512.jpg size 12 w0.00 v13 d1.000 b0.00
+    20260801-115735-vq2-lap-0-11/00073542.jpg size 12 w0.00 v13 d0.970 b0.00
+    20260801-115735-vq2-lap-0-11/00073576.jpg size 13 w0.00 v10 d1.000 b0.00
+    20260801-115735-vq2-lap-0-11/00073980.jpg size 9 w0.00 v34 d0.870 b0.00
+    20260801-115735-vq2-lap-0-11/00074140.jpg size 9 w0.00 v41 d0.907 b0.00
+    20260801-115735-vq2-lap-0-11/00074608.jpg size 13 w0.03 v103 d0.133 b0.00
+    20260801-115735-vq2-lap-0-11/00074676.jpg size 15 w0.03 v111 d0.000 b0.01
+    20260801-115735-vq2-lap-0-11/00074754.jpg size 18 w0.02 v81 d0.295 b0.01
+    20260801-121520-vq2-lap-0-15/00103081.jpg size 10 w0.00 v71 d0.469 b0.00
+    20260801-121520-vq2-lap-0-15/00103263.jpg size 9 w0.00 v23 d0.887 b0.00

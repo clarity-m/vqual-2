@@ -1,0 +1,465 @@
+
+=== 20260801-121520-vq2-lap-0-15  6303 frames
+  tracks >= 4 obs: 1234   longest [306, 244, 232, 219, 202, 196, 190, 184, 176, 174]
+  gate  0: track 6 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 95 un-named, contradicts track 84 in-frame by >3 m
+  gate  0: track 4 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 85 un-named, contradicts track 84 in-frame by >3 m
+  gate  0: track 92 un-named, contradicts track 84 in-frame by >3 m
+  gate  1: track 253 un-named, contradicts track 300 in-frame by >3 m
+  gate  1: track 117 un-named, contradicts track 106 in-frame by >3 m
+  gate  1: track 270 un-named, contradicts track 300 in-frame by >3 m
+  gate  1: track 166 un-named, contradicts track 106 in-frame by >3 m
+  gate  3: track 647 un-named, contradicts track 591 in-frame by >3 m
+  gate  4: track 719 un-named, contradicts track 721 in-frame by >3 m
+  gate  5: track 811 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 775 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 737 un-named, contradicts track 723 in-frame by >3 m
+  gate  7: track 971 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 983 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 960 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 957 un-named, contradicts track 954 in-frame by >3 m
+  gate  7: track 980 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 961 un-named, contradicts track 954 in-frame by >3 m
+  gate  8: track 1002 un-named, contradicts track 1060 in-frame by >3 m
+  gate 11: track 1448 un-named, contradicts track 1503 in-frame by >3 m
+  gate 11: track 1443 un-named, contradicts track 1503 in-frame by >3 m
+  gate 12: track 1549 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1550 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1540 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1551 un-named, contradicts track 1541 in-frame by >3 m
+  gate 14: track 1755 un-named, contradicts track 1751 in-frame by >3 m
+  gate 14: track 1724 un-named, contradicts track 1751 in-frame by >3 m
+  gate 14: track 1716 un-named, contradicts track 1751 in-frame by >3 m
+  gate 15: track 1842 un-named, contradicts track 1857 in-frame by >3 m
+  gate 15: track 1809 un-named, contradicts track 1857 in-frame by >3 m
+  gate  0:  2 track(s),   252 obs   102193-102410 101973-102066
+  gate  1:  3 track(s),   185 obs   102912-103062 102389-102552 102687-102717
+  gate  2:  2 track(s),   112 obs   103055-103262 103398-103411
+  gate  3:  1 track(s),    50 obs   103380-103525
+  gate  4:  1 track(s),    89 obs   103669-103804
+  gate  5:  1 track(s),   232 obs   103696-104104
+  gate  6:  1 track(s),   306 obs   104049-104424
+  gate  7:  3 track(s),    77 obs   104593-104648 104470-104509 104545-104556
+  gate  8:  1 track(s),    36 obs   104859-104933
+  gate  9:  1 track(s),    20 obs   105180-105208
+  gate 10:  1 track(s),    17 obs   106193-106209
+  gate 11:  2 track(s),    91 obs   106106-106353 106449-106455
+  gate 12:  3 track(s),   274 obs   106606-106745 106768-106895 106386-106560
+  gate 13:  0 track(s),     0 obs   
+  gate 14:  1 track(s),    51 obs   107405-107482
+  gate 15:  2 track(s),    93 obs   107499-107639 107849-107886
+  gate 16:  1 track(s),   184 obs   107861-108061   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 1->0@102799, 16->0@108061
+  backward extension added 1952 observations
+  identified co-visible pair measurements: 938 from 3160 frames
+  gates with at least one measured pair: 55  [('g', 0), ('g', 1), ('g', 3), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 10), ('g', 12), ('t', 1), ('t', 4), ('t', 85), ('t', 92), ('t', 95), ('t', 98), ('t', 117), ('t', 270), ('t', 289), ('t', 342), ('t', 344), ('t', 348), ('t', 355), ('t', 650), ('t', 657), ('t', 660), ('t', 717), ('t', 719), ('t', 737), ('t', 775), ('t', 957), ('t', 960), ('t', 980), ('t', 983), ('t', 987), ('t', 1002), ('t', 1054), ('t', 1067), ('t', 1319), ('t', 1329), ('t', 1330), ('t', 1331), ('t', 1335), ('t', 1336), ('t', 1361), ('t', 1384), ('t', 1399), ('t', 1446), ('t', 1540), ('t', 1543), ('t', 1550), ('t', 1556), ('t', 1572), ('t', 1899), ('t', 1903)]
+
+=== 20260801-115735-vq2-lap-0-11  6647 frames
+  tracks >= 4 obs: 804   longest [1484, 438, 407, 376, 322, 275, 247, 245, 235, 233]
+  gate  0: track 87 un-named, contradicts track 79 in-frame by >3 m
+  gate  0: track 7 un-named, contradicts track 6 in-frame by >3 m
+  gate  0: track 81 un-named, contradicts track 79 in-frame by >3 m
+  gate  1: track 93 un-named, contradicts track 191 in-frame by >3 m
+  gate  1: track 99 un-named, contradicts track 174 in-frame by >3 m
+  gate  1: track 181 un-named, contradicts track 191 in-frame by >3 m
+  gate  3: track 357 un-named, contradicts track 368 in-frame by >3 m
+  gate  4: track 415 un-named, contradicts track 370 in-frame by >3 m
+  gate  5: track 507 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 510 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 496 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 523 un-named, contradicts track 462 in-frame by >3 m
+  gate  7: track 711 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 687 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 699 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 728 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 696 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 691 un-named, contradicts track 692 in-frame by >3 m
+  gate  8: track 789 un-named, contradicts track 742 in-frame by >3 m
+  gate  8: track 786 un-named, contradicts track 742 in-frame by >3 m
+  gate 10: track 951 un-named, contradicts track 973 in-frame by >3 m
+  gate 10: track 965 un-named, contradicts track 973 in-frame by >3 m
+  gate  0:  2 track(s),   370 obs   71615-71969 70034-70125
+  gate  1:  2 track(s),   116 obs   72052-72165 72234-72287
+  gate  2:  1 track(s),     9 obs   72529-72537
+  gate  3:  2 track(s),   153 obs   72820-72943 72645-72749
+  gate  4:  1 track(s),   245 obs   72839-73196
+  gate  5:  1 track(s),   438 obs   73233-73739
+  gate  6:  1 track(s),    37 obs   74059-74161
+  gate  7:  2 track(s),   274 obs   74453-74741 74367-74420
+  gate  8:  3 track(s),   190 obs   74739-75031 75132-75169 75088-75099
+  gate  9:  2 track(s),   111 obs   75373-75507 75612-75651
+  gate 10:  2 track(s),    91 obs   75844-75983 75742-75786
+  gate 11:  2 track(s),   152 obs   75932-76195 76224-76233
+  gate 12:  1 track(s),     4 obs   76344-76349   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 12->0@76424
+  backward extension added 2866 observations
+  identified co-visible pair measurements: 1582 from 2742 frames
+  REFUSE_ROWS dropped 14 rows for pairs [(8, 9)] (render-contradicted; see mapvq2.REFUSE_ROWS)
+  gates with at least one measured pair: 45  [('g', 0), ('g', 1), ('g', 3), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 10), ('t', 0), ('t', 7), ('t', 81), ('t', 87), ('t', 90), ('t', 93), ('t', 99), ('t', 103), ('t', 146), ('t', 181), ('t', 366), ('t', 415), ('t', 496), ('t', 501), ('t', 507), ('t', 510), ('t', 519), ('t', 523), ('t', 530), ('t', 564), ('t', 585), ('t', 589), ('t', 593), ('t', 691), ('t', 696), ('t', 699), ('t', 703), ('t', 711), ('t', 714), ('t', 744), ('t', 763), ('t', 786), ('t', 965), ('t', 1126), ('t', 1134)]
+
+=== 20260801-144858-vqual2-lap-pausing  10117 frames
+  tracks >= 4 obs: 1547   longest [649, 581, 489, 485, 484, 469, 426, 424, 420, 397]
+  gate  0: track 86 un-named, contradicts track 105 in-frame by >3 m
+  gate  0: track 4 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 93 un-named, contradicts track 105 in-frame by >3 m
+  gate  0: track 95 un-named, contradicts track 105 in-frame by >3 m
+  gate  1: track 365 un-named, contradicts track 381 in-frame by >3 m
+  gate  1: track 183 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 201 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 188 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 195 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 191 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 303 un-named, contradicts track 347 in-frame by >3 m
+  gate  1: track 401 un-named, contradicts track 381 in-frame by >3 m
+  gate  1: track 173 un-named, contradicts track 138 in-frame by >3 m
+  gate  1: track 96 un-named, contradicts track 200 in-frame by >3 m
+  gate  2: track 542 un-named, contradicts track 596 in-frame by >3 m
+  gate  3: track 619 un-named, contradicts track 672 in-frame by >3 m
+  gate  4: track 825 un-named, contradicts track 723 in-frame by >3 m
+  gate  4: track 828 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 987 un-named, contradicts track 1007 in-frame by >3 m
+  gate  5: track 972 un-named, contradicts track 957 in-frame by >3 m
+  gate  5: track 981 un-named, contradicts track 980 in-frame by >3 m
+  gate  5: track 968 un-named, contradicts track 957 in-frame by >3 m
+  gate  5: track 963 un-named, contradicts track 957 in-frame by >3 m
+  gate  6: track 986 un-named, contradicts track 999 in-frame by >3 m
+  gate  6: track 1038 un-named, contradicts track 999 in-frame by >3 m
+  gate  7: track 1204 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1286 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1241 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1256 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1292 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1329 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1270 un-named, contradicts track 1261 in-frame by >3 m
+  gate  9: track 1495 un-named, contradicts track 1493 in-frame by >3 m
+  gate 11: track 1730 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1700 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1725 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1698 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1753 un-named, contradicts track 1791 in-frame by >3 m
+  gate 11: track 1761 un-named, contradicts track 1768 in-frame by >3 m
+  gate 12: track 1762 un-named, contradicts track 1835 in-frame by >3 m
+  gate 12: track 1833 un-named, contradicts track 1835 in-frame by >3 m
+  gate 13: track 2026 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1996 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1956 un-named, contradicts track 1949 in-frame by >3 m
+  gate 13: track 2021 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1934 un-named, contradicts track 1949 in-frame by >3 m
+  gate 13: track 1987 un-named, contradicts track 1995 in-frame by >3 m
+  gate 13: track 2000 un-named, contradicts track 2035 in-frame by >3 m
+  gate 15: track 2225 un-named, contradicts track 2217 in-frame by >3 m
+  gate  0:  3 track(s),   327 obs   25091-25320 25353-25444 24877-24970
+  gate  1:  6 track(s),   364 obs   25427-25671 26342-26538 26099-26235
+  gate  2:  3 track(s),   243 obs   26837-26993 27071-27190 27231-27246
+  gate  3:  2 track(s),    97 obs   27349-27419 27582-27657
+  gate  4:  1 track(s),   489 obs   27891-28543
+  gate  5:  5 track(s),   575 obs   28986-29312 28711-28915 29332-29404
+  gate  6:  1 track(s),   581 obs   29480-30122
+  gate  7:  3 track(s),   352 obs   30558-31018 30246-30364 30516-30573
+  gate  8:  1 track(s),   263 obs   30996-31329
+  gate  9:  1 track(s),   188 obs   31628-31839
+  gate 10:  1 track(s),   147 obs   32032-32406
+  gate 11:  5 track(s),   377 obs   32812-33041 32584-32728 32397-32516
+  gate 12:  2 track(s),   131 obs   33239-33422 33578-33605
+  gate 13:  4 track(s),   269 obs   34041-34211 33579-33669 33764-33820
+  gate 14:  2 track(s),    94 obs   34543-34650 34722-34733
+  gate 15:  1 track(s),    72 obs   34834-34991   <- NO CROSSING (last gate, approach only)
+  backward extension added 3107 observations
+  identified co-visible pair measurements: 2642 from 6242 frames
+  REFUSE_ROWS dropped 6 rows for pairs [(14, 15)] (render-contradicted; see mapvq2.REFUSE_ROWS)
+  gates with at least one measured pair: 100  [('g', 0), ('g', 1), ('g', 2), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 10), ('g', 11), ('g', 12), ('g', 13), ('g', 14), ('g', 15), ('t', 1), ('t', 2), ('t', 4), ('t', 8), ('t', 84), ('t', 86), ('t', 93), ('t', 95), ('t', 96), ('t', 109), ('t', 115), ('t', 148), ('t', 173), ('t', 177), ('t', 183), ('t', 188), ('t', 191), ('t', 195), ('t', 201), ('t', 303), ('t', 408), ('t', 538), ('t', 542), ('t', 577), ('t', 733), ('t', 825), ('t', 828), ('t', 898), ('t', 963), ('t', 965), ('t', 986), ('t', 990), ('t', 992), ('t', 995), ('t', 1063), ('t', 1071), ('t', 1072), ('t', 1081), ('t', 1093), ('t', 1094), ('t', 1104), ('t', 1204), ('t', 1205), ('t', 1241), ('t', 1256), ('t', 1258), ('t', 1276), ('t', 1277), ('t', 1286), ('t', 1291), ('t', 1292), ('t', 1311), ('t', 1332), ('t', 1379), ('t', 1387), ('t', 1394), ('t', 1495), ('t', 1587), ('t', 1602), ('t', 1606), ('t', 1614), ('t', 1627), ('t', 1730), ('t', 1745), ('t', 1748), ('t', 1753), ('t', 1761), ('t', 1762), ('t', 1774), ('t', 1795), ('t', 1833), ('t', 1841), ('t', 1845), ('t', 1857), ('t', 1861), ('t', 1900), ('t', 1934), ('t', 1956), ('t', 1982), ('t', 1987), ('t', 2000), ('t', 2021), ('t', 2026), ('t', 2125), ('t', 2136)]
+  markers: 25   pair rows in marker windows: 479 (35 gate-gate)
+    marker  1 (active  1): named gates co-visible [1]
+    marker  2 (active  1): named gates co-visible []
+    marker  3 (active  2): named gates co-visible [2]
+    marker  4 (active  2): named gates co-visible [2]
+    marker  5 (active  3): named gates co-visible []
+    marker  6 (active  3): named gates co-visible []
+    marker  7 (active  4): named gates co-visible []
+    marker  8 (active  5): named gates co-visible [5]
+    marker  9 (active  5): named gates co-visible []
+    marker 10 (active  6): named gates co-visible [6]
+    marker 11 (active  6): named gates co-visible []
+    marker 12 (active  7): named gates co-visible []
+    marker 13 (active  7): named gates co-visible [7, 8]
+    marker 14 (active  8): named gates co-visible [8]
+    marker 15 (active  8): named gates co-visible []
+    marker 16 (active  9): named gates co-visible [9]
+    marker 17 (active 10): named gates co-visible [10, 11]
+    marker 18 (active 10): named gates co-visible [10, 11]
+    marker 19 (active 11): named gates co-visible [11]
+    marker 20 (active 11): named gates co-visible [11, 12]
+    marker 21 (active 12): named gates co-visible [12]
+    marker 22 (active 12): named gates co-visible [13]
+    marker 23 (active 13): named gates co-visible [13]
+    marker 24 (active 14): named gates co-visible [14]
+    marker 25 (active 14): named gates co-visible [14, 15]
+
+=== 20260801-202110-vq2-23-67-1314  5722 frames
+  tracks >= 4 obs: 877   longest [579, 544, 453, 404, 354, 345, 324, 223, 221, 219]
+  gate  0: track 15 un-named, contradicts track 1 in-frame by >3 m
+  gate  3: track 197 un-named, contradicts track 216 in-frame by >3 m
+  gate  4: track 359 un-named, contradicts track 356 in-frame by >3 m
+  gate  4: track 355 un-named, contradicts track 356 in-frame by >3 m
+  gate  4: track 353 un-named, contradicts track 356 in-frame by >3 m
+  gate  5: track 369 un-named, contradicts track 419 in-frame by >3 m
+  gate  5: track 432 un-named, contradicts track 419 in-frame by >3 m
+  gate  6: track 466 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 640 un-named, contradicts track 632 in-frame by >3 m
+  gate  6: track 525 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 567 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 581 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 591 un-named, contradicts track 632 in-frame by >3 m
+  gate  6: track 586 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 543 un-named, contradicts track 536 in-frame by >3 m
+  gate  6: track 578 un-named, contradicts track 536 in-frame by >3 m
+  gate  7: track 666 un-named, contradicts track 667 in-frame by >3 m
+  gate  8: track 759 un-named, contradicts track 792 in-frame by >3 m
+  gate  8: track 768 un-named, contradicts track 792 in-frame by >3 m
+  gate  8: track 761 un-named, contradicts track 792 in-frame by >3 m
+  gate 12: track 1039 un-named, contradicts track 1043 in-frame by >3 m
+  gate 12: track 1018 un-named, contradicts track 1043 in-frame by >3 m
+  gate 12: track 1047 un-named, contradicts track 1043 in-frame by >3 m
+  gate 13: track 1124 un-named, contradicts track 1129 in-frame by >3 m
+  gate 13: track 1125 un-named, contradicts track 1129 in-frame by >3 m
+  gate 13: track 1135 un-named, contradicts track 1129 in-frame by >3 m
+  gate  0:  1 track(s),   207 obs   622855-623139
+  gate  1:  1 track(s),    19 obs   623337-623379
+  gate  2:  1 track(s),    49 obs   623385-623474
+  gate  3:  2 track(s),    86 obs   623632-623799 624021-624122
+  gate  4:  2 track(s),   156 obs   624330-624527 624566-624595
+  gate  5:  1 track(s),   132 obs   624627-624950
+  gate  6:  2 track(s),   555 obs   625446-626118 626153-626187
+  gate  7:  1 track(s),   119 obs   626218-626374
+  gate  8:  1 track(s),    54 obs   626582-626637
+  gate  9:  1 track(s),   158 obs   626522-626775
+  gate 10:  0 track(s),     0 obs   
+  gate 11:  1 track(s),    42 obs   627057-627152
+  gate 12:  1 track(s),   168 obs   627351-627581
+  gate 13:  3 track(s),   377 obs   628015-628367 627748-627790 628378-628387
+  gate 14:  0 track(s),     0 obs      <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 14->0@628516
+  backward extension added 2777 observations
+  identified co-visible pair measurements: 687 from 2632 frames
+  REFUSE_ROWS dropped 10 rows for pairs [(6, 8), (12, 13)] (render-contradicted; see mapvq2.REFUSE_ROWS)
+  gates with at least one measured pair: 50  [('g', 0), ('g', 1), ('g', 3), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 11), ('g', 12), ('g', 13), ('t', 0), ('t', 6), ('t', 10), ('t', 15), ('t', 18), ('t', 22), ('t', 25), ('t', 32), ('t', 91), ('t', 197), ('t', 204), ('t', 369), ('t', 374), ('t', 431), ('t', 432), ('t', 525), ('t', 537), ('t', 668), ('t', 670), ('t', 678), ('t', 692), ('t', 759), ('t', 761), ('t', 762), ('t', 766), ('t', 768), ('t', 915), ('t', 946), ('t', 993), ('t', 1018), ('t', 1033), ('t', 1039), ('t', 1051), ('t', 1125), ('t', 1130), ('t', 1135), ('t', 1140), ('t', 1174), ('t', 1212)]
+  markers: 6   pair rows in marker windows: 4 (0 gate-gate)
+    marker  1 (active  6): named gates co-visible []
+    marker  2 (active  6): named gates co-visible []
+    marker  3 (active  6): named gates co-visible [8]
+    marker  4 (active  6): named gates co-visible [8]
+    marker  5 (active 13): named gates co-visible [13]
+    marker  6 (active 13): named gates co-visible []
+
+=== 20260801-202923-vq2-1213-1214  8156 frames
+  tracks >= 4 obs: 1250   longest [626, 602, 493, 453, 442, 424, 351, 314, 304, 284]
+  gate  0: track 0 un-named, contradicts track 69 in-frame by >3 m
+  gate  3: track 272 un-named, contradicts track 250 in-frame by >3 m
+  gate  3: track 277 un-named, contradicts track 250 in-frame by >3 m
+  gate  4: track 296 un-named, contradicts track 303 in-frame by >3 m
+  gate  4: track 320 un-named, contradicts track 303 in-frame by >3 m
+  gate  5: track 408 un-named, contradicts track 416 in-frame by >3 m
+  gate  8: track 674 un-named, contradicts track 726 in-frame by >3 m
+  gate  9: track 775 un-named, contradicts track 774 in-frame by >3 m
+  gate 10: track 857 un-named, contradicts track 872 in-frame by >3 m
+  gate 12: track 1014 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1414 un-named, contradicts track 1485 in-frame by >3 m
+  gate 12: track 1550 un-named, contradicts track 1535 in-frame by >3 m
+  gate 12: track 1540 un-named, contradicts track 1535 in-frame by >3 m
+  gate 12: track 1024 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1355 un-named, contradicts track 1364 in-frame by >3 m
+  gate 12: track 1440 un-named, contradicts track 1485 in-frame by >3 m
+  gate 12: track 1354 un-named, contradicts track 1364 in-frame by >3 m
+  gate 12: track 1208 un-named, contradicts track 1255 in-frame by >3 m
+  gate 12: track 1456 un-named, contradicts track 1485 in-frame by >3 m
+  gate 12: track 1053 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1165 un-named, contradicts track 1146 in-frame by >3 m
+  gate 12: track 1051 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1092 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1382 un-named, contradicts track 1388 in-frame by >3 m
+  gate 12: track 1462 un-named, contradicts track 1485 in-frame by >3 m
+  gate 12: track 1194 un-named, contradicts track 1198 in-frame by >3 m
+  gate 12: track 1516 un-named, contradicts track 1535 in-frame by >3 m
+  gate 12: track 1017 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1425 un-named, contradicts track 1413 in-frame by >3 m
+  gate 12: track 1001 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1273 un-named, contradicts track 1255 in-frame by >3 m
+  gate 12: track 1383 un-named, contradicts track 1388 in-frame by >3 m
+  gate 12: track 1541 un-named, contradicts track 1535 in-frame by >3 m
+  gate 12: track 1101 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1002 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1410 un-named, contradicts track 1413 in-frame by >3 m
+  gate 12: track 1420 un-named, contradicts track 1413 in-frame by >3 m
+  gate 12: track 1311 un-named, contradicts track 1305 in-frame by >3 m
+  gate 12: track 1315 un-named, contradicts track 1305 in-frame by >3 m
+  gate 12: track 1269 un-named, contradicts track 1255 in-frame by >3 m
+  gate 12: track 1526 un-named, contradicts track 1535 in-frame by >3 m
+  gate 12: track 954 un-named, contradicts track 1003 in-frame by >3 m
+  gate 12: track 1313 un-named, contradicts track 1305 in-frame by >3 m
+  gate 12: track 1358 un-named, contradicts track 1364 in-frame by >3 m
+  gate 12: track 1303 un-named, contradicts track 1305 in-frame by >3 m
+  gate 12: track 944 un-named, contradicts track 1003 in-frame by >3 m
+  gate 13: track 1641 un-named, contradicts track 1620 in-frame by >3 m
+  gate 13: track 1642 un-named, contradicts track 1620 in-frame by >3 m
+  gate  0:  2 track(s),   132 obs   637672-637756 637862-637953
+  gate  1:  1 track(s),   133 obs   637857-638092
+  gate  2:  2 track(s),    94 obs   638062-638194 638245-638268
+  gate  3:  1 track(s),   160 obs   638268-638469
+  gate  4:  2 track(s),   297 obs   638432-638754 638790-638806
+  gate  5:  1 track(s),    67 obs   638902-639039
+  gate  6:  1 track(s),    34 obs   639249-639340
+  gate  7:  2 track(s),   137 obs   639269-639463 639527-639553
+  gate  8:  1 track(s),    21 obs   639807-639828
+  gate  9:  2 track(s),    20 obs   639949-639965 640113-640116
+  gate 10:  1 track(s),    37 obs   640243-640345
+  gate 11:  1 track(s),    30 obs   640505-640536
+  gate 12: 18 track(s),  2240 obs   641945-642548 644233-644815 644995-645471
+  gate 13:  1 track(s),   100 obs   645558-645738   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 13->0@645816
+  backward extension added 1748 observations
+  identified co-visible pair measurements: 1368 from 4915 frames
+  REFUSE_ROWS dropped 29 rows for pairs [(0, 2), (0, 3), (1, 3)] (render-contradicted; see mapvq2.REFUSE_ROWS)
+  gates with at least one measured pair: 73  [('g', 0), ('g', 1), ('g', 2), ('g', 3), ('g', 4), ('g', 5), ('g', 8), ('g', 10), ('g', 11), ('g', 12), ('g', 13), ('t', 0), ('t', 2), ('t', 5), ('t', 8), ('t', 14), ('t', 80), ('t', 89), ('t', 272), ('t', 296), ('t', 306), ('t', 349), ('t', 390), ('t', 408), ('t', 415), ('t', 582), ('t', 628), ('t', 659), ('t', 672), ('t', 674), ('t', 675), ('t', 855), ('t', 857), ('t', 883), ('t', 944), ('t', 954), ('t', 999), ('t', 1002), ('t', 1014), ('t', 1024), ('t', 1051), ('t', 1053), ('t', 1101), ('t', 1165), ('t', 1194), ('t', 1208), ('t', 1230), ('t', 1231), ('t', 1269), ('t', 1274), ('t', 1354), ('t', 1355), ('t', 1358), ('t', 1368), ('t', 1410), ('t', 1414), ('t', 1420), ('t', 1425), ('t', 1440), ('t', 1443), ('t', 1456), ('t', 1457), ('t', 1462), ('t', 1536), ('t', 1540), ('t', 1550), ('t', 1555), ('t', 1557), ('t', 1567), ('t', 1601), ('t', 1614), ('t', 1641), ('t', 1642)]
+  markers: 6   pair rows in marker windows: 70 (0 gate-gate)
+    marker  1 (active 12): named gates co-visible []
+    marker  2 (active 12): named gates co-visible []
+    marker  3 (active 12): named gates co-visible []
+    marker  4 (active 12): named gates co-visible [12]
+    marker  5 (active 12): named gates co-visible [12]
+    marker  6 (active 12): named gates co-visible [12]
+
+=== strafing session, gates 15/16 by Claire's note (no race index)
+    445 frames with exactly two clean detections
+    horizontal separation  median 21.00 m  p10 20.24  p90 22.02
+    |height step|          median 0.90 m
+  [mapedges 2-lap-0-15] accepted=331  candidates=2839  continuity-unchecked=43  pair-rows=30  refused-aspect=1  refused-continuity=14  refused-range-disagree=28  refused-small=1359  refused-unstable=1106
+  [mapedges 2-lap-0-11] accepted=369  candidates=1897  continuity-unchecked=27  pair-rows=99  refused-aspect=1  refused-continuity=33  refused-range-disagree=11  refused-small=895  refused-unstable=588
+  [mapedges ap-pausing] accepted=628  candidates=3413  continuity-unchecked=66  pair-rows=85  pair-same-object=9  pair-sub-metre=8  refused-continuity=19  refused-range-disagree=99  refused-small=1046  refused-unstable=1621
+  [mapedges 23-67-1314] accepted=359  candidates=3212  continuity-unchecked=20  pair-rows=48  refused-aspect=4  refused-continuity=14  refused-range-disagree=91  refused-small=1247  refused-unstable=1497
+  [mapedges -1213-1214] accepted=417  candidates=3291  continuity-unchecked=31  pair-rows=47  pair-sub-metre=3  refused-aspect=2  refused-continuity=18  refused-range-disagree=101  refused-small=1161  refused-unstable=1592
+
+--- missing-edge diagnosis (both gates over the run windows)
+  edge 2-3: co-present frames 842
+      both in frame: g2=unstable         g3=small            x229
+      both in frame: g2=unstable         g3=unstable         x170
+      both in frame: g2=clean            g3=small            x141
+      both in frame: g2=clean            g3=unstable         x66
+      both in frame: g2=range-disagree   g3=unstable         x59
+      both in frame: g2=unstable         g3=range-disagree   x38
+      g2 alone: 236 frames  (smallx156  unstablex80)
+      g3 alone: 630 frames  (unstablex351  cleanx168  smallx88  acceptedx20)
+  edge 6-7: co-present frames 517
+      both in frame: g6=unstable         g7=unstable         x182
+      both in frame: g6=clean            g7=small            x109
+      both in frame: g6=clean            g7=unstable         x64
+      both in frame: g6=unstable         g7=small            x53
+      both in frame: g6=accepted         g7=small            x44
+      both in frame: g6=accepted         g7=unstable         x26
+      g6 alone: 1226 frames  (unstablex458  smallx412  acceptedx201  cleanx144)
+      g7 alone: 587 frames  (unstablex284  cleanx208  acceptedx90  smallx4)
+  edge 9-10: co-present frames 152
+      both in frame: g9=unstable         g10=small            x46
+      both in frame: g9=accepted         g10=small            x45
+      both in frame: g9=clean            g10=small            x23
+      both in frame: g9=unstable         g10=unstable         x20
+      both in frame: g9=clean            g10=unstable         x12
+      both in frame: g9=accepted         g10=unstable         x6
+      g9 alone: 1155 frames  (unstablex345  acceptedx319  smallx312  cleanx151)
+      g10 alone: 713 frames  (unstablex477  cleanx123  smallx58  acceptedx54)
+  edge 13-14: co-present frames 0
+      g13 alone: 1248 frames  (smallx437  unstablex306  cleanx302  acceptedx172)
+      g14 alone: 462 frames  (smallx201  unstablex142  range-disagreex74  cleanx36)
+
+--- residual-gate sensitivity (accepted net measurements / pair rows)
+    resid <= 0.30 px: 1856 measurements,  289 pair rows
+    resid <= 0.50 px: 2058 measurements,  306 pair rows
+    resid <= 1.00 px: 2092 measurements,  308 pair rows
+
+--- gatenet rows at resid <= 0.3 px, by pair (targets flagged *)
+     0-1  n=  4  d med  22.39  MAD  1.64  p10-p90  20.6-24.2   resid med 0.104 max 0.270  markers 0
+     0-2  n=  9  d med  19.97  MAD  0.33  p10-p90  19.3-20.9   resid med 0.156 max 0.270  markers 0
+     1-2  n= 14  d med  12.94  MAD  0.24  p10-p90   7.4-13.5   resid med 0.182 max 0.262  markers 0
+     1-3  n=  1  d med  14.70  MAD  0.00  p10-p90  14.7-14.7   resid med 0.062 max 0.062  markers 0
+     1-5  n=  3  d med  19.40  MAD  0.60  p10-p90  17.4-19.9   resid med 0.057 max 0.077  markers 0
+     2-3  n=  1  d med  28.00  MAD  0.00  p10-p90  28.0-28.0   resid med 0.103 max 0.103  markers 0 *
+     3-4  n= 17  d med  21.81  MAD  0.13  p10-p90  21.5-22.3   resid med 0.033 max 0.068  markers 0
+     4-5  n=  1  d med  26.13  MAD  0.00  p10-p90  26.1-26.1   resid med 0.012 max 0.012  markers 0
+     5-6  n= 88  d med  14.21  MAD  0.61  p10-p90  13.0-15.6   resid med 0.071 max 0.139  markers 0
+     7-8  n= 35  d med  10.70  MAD  0.59  p10-p90  10.2-12.5   resid med 0.098 max 0.289  markers 20 *
+     7-9  n= 10  d med  25.69  MAD  0.39  p10-p90  25.2-27.7   resid med 0.035 max 0.068  markers 0
+     8-9  n= 62  d med  13.78  MAD  1.21  p10-p90  12.7-30.7   resid med 0.166 max 0.270  markers 0
+    10-11 n= 18  d med  33.50  MAD  0.70  p10-p90  32.7-34.9   resid med 0.174 max 0.296  markers 18
+    11-12 n= 10  d med  19.08  MAD  0.17  p10-p90  18.8-19.4   resid med 0.091 max 0.124  markers 2
+    12-13 n= 15  d med  17.73  MAD  1.05  p10-p90  16.4-22.1   resid med 0.088 max 0.151  markers 4 *
+    14-15 n=  1  d med  31.77  MAD  0.00  p10-p90  31.8-31.8   resid med 0.039 max 0.039  markers 1
+
+--- intent-anchored rows from 20260801-155701-vq2-targeting-pairs
+  marker  1: AUDIT-REFUSED (5 mini-tracks at 9m, 16m, 18m, 37m, 38m)
+  marker  2 (active 6, shift 0): tracks at 11m->g6, 12m->g7, 12m->g8  rows 0
+  marker  3 (active 6, shift 0): tracks at 9m->g6  rows 0
+  marker  5: AUDIT-REFUSED (4 mini-tracks at 8m, 18m, 31m, 33m)
+  marker  6: AUDIT-REFUSED (4 mini-tracks at 10m, 17m, 20m, 33m)
+  marker  7: AUDIT-REFUSED (4 mini-tracks at 17m, 21m, 31m, 35m)
+  marker  8 (active 7, shift audit): tracks at 16m->g8, 29m->g9, 31m->g9  rows 25
+  marker  9 (active 9, shift 0): tracks at 13m->g9, 16m->g10  rows 3
+  marker 10 (active 9, shift 0): tracks at 14m->g9, 18m->g10  rows 9
+  marker 12: AUDIT-REFUSED (3 mini-tracks at 16m, 24m, 31m)
+  marker 13 (active 13, shift 0): tracks at 20m->g13  rows 0
+  marker 14 (active 13, shift audit): tracks at 13m->g13, 21m->g14, 22m->g14  rows 11
+  marker 15: AUDIT-REFUSED (10 mini-tracks at 14m, 20m, 21m, 21m, 22m, 33m, 34m, 34m, 36m, 36m)
+[intent] net-range-disagree=300  net-resid=4  net-small=452  net-unstable=169  rows=48  window-audit-refused=6  window-no-tracks=2
+   8-9  n= 25 (net-involved  25)  d med  15.40 MAD  0.51  p10-p90  14.8-16.1   horiz  15.77  |dz|  1.06
+   9-10 n= 12 (net-involved   1)  d med  10.10 MAD  0.14  p10-p90   9.9-10.3   horiz  10.06  |dz|  0.82
+  13-14 n= 11 (net-involved  10)  d med  12.54 MAD  0.17  p10-p90  12.0-12.8   horiz  12.53  |dz|  0.74
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\intent_pairs_montage.png (9 frames)
+
+--- hover-intent rows from the link laps
+  3-67-1314 marker 1: 1 mini-tracks at 14m(net)
+    AUDIT-REFUSED
+  3-67-1314 marker 2: 0 mini-tracks at 
+    AUDIT-REFUSED
+  3-67-1314 marker 3: 2 mini-tracks at 24m(ctr), 26m(ctr)
+    AUDIT-REFUSED
+  3-67-1314 marker 4: 3 mini-tracks at 3m(ctr), 22m(ctr), 23m(ctr)
+    AUDIT-REFUSED
+  3-67-1314 marker 5: 4 mini-tracks at 13m(net), 20m(ctr), 21m(ctr), 21m(net)
+    rows 9  labels ['13->g13', '20->g14', '21->g14', '21->g14']
+  3-67-1314 marker 6: 4 mini-tracks at 12m(net), 21m(net), 31m(net), 32m(net)
+    rows 39  labels ['12->g13', '21->g14', '31->g15', '32->g15']
+  3-67-1314 extra window pre-crossing-12 pause (fid 627500-627611): 5 mini-tracks at 4m(ctr), 20m(net), 24m(net), 28m(ctr), 38m(net)
+    rows 44  labels ['4->g12', '20->g13', '24->g14']
+  1213-1214 marker 1: 2 mini-tracks at 21m(net), 26m(ctr)
+    rows 14  labels ['21->g13', '26->g14']
+  1213-1214 marker 2: 3 mini-tracks at 20m(net), 24m(ctr), 26m(net)
+    rows 25  labels ['20->g13', '24->g14', '26->g14']
+  1213-1214 marker 3: 5 mini-tracks at 20m(ctr), 21m(net), 26m(ctr), 29m(net), 29m(net)
+    rows 71  labels ['20->g13', '21->g13', '26->g14', '29->g14', '29->g14']
+  1213-1214 marker 4: 1 mini-tracks at 29m(net)
+    AUDIT-REFUSED
+  1213-1214 marker 5: 3 mini-tracks at 27m(net), 28m(ctr), 38m(ctr)
+    AUDIT-REFUSED
+  1213-1214 marker 6: 7 mini-tracks at 18m(net), 26m(ctr), 27m(net), 27m(net), 34m(ctr), 35m(ctr), 36m(net)
+    rows 63  labels ['18->g13', '26->g14', '27->g14', '27->g14', '34->g15', '35->g15', '36->g15']
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\hover_windows.png (11 windows)
+[hover] net-range-disagree=46  net-small=385  net-unstable=122  rows=265  window-audit-refused=6
+  12-13 n= 12 (net-involved   0)  d med  13.57 MAD  0.19 p10-p90  13.3-13.8   |dz|  0.20
+  12-14 n=  8 (net-involved   0)  d med  20.61 MAD  0.13 p10-p90  20.3-21.0   |dz|  0.67
+  13-14 n=201 (net-involved 124)  d med  12.34 MAD  0.33 p10-p90  11.7-13.2   |dz|  0.19
+  13-15 n= 35 (net-involved  35)  d med  26.52 MAD  1.19 p10-p90  24.7-28.4   |dz|  1.89
+  14-15 n=  9 (net-involved   6)  d med  13.09 MAD  0.26 p10-p90  12.8-14.1   |dz|  1.79
+Traceback (most recent call last):
+  File [35m"C:\Users\USER\Projects\vqual-2\pilot\perception\mapedges.py"[0m, line [35m714[0m, in [35m<module>[0m
+    [1;31mjs[0mon.dump(result, fh, indent=1)
+    [1;31m^^[0m
+  File [35m"C:\Users\USER\Projects\vqual-2\pilot\perception\mapedges.py"[0m, line [35m491[0m, in [35mmain[0m
+    [31mMI.montage[0m[1;31m(hover_tiles, out=os.path.join(HERE, 'vercheck',[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                             [1;31m'hover_pairs_montage.png'))[0m
+                                             [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"C:\Users\USER\Projects\vqual-2\pilot\perception\mapedges_intent.py"[0m, line [35m357[0m, in [35mmontage[0m
+    cv2.putText(big, [31m'pair %d-%d  marker %d  fid %d  d=%.2f m'[0m
+                     [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+                [1;31m%[0m[31m (*t['pair'], t['marker'], t['fid'], t['d'])[0m,
+                [1;31m^[0m[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[1;35mTypeError[0m: [35m%d format: a real number is required, not str[0m

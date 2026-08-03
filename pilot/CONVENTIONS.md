@@ -105,15 +105,26 @@ a sign flip. `interface.py` states this as `SIGN_ROLL = SIGN_PITCH = SIGN_YAW = 
 | `a` | +2.5 | roll **left** |
 | `w` | −2.5 | nose **up** |
 | `s` | +2.5 | nose **down** |
-| `q` | −2.0 | yaw nose **right** |
-| `e` | +2.0 | yaw nose **left** |
-
-**`q`/`e` are inverted relative to what the letters suggest**, and always have been
-(Claire, 2026-07-31 — never rebound). This is the fact that settled the yaw sign, after
-three telemetry arguments got it wrong. `w` = nose up follows the same pattern.
+| `q` | +2.0 | yaw nose **left** |
+| `e` | −2.0 | yaw nose **right** |
 
 Every row is consistent with a −1 mirror on all three axes: to make the airframe do the
-canonical-positive thing, you send a negative rate.
+canonical-positive thing, you send a negative rate. **The mirror is a property of the
+simulator and has not changed.** The `cmd.csv` column above is the physical fact; which
+key produces it is a binding, and one of them was rebound:
+
+> **`q`/`e` were REBOUND 2026-08-01** (Claire, after the first successful slow session), so
+> they now read the way the letters suggest. Before that date `q` sent −2.0 and `e` sent
+> +2.0 — i.e. **every session recorded up to and including 2026-08-01 was flown with `q` =
+> nose-right**. Sessions are unaffected either way: `cmd.csv` stores rates, not keys, and
+> −2.0 means nose-right in all of them. `teleop.py` records the live bindings in
+> `events.jsonl` under `session_start.keys_axis` from the rebind onward.
+
+**That original inversion is the fact that settled the yaw sign**, after three
+telemetry-versus-telemetry arguments got it wrong (Claire, 2026-07-31). Rebinding the keys
+does not weaken that evidence — the pilot's observation was about what the airframe did,
+not about which letter she pressed. `w` = nose up still follows the same pattern and has
+**not** been rebound, because it is the axis every recorded session was flown with.
 
 ---
 
@@ -166,7 +177,7 @@ Both of these have already cost this project multiple sessions. They are not hyp
 | fact | referee | where |
 |---|---|---|
 | roll, pitch rates mirrored | camera taps + gravity + assist flies stable | `camreferee.py`, `20260731-144815` |
-| yaw rate mirrored | pilot's keybinds; camera `E` tap; orange mask | `20260731-203428` |
+| yaw rate mirrored | pilot's keybinds (as bound on 2026-07-31); camera `E` tap; orange mask | `20260731-203428` |
 | `truth_yaw = -ATTITUDE.yaw` | orange mask, 18.0 px vs 169.6 px, 267 frames, 2 sessions | `perception/label.py` regression test |
 | `LOCAL_POSITION_NED` canonical | HUD readout vs motion a human watched | forward/right/up all negative; VQ1 descends |
 | camera tilt negative | derivation + convention sweep | `perception/label.py` |

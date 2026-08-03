@@ -240,6 +240,8 @@ def pack(args):
     clipped = np.zeros(n, bool)
     occluded = np.zeros(n, bool)
     ordinal = np.zeros(n, np.int32)
+    body_rate = np.zeros(n, np.float32)   # rad/s at capture; drives --weight-mode rate
+    srcs = []                             # 'auto' | 'hand' provenance (mergelabels.py)
     orig_idx = np.asarray(keep, np.int32)
     sessions = []
 
@@ -267,6 +269,8 @@ def pack(args):
             clipped[slot] = d['clipped']
             occluded[slot] = d['occluded']
             ordinal[slot] = d['ordinal']
+            body_rate[slot] = d.get('body_rate', 0.0)
+            srcs.append(d.get('src', 'auto'))
             sessions.append(d['session'])
         if j % 500 == 0:
             print(f'  {j}/{len(by_path)} frames  {time.time()-t0:.0f}s', flush=True)
@@ -276,7 +280,8 @@ def pack(args):
     np.savez_compressed(
         os.path.join(out, 'index.npz'),
         geo=geo, corners=corners, size_px=size_px, clipped=clipped, occluded=occluded,
-        ordinal=ordinal, orig_idx=orig_idx, session=np.array(sessions))
+        ordinal=ordinal, orig_idx=orig_idx, session=np.array(sessions),
+        body_rate=body_rate, src=np.array(srcs))
     meta = {'n': n, 'tile_res': tres, 'tile_scale': args.tile_scale, 'res': res,
             'offset': off, 'eval_exact': bool(exact), 'subset': args.subset,
             'split': args.split if args.subset != 'all' else None,
@@ -331,6 +336,16 @@ def load_cache(path=None, strict=True, open_tiles=False):
     # bug that passes a small test and fails the real run.
     cols = {k: np.array(z[k]) for k in
             ('session', 'ordinal', 'corners', 'clipped', 'occluded', 'size_px', 'geo')}
+    # body_rate / src arrived with the v3 labels; a cache packed before then simply lacks
+    # the arrays. Defaults (0.0 / 'auto') make --weight-mode rate weight everything 1.0
+    # there, so it is called out loudly rather than silently doing nothing.
+    for k in ('body_rate', 'src'):
+        if k in z.files:
+            cols[k] = np.array(z[k])
+        else:
+            print(f'NOTE: cache index has no {k!r} column (packed by an older '
+                  f'packcrops.py) -- weight-mode rate and the rate/src eval rows will '
+                  f'see defaults. Repack to carry it.', flush=True)
     items = []
     for k in range(meta['n']):
         items.append({
@@ -343,6 +358,8 @@ def load_cache(path=None, strict=True, open_tiles=False):
             'occluded': bool(cols['occluded'][k]),
             'size_px': float(cols['size_px'][k]),
             'geo': cols['geo'][k].copy(),
+            'body_rate': float(cols['body_rate'][k]) if 'body_rate' in cols else 0.0,
+            'src': str(cols['src'][k]) if 'src' in cols else 'auto',
         })
     return items, tiles, meta
 
@@ -671,8 +688,14 @@ def main():
     ap.add_argument('--cpu', action='store_true')
     ap.add_argument('--res', type=int, default=G.RES)
     ap.add_argument('--seed', type=int, default=0)
+    ap.add_argument('--labels', default=None,
+                    help='label file for G.LABELS (default: $GATENET_LABELS or '
+                         'autolabels_vq1.json); part of the cache fingerprint')
+    ap.add_argument('--weight-mode', default='none', choices=['none', 'rate'])
     args = ap.parse_args()
 
+    if args.labels:
+        G.LABELS = os.path.abspath(args.labels)
     G.RES = args.res
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)

@@ -1,0 +1,72 @@
+val instances (block split): 2259
+
+== NET quads, VQ1 val: residual (dihedral-corrected) by size bucket ==
+| bucket | n | n good(<2px) | resid med/p90 good | n bad(>10px) | resid med/p10 bad |
+| 0-15 | 613 | 448 | 0.013/0.032 | 2 | 1.213/0.804 |
+| 15-30 | 755 | 488 | 0.029/0.059 | 20 | 0.406/0.082 |
+| 30-60 | 500 | 342 | 0.110/0.249 | 9 | 0.151/0.064 |
+| 60-120 | 283 | 121 | 0.318/0.504 | 8 | 0.812/0.277 |
+| 120-250 | 52 | 1 | 0.814/0.814 | 17 | 1.755/1.100 |
+| >=250 | 56 | 0 | nan/nan | 55 | 5.235/1.478 |
+
+raw-vs-corrected residual on >=120 px good poses (n=1): raw med 0.81 p90 0.81 | corrected med 0.81 p90 0.81
+
+== rule sweep, NET quads (corrected residual) ==
+  HUD today: 0.3 abs (raw resid)     catch(>10px)  86.5%  keep good  93.9%  keep good>=120px   0.0%
+  0.3 abs (corrected)                catch(>10px)  86.5%  keep good  93.9%  keep good>=120px   0.0%
+  producer today: max(6, .05*s)      catch(>10px)   0.0%  keep good 100.0%  keep good>=120px 100.0%
+  max(0.3, 0.004*size)               catch(>10px)  82.9%  keep good  94.2%  keep good>=120px   0.0%
+  max(0.3, 0.006*size)               catch(>10px)  77.5%  keep good  97.1%  keep good>=120px   0.0%
+  max(0.3, 0.008*size)               catch(>10px)  70.3%  keep good  99.6%  keep good>=120px 100.0%
+  max(0.3, 0.01*size)                catch(>10px)  60.4%  keep good  99.7%  keep good>=120px 100.0%
+  max(0.3, 0.015*size)               catch(>10px)  38.7%  keep good 100.0%  keep good>=120px 100.0%
+  max(0.3, 0.02*size)                catch(>10px)  22.5%  keep good 100.0%  keep good>=120px 100.0%
+  max(0.3, 0.03*size)                catch(>10px)   7.2%  keep good 100.0%  keep good>=120px 100.0%
+
+== per-bucket keep(good)/catch(bad), NET quads ==
+  k=0.006  0+:100/100  15+:100/70  30+:95/44  60+:80/75  120+:0/94  250+:nan/80
+  k=0.008  0+:100/100  15+:100/70  30+:100/33  60+:96/50  120+:100/76  250+:nan/76
+  k=0.010  0+:100/100  15+:100/70  30+:100/33  60+:97/50  120+:100/53  250+:nan/64
+  k=0.015  0+:100/100  15+:100/50  30+:100/33  60+:100/38  120+:100/24  250+:nan/38
+
+== CONTOUR quads, VQ1 val: residual (dihedral-corrected) by size bucket ==
+| bucket | n | n good(<2px) | resid med/p90 good | n bad(>10px) | resid med/p10 bad |
+| 0-15 | 219 | 99 | 0.160/0.259 | 0 | nan/nan |
+| 15-30 | 315 | 143 | 0.240/0.489 | 2 | 0.139/0.067 |
+| 30-60 | 137 | 89 | 0.169/0.334 | 1 | 0.119/0.119 |
+| 60-120 | 24 | 3 | 0.188/0.208 | 20 | 0.470/0.045 |
+| 120-250 | 11 | 0 | nan/nan | 7 | 0.184/0.108 |
+| >=250 | 19 | 0 | nan/nan | 19 | 0.178/0.095 |
+
+== rule sweep, CONTOUR quads ==
+  producer today: max(6, .05*s)      catch(>10px)   0.0%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.006*size)               catch(>10px)  20.4%  keep good  79.3%  keep good>=120px   nan%
+  max(1.0, 0.006*size)               catch(>10px)  12.2%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.008*size)               catch(>10px)  14.3%  keep good  80.8%  keep good>=120px   nan%
+  max(1.0, 0.008*size)               catch(>10px)  10.2%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.01*size)                catch(>10px)   8.2%  keep good  81.1%  keep good>=120px   nan%
+  max(1.0, 0.01*size)                catch(>10px)   6.1%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.015*size)               catch(>10px)   0.0%  keep good  83.8%  keep good>=120px   nan%
+  max(1.0, 0.015*size)               catch(>10px)   0.0%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.02*size)                catch(>10px)   0.0%  keep good  87.7%  keep good>=120px   nan%
+  max(1.0, 0.02*size)                catch(>10px)   0.0%  keep good 100.0%  keep good>=120px   nan%
+  max(0.3, 0.03*size)                catch(>10px)   0.0%  keep good  95.5%  keep good>=120px   nan%
+  max(1.0, 0.03*size)                catch(>10px)   0.0%  keep good 100.0%  keep good>=120px   nan%
+
+VQ2 hand instances (unsure excluded): 279
+
+== NET quads, VQ2 hand: residual (dihedral-corrected) by size bucket ==
+| bucket | n | n good(<2px) | resid med/p90 good | n bad(>10px) | resid med/p10 bad |
+| 0-15 | 20 | 19 | 0.032/0.061 | 0 | nan/nan |
+| 15-30 | 99 | 96 | 0.061/0.188 | 0 | nan/nan |
+| 30-60 | 77 | 60 | 0.174/0.330 | 0 | nan/nan |
+| 60-120 | 41 | 21 | 0.294/0.485 | 1 | 0.405/0.405 |
+| 120-250 | 24 | 1 | 1.337/1.337 | 5 | 4.769/1.997 |
+| >=250 | 18 | 0 | nan/nan | 17 | 8.116/4.261 |
+
+== rule sweep, VQ2 hand (GT is hand-placed: catastrophe class only) ==
+  HUD today: 0.3 abs (raw resid)     catch(>10px) 100.0%  keep good  87.8%  keep good>=120px   0.0%
+  max(0.3, 0.006*size)               catch(>10px)  91.3%  keep good  92.9%  keep good>=120px   0.0%
+  max(0.3, 0.008*size)               catch(>10px)  87.0%  keep good  95.9%  keep good>=120px   0.0%
+  max(0.3, 0.01*size)                catch(>10px)  82.6%  keep good  97.5%  keep good>=120px 100.0%
+  max(0.3, 0.015*size)               catch(>10px)  73.9%  keep good  99.0%  keep good>=120px 100.0%

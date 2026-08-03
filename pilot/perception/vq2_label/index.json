@@ -1,0 +1,2675 @@
+{
+ "min_gap": 30,
+ "stride": 2,
+ "seed": 20260802,
+ "sources": [
+  "20260801-121520-vq2-lap-0-15",
+  "20260801-115735-vq2-lap-0-11",
+  "20260801-114948-vq2-strafing-15-16"
+ ],
+ "frames": [
+  {
+   "labelui_key": "000_00075332.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075332.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 0,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "001_00071842.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071842.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.061,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 9191,
+   "max_size_px": 65.6
+  },
+  {
+   "labelui_key": "002_00076014.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00076014.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 2,
+   "ribbon": 0.04,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 2718,
+   "max_size_px": 37.2
+  },
+  {
+   "labelui_key": "003_00107497.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107497.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 8,
+   "ribbon": 0.155,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 38372,
+   "max_size_px": 58.3
+  },
+  {
+   "labelui_key": "004_00107853.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107853.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 9,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 34741,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "005_00071802.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071802.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 3,
+   "ribbon": 0.04,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8166,
+   "max_size_px": 55.0
+  },
+  {
+   "labelui_key": "006_00075340.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075340.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 0,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "007_00071908.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071908.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 6,
+   "ribbon": 0.012,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 19229,
+   "max_size_px": 95.1
+  },
+  {
+   "labelui_key": "008_00103827.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103827.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.083,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 50731,
+   "max_size_px": 138.3
+  },
+  {
+   "labelui_key": "009_00104655.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104655.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 4,
+   "ribbon": 0.17,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 19968,
+   "max_size_px": 18.1
+  },
+  {
+   "labelui_key": "010_00103781.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103781.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 3,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 32162,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "011_00059556.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059556.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 3,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 9828,
+   "max_size_px": 64.0
+  },
+  {
+   "labelui_key": "012_00107675.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107675.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 286,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "013_00106327.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106327.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 5,
+   "n_deco": 1,
+   "ribbon": 0.104,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 8877,
+   "max_size_px": 63.4
+  },
+  {
+   "labelui_key": "014_00103517.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103517.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.013,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 7759,
+   "max_size_px": 16.5
+  },
+  {
+   "labelui_key": "015_00074970.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074970.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.109,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 9778,
+   "max_size_px": 61.1
+  },
+  {
+   "labelui_key": "016_00104755.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104755.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 6,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 102442,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "017_00059940.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059940.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 9,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 18077,
+   "max_size_px": 24.1
+  },
+  {
+   "labelui_key": "018_00075348.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075348.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "019_00074608.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074608.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.137,
+   "merged_iou": 0.92,
+   "clipped": false,
+   "orange_px": 7228,
+   "max_size_px": 72.8
+  },
+  {
+   "labelui_key": "020_00075378.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075378.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 5627,
+   "max_size_px": 68.3
+  },
+  {
+   "labelui_key": "021_00074140.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074140.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.131,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6122,
+   "max_size_px": 53.9
+  },
+  {
+   "labelui_key": "022_00107299.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107299.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 10,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 115666,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "023_00107123.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107123.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.067,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 5023,
+   "max_size_px": 48.3
+  },
+  {
+   "labelui_key": "024_00107667.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107667.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 186,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "025_00107061.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107061.jpg",
+   "category": "merged",
+   "all_categories": [
+    "merged",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.022,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 109021,
+   "max_size_px": 355.1
+  },
+  {
+   "labelui_key": "026_00103395.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103395.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "merged",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 15,
+   "ribbon": 0.044,
+   "merged_iou": 0.143,
+   "clipped": true,
+   "orange_px": 70931,
+   "max_size_px": 63.9
+  },
+  {
+   "labelui_key": "027_00071878.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071878.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.114,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 13289,
+   "max_size_px": 96.3
+  },
+  {
+   "labelui_key": "028_00072314.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072314.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 8,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 111009,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "029_00107021.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107021.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 7,
+   "ribbon": 0.064,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 69651,
+   "max_size_px": 35.5
+  },
+  {
+   "labelui_key": "030_00103455.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103455.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 255,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "031_00072700.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072700.jpg",
+   "category": "merged",
+   "all_categories": [
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.047,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 5242,
+   "max_size_px": 47.8
+  },
+  {
+   "labelui_key": "032_00103081.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103081.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 10,
+   "ribbon": 0.021,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 35320,
+   "max_size_px": 36.0
+  },
+  {
+   "labelui_key": "033_00107565.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107565.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.228,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 4969,
+   "max_size_px": 25.0
+  },
+  {
+   "labelui_key": "034_00072520.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072520.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 9,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 58042,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "035_00107527.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107527.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.016,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 11025,
+   "max_size_px": 18.0
+  },
+  {
+   "labelui_key": "036_00107659.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107659.jpg",
+   "category": "empty",
+   "all_categories": [
+    "empty"
+   ],
+   "n_det": 0,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 293,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "037_00073886.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073886.jpg",
+   "category": "merged",
+   "all_categories": [
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.254,
+   "merged_iou": 0.926,
+   "clipped": false,
+   "orange_px": 3145,
+   "max_size_px": 34.9
+  },
+  {
+   "labelui_key": "038_00103111.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103111.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 3,
+   "ribbon": 0.017,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 65472,
+   "max_size_px": 63.4
+  },
+  {
+   "labelui_key": "039_00107389.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107389.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 13,
+   "ribbon": 0.183,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 32506,
+   "max_size_px": 24.8
+  },
+  {
+   "labelui_key": "040_00072490.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072490.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 6,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 35879,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "041_00107255.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107255.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 7,
+   "ribbon": 0.027,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 16617,
+   "max_size_px": 29.5
+  },
+  {
+   "labelui_key": "042_00076224.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00076224.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 12,
+   "ribbon": 0.017,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 49178,
+   "max_size_px": 201.0
+  },
+  {
+   "labelui_key": "043_00075770.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075770.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.12,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 6497,
+   "max_size_px": 22.2
+  },
+  {
+   "labelui_key": "044_00104919.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104919.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 2,
+   "ribbon": 0.103,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 13112,
+   "max_size_px": 73.0
+  },
+  {
+   "labelui_key": "045_00107423.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107423.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 10,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 111791,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "046_00059642.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059642.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4355,
+   "max_size_px": 41.6
+  },
+  {
+   "labelui_key": "047_00072934.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072934.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 24,
+   "ribbon": 0.051,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 49706,
+   "max_size_px": 151.0
+  },
+  {
+   "labelui_key": "048_00104567.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104567.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 7604,
+   "max_size_px": 15.0
+  },
+  {
+   "labelui_key": "049_00073542.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073542.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.106,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3819,
+   "max_size_px": 32.1
+  },
+  {
+   "labelui_key": "050_00106927.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106927.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 19,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 30529,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "051_00059400.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059400.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 7309,
+   "max_size_px": 53.3
+  },
+  {
+   "labelui_key": "052_00072820.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072820.jpg",
+   "category": "merged",
+   "all_categories": [
+    "ribbon",
+    "merged",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.067,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 7464,
+   "max_size_px": 66.1
+  },
+  {
+   "labelui_key": "053_00075604.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075604.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 8,
+   "ribbon": 0.043,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 15278,
+   "max_size_px": 28.9
+  },
+  {
+   "labelui_key": "054_00071984.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071984.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 13,
+   "ribbon": 0.102,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 107282,
+   "max_size_px": 14.4
+  },
+  {
+   "labelui_key": "055_00074754.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074754.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 14,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 33673,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "056_00059970.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059970.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 61407,
+   "max_size_px": 26.2
+  },
+  {
+   "labelui_key": "057_00104373.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104373.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 2,
+   "ribbon": 0.025,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 15130,
+   "max_size_px": 84.5
+  },
+  {
+   "labelui_key": "058_00104597.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104597.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 9399,
+   "max_size_px": 15.6
+  },
+  {
+   "labelui_key": "059_00104889.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104889.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.223,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 10758,
+   "max_size_px": 43.3
+  },
+  {
+   "labelui_key": "060_00072580.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072580.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 5,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 111215,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "061_00107595.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107595.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.061,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3813,
+   "max_size_px": 23.0
+  },
+  {
+   "labelui_key": "062_00106649.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106649.jpg",
+   "category": "merged",
+   "all_categories": [
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.043,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 7276,
+   "max_size_px": 52.6
+  },
+  {
+   "labelui_key": "063_00103871.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103871.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.051,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 3020,
+   "max_size_px": 31.2
+  },
+  {
+   "labelui_key": "064_00076046.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00076046.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.129,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4611,
+   "max_size_px": 44.4
+  },
+  {
+   "labelui_key": "065_00105263.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00105263.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 142368,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "066_00107153.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107153.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.028,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 7483,
+   "max_size_px": 52.6
+  },
+  {
+   "labelui_key": "067_00107883.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107883.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 9,
+   "ribbon": 0.234,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 47940,
+   "max_size_px": 245.1
+  },
+  {
+   "labelui_key": "068_00075810.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075810.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.049,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 9370,
+   "max_size_px": 65.0
+  },
+  {
+   "labelui_key": "069_00071772.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071772.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 4,
+   "ribbon": 0.248,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 5379,
+   "max_size_px": 52.2
+  },
+  {
+   "labelui_key": "070_00103263.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103263.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 17,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 53108,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "071_00072090.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072090.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.035,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4267,
+   "max_size_px": 45.2
+  },
+  {
+   "labelui_key": "072_00075168.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075168.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 16,
+   "ribbon": 0.02,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 103795,
+   "max_size_px": 332.0
+  },
+  {
+   "labelui_key": "073_00104145.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104145.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 5,
+   "ribbon": 0.095,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 82816,
+   "max_size_px": 34.4
+  },
+  {
+   "labelui_key": "074_00106813.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106813.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 3,
+   "ribbon": 0.12,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 18280,
+   "max_size_px": 28.4
+  },
+  {
+   "labelui_key": "075_00075708.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075708.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 3,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 88237,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "076_00059526.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059526.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8786,
+   "max_size_px": 61.5
+  },
+  {
+   "labelui_key": "077_00072756.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072756.jpg",
+   "category": "merged",
+   "all_categories": [
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.052,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 4833,
+   "max_size_px": 60.3
+  },
+  {
+   "labelui_key": "078_00103231.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103231.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 17,
+   "ribbon": 0.084,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 51859,
+   "max_size_px": 154.5
+  },
+  {
+   "labelui_key": "079_00106237.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106237.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.111,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 2944,
+   "max_size_px": 36.1
+  },
+  {
+   "labelui_key": "080_00104725.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104725.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 3,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 39587,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "081_00059688.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059688.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4209,
+   "max_size_px": 42.1
+  },
+  {
+   "labelui_key": "082_00075124.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075124.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 6,
+   "ribbon": 0.183,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 37485,
+   "max_size_px": 37.8
+  },
+  {
+   "labelui_key": "083_00103547.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103547.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 7,
+   "ribbon": 0.02,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 12076,
+   "max_size_px": 16.6
+  },
+  {
+   "labelui_key": "084_00107805.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107805.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 4,
+   "ribbon": 0.147,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 14442,
+   "max_size_px": 21.4
+  },
+  {
+   "labelui_key": "085_00105233.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00105233.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 6,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 92876,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "086_00107215.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107215.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 3,
+   "ribbon": 0.068,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 9182,
+   "max_size_px": 65.4
+  },
+  {
+   "labelui_key": "087_00072852.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072852.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 2,
+   "ribbon": 0.06,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 12334,
+   "max_size_px": 106.7
+  },
+  {
+   "labelui_key": "088_00104471.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104471.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.093,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 4494,
+   "max_size_px": 43.7
+  },
+  {
+   "labelui_key": "089_00104859.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104859.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.194,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8035,
+   "max_size_px": 36.2
+  },
+  {
+   "labelui_key": "090_00073804.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073804.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 12,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 89988,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "091_00059248.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059248.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3649,
+   "max_size_px": 37.5
+  },
+  {
+   "labelui_key": "092_00075740.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075740.jpg",
+   "category": "merged",
+   "all_categories": [
+    "merged",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.021,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 3273,
+   "max_size_px": 48.9
+  },
+  {
+   "labelui_key": "093_00104523.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104523.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 6666,
+   "max_size_px": 13.9
+  },
+  {
+   "labelui_key": "094_00074676.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074676.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 5,
+   "ribbon": 0.182,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 13997,
+   "max_size_px": 96.8
+  },
+  {
+   "labelui_key": "095_00075678.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075678.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 4,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 35126,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "096_00106991.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106991.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 8,
+   "ribbon": 0.064,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 46790,
+   "max_size_px": 36.1
+  },
+  {
+   "labelui_key": "097_00104403.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104403.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 10,
+   "ribbon": 0.013,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 30194,
+   "max_size_px": 145.1
+  },
+  {
+   "labelui_key": "098_00103333.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103333.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 65202,
+   "max_size_px": 61.7
+  },
+  {
+   "labelui_key": "099_00075456.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075456.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.203,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 9227,
+   "max_size_px": 11.9
+  },
+  {
+   "labelui_key": "100_00073284.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073284.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 11,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 41672,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "101_00059218.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059218.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3717,
+   "max_size_px": 38.3
+  },
+  {
+   "labelui_key": "102_00106455.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106455.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 14,
+   "ribbon": 0.023,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 60468,
+   "max_size_px": 231.7
+  },
+  {
+   "labelui_key": "103_00103959.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103959.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.045,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 5706,
+   "max_size_px": 49.1
+  },
+  {
+   "labelui_key": "104_00107939.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107939.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 10,
+   "ribbon": 0.125,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 70395,
+   "max_size_px": 25.9
+  },
+  {
+   "labelui_key": "105_00074814.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074814.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 7,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 67877,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "106_00106773.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106773.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 4,
+   "ribbon": 0.065,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 17738,
+   "max_size_px": 83.2
+  },
+  {
+   "labelui_key": "107_00103197.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103197.jpg",
+   "category": "merged",
+   "all_categories": [
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.148,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 25481,
+   "max_size_px": 117.5
+  },
+  {
+   "labelui_key": "108_00103597.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103597.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 8,
+   "ribbon": 0.003,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 71824,
+   "max_size_px": 45.6
+  },
+  {
+   "labelui_key": "109_00071678.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071678.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.128,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 2832,
+   "max_size_px": 56.1
+  },
+  {
+   "labelui_key": "110_00072550.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072550.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 12,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 73002,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "111_00072194.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072194.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.059,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8673,
+   "max_size_px": 26.9
+  },
+  {
+   "labelui_key": "112_00072904.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072904.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged"
+   ],
+   "n_det": 3,
+   "n_deco": 6,
+   "ribbon": 0.073,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 25694,
+   "max_size_px": 114.1
+  },
+  {
+   "labelui_key": "113_00103913.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103913.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.113,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 3875,
+   "max_size_px": 36.9
+  },
+  {
+   "labelui_key": "114_00075486.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075486.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.178,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 10038,
+   "max_size_px": 12.4
+  },
+  {
+   "labelui_key": "115_00072610.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072610.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 4,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 83121,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "116_00059478.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059478.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6867,
+   "max_size_px": 54.6
+  },
+  {
+   "labelui_key": "117_00072236.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072236.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "merged",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.141,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 15327,
+   "max_size_px": 95.3
+  },
+  {
+   "labelui_key": "118_00075636.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075636.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 1,
+   "n_deco": 9,
+   "ribbon": 0.072,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 19369,
+   "max_size_px": 31.9
+  },
+  {
+   "labelui_key": "119_00075032.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075032.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 3,
+   "ribbon": 0.163,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 11801,
+   "max_size_px": 34.4
+  },
+  {
+   "labelui_key": "120_00106961.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106961.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 7,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 33831,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "121_00072640.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072640.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 27307,
+   "max_size_px": 43.9
+  },
+  {
+   "labelui_key": "122_00103295.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103295.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 3,
+   "ribbon": 0.029,
+   "merged_iou": 0.919,
+   "clipped": true,
+   "orange_px": 52829,
+   "max_size_px": 67.2
+  },
+  {
+   "labelui_key": "123_00076100.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00076100.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.024,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 7903,
+   "max_size_px": 62.6
+  },
+  {
+   "labelui_key": "124_00072164.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072164.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.161,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6524,
+   "max_size_px": 42.0
+  },
+  {
+   "labelui_key": "125_00104999.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104999.jpg",
+   "category": "missed",
+   "all_categories": [
+    "missed"
+   ],
+   "n_det": 0,
+   "n_deco": 11,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 104665,
+   "max_size_px": 0.0
+  },
+  {
+   "labelui_key": "126_00071938.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071938.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 11,
+   "ribbon": 0.005,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 31521,
+   "max_size_px": 127.0
+  },
+  {
+   "labelui_key": "127_00073314.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073314.jpg",
+   "category": "merged",
+   "all_categories": [
+    "merged",
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.032,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 77601,
+   "max_size_px": 323.3
+  },
+  {
+   "labelui_key": "128_00075958.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075958.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 11,
+   "ribbon": 0.072,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 74720,
+   "max_size_px": 30.6
+  },
+  {
+   "labelui_key": "129_00105195.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00105195.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 26,
+   "ribbon": 0.102,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 72847,
+   "max_size_px": 223.7
+  },
+  {
+   "labelui_key": "130_00107969.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107969.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.015,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 54183,
+   "max_size_px": 26.1
+  },
+  {
+   "labelui_key": "131_00076284.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00076284.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged",
+    "clipped"
+   ],
+   "n_det": 4,
+   "n_deco": 1,
+   "ribbon": 0.007,
+   "merged_iou": 1.0,
+   "clipped": true,
+   "orange_px": 104366,
+   "max_size_px": 355.0
+  },
+  {
+   "labelui_key": "132_00104433.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00104433.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "deco",
+    "clipped"
+   ],
+   "n_det": 5,
+   "n_deco": 2,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 82100,
+   "max_size_px": 14.4
+  },
+  {
+   "labelui_key": "133_00073512.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073512.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.111,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3410,
+   "max_size_px": 31.0
+  },
+  {
+   "labelui_key": "134_00107183.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107183.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 1,
+   "ribbon": 0.07,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 7484,
+   "max_size_px": 50.2
+  },
+  {
+   "labelui_key": "135_00075928.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075928.jpg",
+   "category": "merged",
+   "all_categories": [
+    "deco",
+    "merged"
+   ],
+   "n_det": 2,
+   "n_deco": 13,
+   "ribbon": 0.02,
+   "merged_iou": 1.0,
+   "clipped": false,
+   "orange_px": 34905,
+   "max_size_px": 130.0
+  },
+  {
+   "labelui_key": "136_00075290.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075290.jpg",
+   "category": "clipped",
+   "all_categories": [
+    "clipped"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 3353,
+   "max_size_px": 51.7
+  },
+  {
+   "labelui_key": "137_00073576.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073576.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 2,
+   "ribbon": 0.104,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4158,
+   "max_size_px": 36.1
+  },
+  {
+   "labelui_key": "138_00059444.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059444.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6961,
+   "max_size_px": 53.5
+  },
+  {
+   "labelui_key": "139_00075846.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00075846.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.111,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 10649,
+   "max_size_px": 70.1
+  },
+  {
+   "labelui_key": "140_00072670.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072670.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 3,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8190,
+   "max_size_px": 8.1
+  },
+  {
+   "labelui_key": "141_00073926.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073926.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.139,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4102,
+   "max_size_px": 38.7
+  },
+  {
+   "labelui_key": "142_00107625.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107625.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.034,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 14623,
+   "max_size_px": 46.1
+  },
+  {
+   "labelui_key": "143_00072270.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072270.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 9,
+   "ribbon": 0.123,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 35422,
+   "max_size_px": 134.0
+  },
+  {
+   "labelui_key": "144_00059586.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059586.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 7001,
+   "max_size_px": 54.8
+  },
+  {
+   "labelui_key": "145_00074458.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074458.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 0,
+   "ribbon": 0.187,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 5426,
+   "max_size_px": 53.4
+  },
+  {
+   "labelui_key": "146_00106843.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106843.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 6,
+   "ribbon": 0.019,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 24372,
+   "max_size_px": 96.7
+  },
+  {
+   "labelui_key": "147_00071740.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071740.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.279,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4383,
+   "max_size_px": 48.9
+  },
+  {
+   "labelui_key": "148_00059910.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059910.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 4,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 13201,
+   "max_size_px": 21.1
+  },
+  {
+   "labelui_key": "149_00073980.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073980.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 3,
+   "ribbon": 0.108,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6212,
+   "max_size_px": 55.1
+  },
+  {
+   "labelui_key": "150_00072060.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072060.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.068,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 3785,
+   "max_size_px": 34.1
+  },
+  {
+   "labelui_key": "151_00074940.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00074940.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 3,
+   "ribbon": 0.116,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 8536,
+   "max_size_px": 59.3
+  },
+  {
+   "labelui_key": "152_00059368.jpg",
+   "session": "20260801-114948-vq2-strafing-15-16",
+   "file": "00059368.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 7460,
+   "max_size_px": 53.2
+  },
+  {
+   "labelui_key": "153_00071708.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00071708.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 1,
+   "n_deco": 2,
+   "ribbon": 0.192,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4161,
+   "max_size_px": 42.8
+  },
+  {
+   "labelui_key": "154_00072786.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00072786.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 1,
+   "n_deco": 1,
+   "ribbon": 0.0,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 6099,
+   "max_size_px": 8.5
+  },
+  {
+   "labelui_key": "155_00103035.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00103035.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "ribbon"
+   ],
+   "n_det": 3,
+   "n_deco": 0,
+   "ribbon": 0.202,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 9792,
+   "max_size_px": 67.9
+  },
+  {
+   "labelui_key": "156_00073088.jpg",
+   "session": "20260801-115735-vq2-lap-0-11",
+   "file": "00073088.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco"
+   ],
+   "n_det": 2,
+   "n_deco": 1,
+   "ribbon": 0.037,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 4431,
+   "max_size_px": 46.4
+  },
+  {
+   "labelui_key": "157_00107465.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00107465.jpg",
+   "category": "ribbon",
+   "all_categories": [
+    "deco",
+    "ribbon",
+    "clipped"
+   ],
+   "n_det": 3,
+   "n_deco": 8,
+   "ribbon": 0.254,
+   "merged_iou": 0.0,
+   "clipped": true,
+   "orange_px": 44880,
+   "max_size_px": 96.7
+  },
+  {
+   "labelui_key": "158_00106873.jpg",
+   "session": "20260801-121520-vq2-lap-0-15",
+   "file": "00106873.jpg",
+   "category": "deco",
+   "all_categories": [
+    "deco",
+    "ribbon"
+   ],
+   "n_det": 2,
+   "n_deco": 9,
+   "ribbon": 0.077,
+   "merged_iou": 0.0,
+   "clipped": false,
+   "orange_px": 27657,
+   "max_size_px": 122.1
+  }
+ ]
+}

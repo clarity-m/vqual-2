@@ -1,0 +1,86 @@
+
+== NET, VQ1 val: pose quality by N CORNERS IN FRAME ==
+| n_in | n | size med | resid med/p90 | rng_err med/p90 | good % | CATASTROPHE % |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 3 | 956 | 18.541/24.09 | 0.437/0.47 | 0.0 | 100.0 |
+| 1 | 36 | 83 | 1.014/8.52 | 0.188/1.49 | 30.6 | 44.4 |
+| 2 | 268 | 54 | 0.267/4.61 | 0.028/0.16 | 82.5 | 3.4 |
+| 3 | 34 | 50 | 0.318/1.07 | 0.029/0.07 | 97.1 | 0.0 |
+| 4 | 1918 | 21 | 0.045/0.29 | 0.013/0.05 | 95.2 | 1.2 |
+
+-- restricted to size >= 120 px (the close regime) --
+  n_in=0: n=3  resid med 18.54  good 0.0%  catastrophe 100.0%
+  n_in=1: n=16  resid med 3.49  good 18.8%  catastrophe 50.0%
+  n_in=2: n=72  resid med 2.92  good 61.1%  catastrophe 0.0%
+  n_in=3: n=5  resid med 1.19  good 100.0%  catastrophe 0.0%
+  n_in=4: n=12  resid med 0.79  good 100.0%  catastrophe 0.0%
+
+== VQ1 val: candidate trust rules ==
+  size-only max(0.3, 0.015*size) [deployed]    catch  29.4%  keep good  99.0%  keep good>=120px  87.5% (n=64)
+  size-only max(6, 0.05*size) [pre-fix producer] catch   0.0%  keep good 100.0%  keep good>=120px 100.0% (n=64)
+  corners>=3 only                              catch  54.9%  keep good  88.9%  keep good>=120px  26.6% (n=64)
+  corners>=2 only                              catch  37.3%  keep good  99.5%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(6.0, 0.05*size)           catch  37.3%  keep good  99.5%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(1.0, 0.05*size)           catch  45.1%  keep good  99.5%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(1.0, 0.03*size)           catch  45.1%  keep good  99.4%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(0.3, 0.05*size)           catch  49.0%  keep good  99.5%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(0.3, 0.03*size)           catch  51.0%  keep good  99.4%  keep good>=120px  95.3% (n=64)
+  corners>=2 AND max(0.3, 0.015*size)          catch  56.9%  keep good  98.6%  keep good>=120px  84.4% (n=64)
+  corners>=3 AND max(0.3, 0.015*size)          catch  66.7%  keep good  88.4%  keep good>=120px  23.4% (n=64)
+  corners>=3 AND max(0.3, 0.03*size)           catch  64.7%  keep good  88.8%  keep good>=120px  26.6% (n=64)
+  corners>=3 AND max(0.3, 0.05*size)           catch  62.7%  keep good  88.9%  keep good>=120px  26.6% (n=64)
+  corners>=3 AND max(1.0, 0.015*size)          catch  58.8%  keep good  88.6%  keep good>=120px  23.4% (n=64)
+  corners>=3 AND max(1.0, 0.03*size)           catch  58.8%  keep good  88.9%  keep good>=120px  26.6% (n=64)
+  (size<120 -> max(0.3,0.03s)) AND (size>=120 -> corners>=3) catch  35.3%  keep good  97.7%  keep good>=120px  26.6% (n=64)
+  (size<120 -> max(0.3,0.05s)) AND (size>=120 -> corners>=3) catch  33.3%  keep good  97.8%  keep good>=120px  26.6% (n=64)
+
+== NET, VQ2 hand (Claire labels: big/clipped/upward): pose quality by N CORNERS IN FRAME ==
+| n_in | n | size med | resid med/p90 | rng_err med/p90 | good % | CATASTROPHE % |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 2 | 554 | 18.581/27.03 | 0.133/0.19 | 50.0 | 0.0 |
+| 2 | 28 | 265 | 4.816/28.32 | 0.037/0.09 | 78.6 | 0.0 |
+| 3 | 10 | 65 | 0.332/2.78 | 0.026/0.07 | 90.0 | 0.0 |
+| 4 | 238 | 31 | 0.116/0.51 | 0.020/0.06 | 99.2 | 0.0 |
+
+-- restricted to size >= 120 px (the close regime) --
+  n_in=2: n=20  resid med 7.13  good 70.0%  catastrophe 0.0%
+  n_in=3: n=3  resid med 2.29  good 66.7%  catastrophe 0.0%
+  n_in=4: n=17  resid med 1.34  good 88.2%  catastrophe 0.0%
+
+== VQ2 hand: candidate trust rules ==
+  size-only max(0.3, 0.015*size) [deployed]    catch   nan%  keep good  94.0%  keep good>=120px  59.4% (n=32)
+  size-only max(6, 0.05*size) [pre-fix producer] catch   nan%  keep good 100.0%  keep good>=120px 100.0% (n=32)
+  corners>=3 only                              catch   nan%  keep good  91.4%  keep good>=120px  53.1% (n=32)
+  corners>=2 only                              catch   nan%  keep good  99.6%  keep good>=120px  96.9% (n=32)
+  corners>=2 AND max(6.0, 0.05*size)           catch   nan%  keep good  99.6%  keep good>=120px  96.9% (n=32)
+  corners>=2 AND max(1.0, 0.05*size)           catch   nan%  keep good  99.6%  keep good>=120px  96.9% (n=32)
+  corners>=2 AND max(1.0, 0.03*size)           catch   nan%  keep good  98.1%  keep good>=120px  84.4% (n=32)
+  corners>=2 AND max(0.3, 0.05*size)           catch   nan%  keep good  99.6%  keep good>=120px  96.9% (n=32)
+  corners>=2 AND max(0.3, 0.03*size)           catch   nan%  keep good  98.1%  keep good>=120px  84.4% (n=32)
+  corners>=2 AND max(0.3, 0.015*size)          catch   nan%  keep good  94.0%  keep good>=120px  59.4% (n=32)
+  corners>=3 AND max(0.3, 0.015*size)          catch   nan%  keep good  90.3%  keep good>=120px  50.0% (n=32)
+  corners>=3 AND max(0.3, 0.03*size)           catch   nan%  keep good  91.4%  keep good>=120px  53.1% (n=32)
+  corners>=3 AND max(0.3, 0.05*size)           catch   nan%  keep good  91.4%  keep good>=120px  53.1% (n=32)
+  corners>=3 AND max(1.0, 0.015*size)          catch   nan%  keep good  91.0%  keep good>=120px  50.0% (n=32)
+  corners>=3 AND max(1.0, 0.03*size)           catch   nan%  keep good  91.4%  keep good>=120px  53.1% (n=32)
+  (size<120 -> max(0.3,0.03s)) AND (size>=120 -> corners>=3) catch   nan%  keep good  94.4%  keep good>=120px  53.1% (n=32)
+  (size<120 -> max(0.3,0.05s)) AND (size>=120 -> corners>=3) catch   nan%  keep good  94.4%  keep good>=120px  53.1% (n=32)
+
+== POOLED: candidate trust rules ==
+  size-only max(0.3, 0.015*size) [deployed]    catch  29.4%  keep good  98.5%  keep good>=120px  78.1% (n=96)
+  size-only max(6, 0.05*size) [pre-fix producer] catch   0.0%  keep good 100.0%  keep good>=120px 100.0% (n=96)
+  corners>=3 only                              catch  54.9%  keep good  89.2%  keep good>=120px  35.4% (n=96)
+  corners>=2 only                              catch  37.3%  keep good  99.5%  keep good>=120px  95.8% (n=96)
+  corners>=2 AND max(6.0, 0.05*size)           catch  37.3%  keep good  99.5%  keep good>=120px  95.8% (n=96)
+  corners>=2 AND max(1.0, 0.05*size)           catch  45.1%  keep good  99.5%  keep good>=120px  95.8% (n=96)
+  corners>=2 AND max(1.0, 0.03*size)           catch  45.1%  keep good  99.3%  keep good>=120px  91.7% (n=96)
+  corners>=2 AND max(0.3, 0.05*size)           catch  49.0%  keep good  99.5%  keep good>=120px  95.8% (n=96)
+  corners>=2 AND max(0.3, 0.03*size)           catch  51.0%  keep good  99.2%  keep good>=120px  91.7% (n=96)
+  corners>=2 AND max(0.3, 0.015*size)          catch  56.9%  keep good  98.1%  keep good>=120px  76.0% (n=96)
+  corners>=3 AND max(0.3, 0.015*size)          catch  66.7%  keep good  88.6%  keep good>=120px  32.3% (n=96)
+  corners>=3 AND max(0.3, 0.03*size)           catch  64.7%  keep good  89.1%  keep good>=120px  35.4% (n=96)
+  corners>=3 AND max(0.3, 0.05*size)           catch  62.7%  keep good  89.2%  keep good>=120px  35.4% (n=96)
+  corners>=3 AND max(1.0, 0.015*size)          catch  58.8%  keep good  88.9%  keep good>=120px  32.3% (n=96)
+  corners>=3 AND max(1.0, 0.03*size)           catch  58.8%  keep good  89.1%  keep good>=120px  35.4% (n=96)
+  (size<120 -> max(0.3,0.03s)) AND (size>=120 -> corners>=3) catch  35.3%  keep good  97.3%  keep good>=120px  35.4% (n=96)
+  (size<120 -> max(0.3,0.05s)) AND (size>=120 -> corners>=3) catch  33.3%  keep good  97.4%  keep good>=120px  35.4% (n=96)

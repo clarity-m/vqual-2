@@ -1,0 +1,124 @@
+{
+ "scan": {
+  "0": {
+   "n": 337,
+   "best_tilt_deg": 25.0,
+   "best_lean_az_deg": 200.0,
+   "resid_best": 0.0169,
+   "resid_vertical": 0.0748,
+   "improvement": 0.0579
+  },
+  "1": {
+   "n": 163,
+   "best_tilt_deg": 2.5,
+   "best_lean_az_deg": 160.0,
+   "resid_best": 0.0253,
+   "resid_vertical": 0.0361,
+   "improvement": 0.0108
+  },
+  "2": {
+   "n": 113,
+   "best_tilt_deg": 17.5,
+   "best_lean_az_deg": 140.0,
+   "resid_best": 0.0232,
+   "resid_vertical": 0.0828,
+   "improvement": 0.0596
+  },
+  "3": {
+   "n": 185,
+   "best_tilt_deg": 15.0,
+   "best_lean_az_deg": 240.0,
+   "resid_best": 0.0192,
+   "resid_vertical": 0.0702,
+   "improvement": 0.051
+  },
+  "4": {
+   "n": 30,
+   "best_tilt_deg": 17.5,
+   "best_lean_az_deg": 220.0,
+   "resid_best": 0.0081,
+   "resid_vertical": 0.1038,
+   "improvement": 0.0956
+  },
+  "5": {
+   "n": 51,
+   "best_tilt_deg": 17.5,
+   "best_lean_az_deg": 180.0,
+   "resid_best": 0.013,
+   "resid_vertical": 0.072,
+   "improvement": 0.0589
+  },
+  "6": {
+   "n": 142,
+   "best_tilt_deg": 20.0,
+   "best_lean_az_deg": 200.0,
+   "resid_best": 0.0272,
+   "resid_vertical": 0.0574,
+   "improvement": 0.0302
+  },
+  "7": {
+   "n": 232,
+   "best_tilt_deg": 20.0,
+   "best_lean_az_deg": 70.0,
+   "resid_best": 0.0288,
+   "resid_vertical": 0.0539,
+   "improvement": 0.0251
+  },
+  "8": {
+   "n": 185,
+   "best_tilt_deg": 35.0,
+   "best_lean_az_deg": 150.0,
+   "resid_best": 0.0353,
+   "resid_vertical": 0.0869,
+   "improvement": 0.0516
+  },
+  "9": {
+   "n": 130,
+   "best_tilt_deg": 32.5,
+   "best_lean_az_deg": 110.0,
+   "resid_best": 0.0311,
+   "resid_vertical": 0.0979,
+   "improvement": 0.0668
+  },
+  "10": {
+   "n": 147,
+   "best_tilt_deg": 32.5,
+   "best_lean_az_deg": 150.0,
+   "resid_best": 0.0279,
+   "resid_vertical": 0.0543,
+   "improvement": 0.0264
+  },
+  "11": {
+   "n": 87,
+   "best_tilt_deg": 15.0,
+   "best_lean_az_deg": 200.0,
+   "resid_best": 0.0274,
+   "resid_vertical": 0.0838,
+   "improvement": 0.0565
+  },
+  "12": {
+   "n": 142,
+   "best_tilt_deg": 12.5,
+   "best_lean_az_deg": 250.0,
+   "resid_best": 0.0504,
+   "resid_vertical": 0.0763,
+   "improvement": 0.0259
+  },
+  "13": {
+   "n": 104,
+   "best_tilt_deg": 35.0,
+   "best_lean_az_deg": 210.0,
+   "resid_best": 0.0618,
+   "resid_vertical": 0.1158,
+   "improvement": 0.054
+  },
+  "14": null,
+  "15": null,
+  "16": null
+ },
+ "gate9_head_to_head": {
+  "vertical": 0.09634275395315091,
+  "lean_az_129.7": 0.04067315490592405,
+  "lean_az_309.7": 0.16771372334850226
+ }
+}

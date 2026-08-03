@@ -1,0 +1,63 @@
+  trafe-12-13-14 marker 1 (staged (12, 13, 14)): 9 mini-tracks at 12m(ctr), 24m(net), 31m(net), 31m(net), 31m(net), 32m(net), 39m(net), 40m(net), 42m(ctr)
+    AUDIT-REFUSED
+  trafe-12-13-14 marker 2 (staged (12, 13, 14)): 5 mini-tracks at 7m(ctr), 20m(ctr), 20m(net), 26m(net), 28m(ctr)
+    AUDIT-REFUSED
+  trafe-12-13-14 marker 3 (staged (12, 13, 14)): 10 mini-tracks at 10m(ctr), 23m(net), 27m(net), 29m(ctr), 30m(net), 36m(ctr), 39m(ctr), 42m(ctr), 43m(ctr), 47m(net)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_004153.png (3 windows)
+  vq2-strafe-2-3 marker 1 (staged (2, 3)): 5 mini-tracks at 17m(ctr), 37m(net), 39m(net), 40m(net), 41m(net)
+    AUDIT-REFUSED
+  vq2-strafe-2-3 marker 2 (staged (2, 3)): 4 mini-tracks at 36m(net), 37m(net), 38m(net), 39m(net)
+    AUDIT-REFUSED
+  vq2-strafe-2-3 marker 3 (staged (2, 3)): 4 mini-tracks at 16m(ctr), 17m(ctr), 32m(ctr), 38m(ctr)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005208.png (3 windows)
+  vq2-strafe-6-7 marker 1 (staged (6, 7)): 2 mini-tracks at 10m(ctr), 26m(ctr)
+    rows 120  labels ['10->g6', '26->g7']
+  vq2-strafe-6-7 marker 2 (staged (6, 7)): 2 mini-tracks at 8m(ctr), 24m(ctr)
+    rows 121  labels ['8->g6', '24->g7']
+  vq2-strafe-6-7 marker 3 (staged (6, 7)): 5 mini-tracks at 7m(ctr), 23m(ctr), 42m(net), 44m(ctr), 45m(ctr)
+    rows 75  labels ['7->g6', '23->g7']
+  vq2-strafe-6-7 marker 4 (staged (6, 7)): 2 mini-tracks at 7m(ctr), 22m(ctr)
+    rows 120  labels ['7->g6', '22->g7']
+  vq2-strafe-6-7 marker 5 (staged (6, 7)): 2 mini-tracks at 6m(ctr), 22m(ctr)
+    rows 120  labels ['6->g6', '22->g7']
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005431.png (5 windows)
+  5725-vq2-2-3-b marker 1 (staged (2, 3)): 5 mini-tracks at 9m(net), 18m(ctr), 19m(ctr), 37m(net), 38m(net)
+    rows 6  labels ['9->g2', '18->g3', '19->g3']
+  5725-vq2-2-3-b marker 2 (staged (2, 3)): 3 mini-tracks at 16m(ctr), 36m(net), 46m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 3 (staged (2, 3)): 5 mini-tracks at 17m(net), 17m(ctr), 34m(ctr), 38m(net), 39m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 4 (staged (2, 3)): 4 mini-tracks at 4m(ctr), 16m(ctr), 19m(net), 38m(net)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 5 (staged (2, 3)): 3 mini-tracks at 16m(ctr), 17m(ctr), 19m(ctr)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 6 (staged (2, 3)): 5 mini-tracks at 14m(net), 17m(ctr), 37m(net), 38m(net), 40m(net)
+    AUDIT-REFUSED
+  5725-vq2-2-3-b marker 7 (staged (2, 3)): 1 mini-tracks at 15m(net)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_005725.png (7 windows)
+  2-strafe-2-3-c marker 1 (staged (2, 3)): 4 mini-tracks at 18m(ctr), 20m(net), 39m(net), 40m(ctr)
+    AUDIT-REFUSED
+  2-strafe-2-3-c marker 2 (staged (2, 3)): 4 mini-tracks at 15m(ctr), 18m(ctr), 33m(ctr), 38m(net)
+    AUDIT-REFUSED
+  2-strafe-2-3-c marker 3 (staged (2, 3)): 2 mini-tracks at 17m(net), 17m(net)
+  2-strafe-2-3-c marker 4 (staged (2, 3)): 5 mini-tracks at 15m(ctr), 28m(ctr), 35m(ctr), 38m(net), 38m(net)
+    AUDIT-REFUSED
+  2-strafe-2-3-c extra gold cluster t~22-26s (fid 1142020-1142170): 7 mini-tracks at 9m(ctr), 10m(ctr), 12m(net), 12m(ctr), 22m(net), 41m(net), 42m(ctr)
+    rows 59  labels ['9->g2', '10->g2', '12->g2', '12->g2', '22->g3']
+  2-strafe-2-3-c extra gold cluster t~30-33s (fid 1142260-1142370): 3 mini-tracks at 10m(net), 22m(ctr), 39m(net)
+    rows 14  labels ['10->g2', '22->g3']
+  2-strafe-2-3-c extra gold cluster t~43-49s (fid 1142660-1142860): 9 mini-tracks at 7m(ctr), 15m(ctr), 15m(ctr), 18m(ctr), 20m(net), 37m(net), 39m(net), 40m(net), 40m(ctr)
+  2-strafe-2-3-c extra gold cluster t~57-61s (fid 1143080-1143220): 6 mini-tracks at 12m(ctr), 16m(ctr), 18m(ctr), 19m(ctr), 20m(ctr), 21m(ctr)
+    AUDIT-REFUSED
+  2-strafe-2-3-c extra gold cluster t~98-104s (fid 1144320-1144500): 8 mini-tracks at 14m(net), 14m(net), 25m(ctr), 25m(ctr), 27m(ctr), 29m(ctr), 32m(ctr), 42m(ctr)
+    rows 3  labels ['14->g2', '14->g3']
+  2-strafe-2-3-c extra pre-crossing t~131-135s (fid 1145300-1145440): 1 mini-tracks at 4m(ctr)
+    AUDIT-REFUSED
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_windows_010914.png (10 windows)
+[strafe0802] net-aspect=3  net-range-disagree=303  net-resid=8  net-small=1737  net-unstable=315  rows=638  window-audit-refused=17
+   2-3  n= 82 (net-involved  36)  d med  13.31 MAD  0.62 p10-p90  12.6-15.0   |dz|  1.42
+   6-7  n=556 (net-involved   0)  d med  16.42 MAD  0.27 p10-p90  16.0-17.0   |dz|  5.29
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\strafe0802_pairs_montage.png (6 frames)

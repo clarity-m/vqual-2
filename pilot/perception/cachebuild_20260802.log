@@ -1,0 +1,46 @@
+../sessions/20260802-004153-vq2-strafe-12-13-14
+  0/4468  0s
+  500/4468  5s
+  1000/4468  9s
+  1500/4468  13s
+  2000/4468  18s
+  2500/4468  23s
+  3000/4468  28s
+  3500/4468  32s
+  4000/4468  39s
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\cache\20260802-004153-vq2-strafe-12-13-14.det.pkl  (4468 frames, 44s)
+../sessions/20260802-005208-vq2-strafe-2-3
+  0/2134  0s
+  500/2134  7s
+  1000/2134  15s
+  1500/2134  21s
+  2000/2134  27s
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\cache\20260802-005208-vq2-strafe-2-3.det.pkl  (2134 frames, 31s)
+../sessions/20260802-005431-vq2-strafe-6-7
+  0/2426  0s
+  500/2426  7s
+  1000/2426  12s
+  1500/2426  17s
+  2000/2426  23s
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\cache\20260802-005431-vq2-strafe-6-7.det.pkl  (2426 frames, 28s)
+../sessions/20260802-005725-vq2-2-3-b
+  0/3666  0s
+  500/3666  7s
+  1000/3666  14s
+  1500/3666  20s
+  2000/3666  27s
+  2500/3666  34s
+  3000/3666  41s
+  3500/3666  47s
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\cache\20260802-005725-vq2-2-3-b.det.pkl  (3666 frames, 48s)
+../sessions/20260802-010914-vq2-strafe-2-3-c
+  0/4242  0s
+  500/4242  7s
+  1000/4242  15s
+  1500/4242  21s
+  2000/4242  25s
+  2500/4242  30s
+  3000/4242  34s
+  3500/4242  38s
+  4000/4242  46s
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\cache\20260802-010914-vq2-strafe-2-3-c.det.pkl  (4242 frames, 49s)

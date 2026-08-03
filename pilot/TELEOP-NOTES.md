@@ -211,21 +211,35 @@ required). It cannot test aircraft response — that needs a flight.
 `C` align-to-velocity. Commands on F-keys: `F5` arm, `F6` disarm, `F7` zero heading, `F8`
 quit, `F9` reset, `F11` levelling assist, `F12` marker.
 
-**Two keys do the opposite of what they read like**, because the sim's rate convention is
-mirrored (`NOTES.md` → Sign conventions; `camreferee.py` re-runs the measurement):
+**One key still does the opposite of what it reads like**, because the sim's rate
+convention is mirrored (`CONVENTIONS.md` is the single source; `camreferee.py` re-runs the
+measurement):
 
 | key | sends | actually does | intuitive? |
 |---|---|---|---|
 | `D` | −2.5 | rolls RIGHT | yes |
 | `W` | −2.5 | pitches **UP** — flies BACKWARD | **no** |
-| `E` | +2.0 | yaws **LEFT** | **no** |
+| `Q` | +2.0 | yaws LEFT | yes, **since 2026-08-01** |
+| `E` | −2.0 | yaws RIGHT | yes, **since 2026-08-01** |
+
+`Q`/`E` were rebound on 2026-08-01 at Claire's request, after the first session that flew
+well enough to plan a full lap. It is a **binding** change, not a sign change: `ACRO_YAW`
+is untouched, nothing moved out of the link layer, and `cmd.csv` is unaffected because it
+stores rates rather than keys — −2.0 means nose-right in every session before and after.
+Sessions from the rebind onward record the live bindings in `events.jsonl` under
+`session_start.keys_axis`. **Anything replaying a pre-2026-08-01 session as keystrokes must
+use the old binding** (`q` = −2.0); replaying it as rates needs no adjustment at all.
 
 The comment `w = nose down = forward` in `teleop.py` said the opposite; corrected
 2026-08-01, along with the `KEYMAP` block the script prints at startup, which had the same
-error. Under the interface rule that signs live in the link layer only, `ACRO_PITCH` and
-`ACRO_YAW` want flipping so `W` is nose-down and `E` is yaw-right; `ACRO_ROLL` is already
-correct. **Still not done** — it changes the feel of every recorded session, so it wants
-doing deliberately rather than mid-batch, and hours before a mapping lap is not that.
+error.
+
+An earlier version of this note proposed flipping `ACRO_PITCH` and `ACRO_YAW` instead.
+**Yaw was fixed by rebinding the keys, not by flipping the constant** — the two produce the
+same feel, but a rebind leaves the sign in the link layer where `CONVENTIONS.md` requires
+it and leaves `cmd.csv` meaning what it always meant. Prefer that route for pitch too if it
+is ever done. **Pitch is still not done**: `W` = nose up, and it is the axis every recorded
+session was flown with, so it wants doing deliberately rather than before a mapping lap.
 
 ### Levelling assist (`F11`) — our own angle mode
 

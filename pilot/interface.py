@@ -241,7 +241,43 @@ class SelfObs:
     vel_bearing_rad: float = 0.0
     vel_valid: bool = False
 
-    # Speed from drag magnitude, once the drag coefficient is fit from recordings.
+    # Speed from drag magnitude. Fit 2026-08-02 against VQ1 truth velocity, which is
+    # the only build that streams it: the horizontal body specific force is quadratic in
+    # the IN-PLANE speed component,
+    #
+    #     a_body[0:2] = -k * |v_xy| * v_xy        k = 0.0425 /m
+    #
+    # so the inversion |v_xy| = sqrt(|a_xy| / k) is algebraic, like the bearing above,
+    # with nothing to integrate and nothing to diverge. Leave-one-session-out: median
+    # 0.53 m/s, p90 0.88 m/s, ~7% relative, flat from 2 to 34 m/s.
+    #
+    # THIS IS THE IN-PLANE SPEED, NOT THE TOTAL SPEED, and the difference is not small --
+    # at race pace the airframe is pitched 20-40 deg, so the body-z component is a third
+    # to a half of the total. That component is NOT observable: thrust acts along body -z
+    # by definition, which is exactly what makes the horizontal pair clean and the third
+    # one blind, and the barometer that could supply it reads nan in this sim. Recovering
+    # it from a world-horizontal-velocity assumption was fitted and REFUSED -- p90 15 m/s
+    # out of sample, because the recorded flight-path angle has a 26-34 deg median.
+    #
+    # So (vel_bearing_rad, speed_est_mps) together are the body-horizontal velocity
+    # VECTOR, and nothing here claims to know how fast the aircraft is climbing.
+    #
+    # THE INVERSION HAS NO ZERO, so speed_conf is load-bearing and a consumer must gate on
+    # it. sqrt(|a_xy|/k) maps a stationary airframe resting on the 17.8 deg VQ2 pad --
+    # |a_xy| = 3.0 m/s^2 of normal force through a tilted airframe -- to 8.4 m/s, and no
+    # function of the IMU can tell that apart from steady flight at constant velocity,
+    # because both are one constant gravity vector at the trim tilt. The producer settles
+    # it with the camera (mean |dI| between consecutive frames) and publishes
+    # speed_est_mps = 0.0 at speed_conf = 0.0, with vel_valid False, whenever the image
+    # has been static for 2 s. Measured before that veto existed: 8.06-8.10 m/s at
+    # speed_conf 1.00 for 42 s in which the aircraft did not move at all.
+    #
+    # speed_conf also carries a bounded precision term: the estimate is about twice as
+    # noisy when |a_xy| or the body rate is changing fast (p90 error 0.82 -> 2.12 m/s).
+    # It is NOT a steady-state-assumption failure -- an accelerometer measures specific
+    # force, so the horizontal body pair is drag alone whether or not the aircraft is
+    # accelerating; that was measured and the leak slope is 0.007-0.041 where a full leak
+    # would be 1.000. perception/dragtransient.py has the tables.
     speed_est_mps: float = 0.0
     speed_conf: float = 0.0
 

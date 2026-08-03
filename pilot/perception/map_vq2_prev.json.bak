@@ -1,0 +1,539 @@
+{
+ "status": {
+  "headline": "PARTIAL. Identity for all 17 gates, verified on frames; 12 gate pairs measured; all 17 gates now sit in five internally-measured components ([0-2] [3-6] [7-9] [10-13] [14-16]) that nothing measured connects to each other. A global 17-gate layout is still NOT supported.",
+  "what_is_measured": "Direct inter-gate distances and gravity-referenced height differences for the 12 gate pairs under measured_pairs -- metric, anchored on the spec 1500 mm aperture, each with the scatter of one fixed quantity measured from many viewpoints. Best cross-lap repeat: pair 0-1 = 20.12/20.02/20.06 m on three separate flights.",
+  "what_is_NOT_measured": "Any distance BETWEEN the five components: 2-3, 6-7, 9-10 and 13-14 have no clean co-visible rows (12-13 has n=2 at ~10.4 m, below MIN_PAIR_OBS). components[] gives local frames only; bridge-track edges inside them are weak (MDS stress 10-22 m, LOO |err| median ~7 m), so treat positions as topology, not geometry. The reliable product is measured_pairs.",
+  "why": "Identity reaches a frame only while a crossing-anchored track survives, so two NAMED gates share a frame mostly right around each crossing. The pausing lap (markers) fixed that for pairs flanking each pause, but at the moments three gates were in view the near gate is clipped (fails clean()) or the far one is below MIN_SIZE_PX, so the linking pairs still went unmeasured.",
+  "what_would_fix_it": "Partial-quad fitting: at every marker moment the linking gate WAS in frame but clipped, which clean() refuses outright. Fitting the clean sides and intersecting would turn those refusals into measurements at exactly the moments Claire staged for it. Second: a lap that lingers where gates 2+3, 6+7, 9+10, 13+14 are BOTH well inside frame and 15-30 m out.",
+  "pausing_lap_2026_08_01": {
+   "session": "20260801-144858-vqual2-lap-pausing",
+   "markers": "25 in events.jsonl (kind=marker, t_wall_ns), gates 1-14; marker windows contributed 485 pair rows and refereed two bimodal pairs.",
+   "lessons_added": [
+    "Long hover windows let SEVERAL tracks win nearest-in-window votes for the same gate (11 tracks claimed gate 13, ranges 2-44 m, one with range RISING through the approach). Fixed by three refusals: cross_consistent() binds the observation nearest the crossing into a closing-speed funnel; per-gate pruning un-names any track contradicting a closer-approach track in-frame by >3 m; and measure() refuses a gate in any frame where its claimed detections disagree by >3 m, checked on ALL observations because impostor rows survive exactly where the true gate fails clean().",
+    "measure() kept same-gate duplicates in a plain dict, so whichever fragment was inserted last silently won the frame; that made 0-1 bimodal (20/34 m). Found by rendering identities on frames, again.",
+    "aggregate() now splits a bimodal pair (two static gates have ONE separation) and keeps the cluster containing Claire's marker rows -- an external referee -- else the larger; the loser is dropped, not averaged, and reported as bimodal_rows_dropped."
+   ]
+  },
+  "bugs_found_and_fixed_while_building_this": [
+   "Association radius scaled with the coasting gap without a cap (inherited from mapbuild.py where MAX_GAP was 4). At MAX_GAP 60 the radius exceeded the image and tracks spliced onto decoration and onto other gates. Caught by drawing assigned identities on frames, invisible in every aggregate.",
+   "labelgates.drop_decorations_by_parent() rejects 73% of detections on this lap INCLUDING REAL GATES: merged gates share a parent contour and produce the same range contradiction it tests for. Replaced by an interior-colour test.",
+   "Decoration inherited gate identity when the real gate was too close to pass the quality filters, so the nearest surviving detection was a checkerboard square on the gate being flown through. Fixed by the physical close-approach test.",
+   "Backward extensions of gates 6, 7, 8 and 9 all coasted onto the SAME object, giving pairwise distances of 0.00 m with MAD 0.00 and n=151. Fixed by mutual exclusion; a hard refusal of sub-metre gate separations is now in measure()."
+  ],
+  "resolved_5_6": "The 15.6 vs 37.0 m lap disagreement is settled: 5-6 = 16.3 m. The 0-11 lap (115735) carried the misidentification, and its own rows contain both modes (29 rows at ~15 m, 35 at ~38 m) -- a fragment of its gate-6 identity had slid onto a farther gate. The primary lap is unimodal at 15.6 m and the bridge-graph LOO predicts 14.1 m.",
+  "known_open_disagreement": "7-8: the two fast laps read 26.6-28.5 m, the pausing lap 11.04 m with MAD 0.32. Sided with 11.04: it is the marker-vouched cluster (25 rows pressed while Claire was looking at both gates), its gate-8 track is crossing-funnel-anchored, and the fast laps' own rows span 9-31 m (self-contradictory). Also: 14-15 = 33.8 m rests on one lap (n=6, all marker rows); 10-11 = 34.0 m repeats across two laps (34.9 n=3 old primary, 34.0 n=27 pausing).",
+  "targeting_session_2026_08_01": {
+   "session": "20260801-155701-vq2-targeting-pairs",
+   "what": "Flown at the missing linking pairs (markers: 1=2+3, 2-4=6+7, 5-8=7+8, 9-12=9+10, 13-15=13+14). Crossing-anchored identity RUNS on it but was REFUSED after frame verification showed named fragments migrating onto neighbouring gates during the drifting hovers (targeting_markers.png). Its rows enter as intent-anchored, cluster-rank-labeled measurements instead (mapedges_intent.py), refereed by the known pair medians.",
+   "collinearity_finding": "Gates 7-8-9 are nearly collinear: 7-8=11.0 + 8-9=15.2 = 26.2 = the fast-lap \"7-8\" mode (26.6). Every 7-8 disagreement was the same line under different names."
+  },
+  "gatenet_edges_2026_08_01": {
+   "what": "Rows tagged source=gatenet: amodal corner regression (gatenet.py, block/best.pt) run on clipped/refused NAMED gates in marker and near-crossing windows, seeded from the track's own detection box, accepted only past a PnP-residual gate (<= 0.30 px), a 3-way crop-jitter stability check, and range continuity vs the gate's crossing-anchored clean ranges. detect.py contour rows are untouched.",
+   "edges_minted": [
+    "9-10",
+    "13-14"
+   ],
+   "net_rows_used": 160,
+   "net_measurements_accepted": 1162,
+   "caveat": "gatenet was trained on VQ1 auto-labels only; VQ2 decoration/hangar clutter is out of distribution for it, which is why every accepted row passed a physics gate rather than a confidence head. Verified by rendering accepted quads on frames: vercheck/gatenet_edges_montage.png."
+  }
+ },
+ "source": "mapedges.py (gatenet edges) on top of mapvq2.py -- vision + gravity, no pose stream",
+ "sessions": [
+  "20260801-121520-vq2-lap-0-15",
+  "20260801-115735-vq2-lap-0-11",
+  "20260801-144858-vqual2-lap-pausing"
+ ],
+ "frame": {
+  "note": "Each component has ITS OWN frame -- coordinates are NOT comparable across components. Within one: x/y metres, horizontal, arbitrary rotation and reflection; z metres UP from gravity, lowest-indexed gate of the component = 0."
+ },
+ "components": [
+  {
+   "gates": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+   ],
+   "local_positions": {
+    "7": {
+     "x": -15.121953883003478,
+     "y": -6.299600745776815,
+     "z_up_m": 1.0680690737202417e-17
+    },
+    "8": {
+     "x": 9.12801170752532,
+     "y": 11.773318980783275,
+     "z_up_m": -0.15507081442231474
+    },
+    "9": {
+     "x": -11.253723632172715,
+     "y": -6.852862304504555,
+     "z_up_m": -1.4288895020124788
+    },
+    "10": {
+     "x": 16.94777329097984,
+     "y": 10.274106270754125,
+     "z_up_m": null
+    },
+    "11": {
+     "x": -19.780771681005636,
+     "y": -6.696256207415259,
+     "z_up_m": null
+    },
+    "12": {
+     "x": 16.412132038507963,
+     "y": 5.5405307730219535,
+     "z_up_m": null
+    },
+    "13": {
+     "x": 14.306837388935145,
+     "y": -4.571619259599368,
+     "z_up_m": null
+    },
+    "14": {
+     "x": -16.915269264591785,
+     "y": 5.413247820370395,
+     "z_up_m": null
+    },
+    "15": {
+     "x": 20.86608263319547,
+     "y": -6.687161021121422,
+     "z_up_m": null
+    },
+    "16": {
+     "x": -20.008191878119362,
+     "y": 6.412882207461818,
+     "z_up_m": null
+    }
+   },
+   "z_unknown_gates": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+   ],
+   "layout_stats": {
+    "n_nodes": 83,
+    "n_edges": 125,
+    "stress_median_m": 11.570827503915503,
+    "stress_p90_m": 20.631747836105855
+   },
+   "height_residual_median_m": 0.030544638271907704
+  },
+  {
+   "gates": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "local_positions": {
+    "3": {
+     "x": -14.99974293940083,
+     "y": 15.648614019345708,
+     "z_up_m": -1.9648419714329568e-14
+    },
+    "4": {
+     "x": 15.14745868107375,
+     "y": -15.802719770628709,
+     "z_up_m": 0.632224095023504
+    },
+    "5": {
+     "x": -16.63305564426917,
+     "y": 3.071490377563372,
+     "z_up_m": -1.550528989361169
+    },
+    "6": {
+     "x": 5.210932575445283,
+     "y": 22.76307528483404,
+     "z_up_m": 2.4931118299590382
+    }
+   },
+   "z_unknown_gates": [],
+   "layout_stats": {
+    "n_nodes": 39,
+    "n_edges": 47,
+    "stress_median_m": 16.914271879239102,
+    "stress_p90_m": 22.51536645131407
+   },
+   "height_residual_median_m": 1.4654943925052066e-14
+  },
+  {
+   "gates": [
+    0,
+    1,
+    2
+   ],
+   "local_positions": {
+    "0": {
+     "x": 2.515051036166549,
+     "y": 20.623728206367336,
+     "z_up_m": -2.1825809176315586e-16
+    },
+    "1": {
+     "x": 6.837113485569176,
+     "y": -10.034929967080762,
+     "z_up_m": 3.3996918464630728
+    },
+    "2": {
+     "x": -16.99778226898993,
+     "y": -0.868051057993122,
+     "z_up_m": 3.3355143840776575
+    }
+   },
+   "z_unknown_gates": [],
+   "layout_stats": {
+    "n_nodes": 48,
+    "n_edges": 76,
+    "stress_median_m": 9.631746372726552,
+    "stress_p90_m": 16.382423302771485
+   },
+   "height_residual_median_m": 0.18259587466723537
+  }
+ ],
+ "metres_per_station": {
+  "median": 21.261852779354562,
+  "p10": 14.922707401275296,
+  "p90": 51.274654315538264,
+  "n_pairs": 14,
+  "per_pair": {
+   "0-1": 18.49,
+   "1-2": 13.6,
+   "3-4": 25.59,
+   "4-5": 22.34,
+   "4-6": 14.26,
+   "5-6": 20.84,
+   "7-8": 19.56,
+   "8-9": 24.33,
+   "9-10": 17.67,
+   "10-11": 57.7,
+   "11-12": 21.69,
+   "13-14": 16.46,
+   "14-15": 63.44,
+   "15-16": 36.29
+  },
+  "map_approx_says": 15.97
+ },
+ "measured_pairs": {
+  "0-1": {
+   "n": 83,
+   "dist_m": 20.399352918108722,
+   "horiz_m": 20.12117395028148,
+   "dz_m": 3.301680623182725,
+   "mad_m": 0.7610435699829132,
+   "n_height": 79,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 3,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  },
+  "1-2": {
+   "n": 5,
+   "dist_m": 8.318045390790198,
+   "horiz_m": 8.318043408101042,
+   "dz_m": -0.005743186646748411,
+   "mad_m": 0.6611750395122504,
+   "n_height": 5,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  },
+  "3-4": {
+   "n": 36,
+   "dist_m": 21.717432588882094,
+   "horiz_m": 21.60882792623232,
+   "dz_m": 0.6322240950235047,
+   "mad_m": 2.1849573736652683,
+   "n_height": 30,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 8,
+   "gatenet_only": false
+  },
+  "4-5": {
+   "n": 127,
+   "dist_m": 22.451826633398735,
+   "horiz_m": 22.532191085666753,
+   "dz_m": -0.311239251215118,
+   "mad_m": 0.8114762715949482,
+   "n_height": 108,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  },
+  "4-6": {
+   "n": 32,
+   "dist_m": 22.74088604754966,
+   "horiz_m": 23.021263659158443,
+   "dz_m": 0.18948336961708245,
+   "mad_m": 0.783588157691355,
+   "n_height": 8,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  },
+  "5-6": {
+   "n": 204,
+   "dist_m": 15.44329067543381,
+   "horiz_m": 14.89252272896862,
+   "dz_m": 4.828445289136839,
+   "mad_m": 1.0941544248662574,
+   "n_height": 115,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 35,
+   "n_gatenet_rows": 88,
+   "gatenet_only": false
+  },
+  "7-8": {
+   "n": 94,
+   "dist_m": 11.368555419763249,
+   "horiz_m": 11.401867667934507,
+   "dz_m": -0.6377894318669519,
+   "mad_m": 0.6781637230966462,
+   "n_height": 58,
+   "n_marker_rows": 45,
+   "bimodal_rows_dropped": 103,
+   "n_gatenet_rows": 35,
+   "gatenet_only": false
+  },
+  "8-9": {
+   "n": 14,
+   "dist_m": 22.640697807658213,
+   "horiz_m": 22.985768869428426,
+   "dz_m": -1.2876244488620912,
+   "mad_m": 0.7719265694516118,
+   "n_height": 11,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  },
+  "9-10": {
+   "n": 12,
+   "dist_m": 10.1005501890359,
+   "horiz_m": 10.05859186870043,
+   "dz_m": null,
+   "mad_m": 0.14092966383970307,
+   "n_height": 0,
+   "n_marker_rows": 12,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": true
+  },
+  "10-11": {
+   "n": 45,
+   "dist_m": 33.928424449650834,
+   "horiz_m": 33.912107288807576,
+   "dz_m": -1.6939047650268546,
+   "mad_m": 0.6451472323891494,
+   "n_height": 45,
+   "n_marker_rows": 25,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 18,
+   "gatenet_only": false
+  },
+  "11-12": {
+   "n": 26,
+   "dist_m": 19.47784695801468,
+   "horiz_m": 19.66972959483381,
+   "dz_m": 2.281669259107738,
+   "mad_m": 0.5169327768812586,
+   "n_height": 10,
+   "n_marker_rows": 5,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 10,
+   "gatenet_only": false
+  },
+  "13-14": {
+   "n": 11,
+   "dist_m": 12.540103038102423,
+   "horiz_m": 12.52564984123867,
+   "dz_m": null,
+   "mad_m": 0.16822164217669489,
+   "n_height": 0,
+   "n_marker_rows": 11,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": true
+  },
+  "14-15": {
+   "n": 7,
+   "dist_m": 32.890838495448314,
+   "horiz_m": 32.776829913630394,
+   "dz_m": -2.7656843945563256,
+   "mad_m": 1.119655276303785,
+   "n_height": 7,
+   "n_marker_rows": 7,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 1,
+   "gatenet_only": false
+  },
+  "15-16": {
+   "n": 446,
+   "dist_m": 20.931220348626518,
+   "horiz_m": 21.01077819687843,
+   "dz_m": null,
+   "mad_m": 0.504096417715644,
+   "n_height": 1,
+   "n_marker_rows": 0,
+   "bimodal_rows_dropped": 0,
+   "n_gatenet_rows": 0,
+   "gatenet_only": false
+  }
+ },
+ "leave_one_out": {
+  "median_abs_err_m": 4.21117088725642,
+  "p90_abs_err_m": 10.7711805588501,
+  "edges": [
+   {
+    "pair": [
+     11,
+     12
+    ],
+    "measured": 19.66972959483381,
+    "predicted": 38.29989987955829,
+    "err": 18.63017028472448,
+    "n": 26
+   },
+   {
+    "pair": [
+     10,
+     11
+    ],
+    "measured": 33.912107288807576,
+    "predicted": 24.528196742019773,
+    "err": -9.383910546787803,
+    "n": 45
+   },
+   {
+    "pair": [
+     7,
+     8
+    ],
+    "measured": 11.401867667934507,
+    "predicted": 17.24866851982513,
+    "err": 5.846800851890624,
+    "n": 94
+   },
+   {
+    "pair": [
+     8,
+     9
+    ],
+    "measured": 22.985768869428426,
+    "predicted": 17.6248290379224,
+    "err": -5.360939831506027,
+    "n": 14
+   },
+   {
+    "pair": [
+     14,
+     15
+    ],
+    "measured": 32.776829913630394,
+    "predicted": 35.83823185663721,
+    "err": 3.061401943006814,
+    "n": 7
+   },
+   {
+    "pair": [
+     15,
+     16
+    ],
+    "measured": 21.01077819687843,
+    "predicted": null,
+    "err": null
+   },
+   {
+    "pair": [
+     9,
+     10
+    ],
+    "measured": 10.05859186870043,
+    "predicted": null,
+    "err": null
+   },
+   {
+    "pair": [
+     13,
+     14
+    ],
+    "measured": 12.52564984123867,
+    "predicted": null,
+    "err": null
+   },
+   {
+    "pair": [
+     4,
+     6
+    ],
+    "measured": 23.021263659158443,
+    "predicted": 21.32627107429869,
+    "err": -1.6949925848597545,
+    "n": 32
+   },
+   {
+    "pair": [
+     5,
+     6
+    ],
+    "measured": 14.89252272896862,
+    "predicted": 14.096227342501203,
+    "err": -0.7962953864674169,
+    "n": 204
+   },
+   {
+    "pair": [
+     4,
+     5
+    ],
+    "measured": 22.532191085666753,
+    "predicted": 22.462880044483757,
+    "err": -0.06931104118299558,
+    "n": 127
+   },
+   {
+    "pair": [
+     3,
+     4
+    ],
+    "measured": 21.60882792623232,
+    "predicted": null,
+    "err": null
+   },
+   {
+    "pair": [
+     0,
+     1
+    ],
+    "measured": 20.12117395028148,
+    "predicted": 10.223214472084086,
+    "err": -9.897959478197395,
+    "n": 83
+   },
+   {
+    "pair": [
+     1,
+     2
+    ],
+    "measured": 8.318043408101042,
+    "predicted": 8.487489476811232,
+    "err": 0.1694460687101902,
+    "n": 5
+   }
+  ]
+ }
+}

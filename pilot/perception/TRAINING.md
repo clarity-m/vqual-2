@@ -342,3 +342,193 @@ with no GPU, which clears the "runs alongside control" bar with margin.
    epoch is available for free, which buys ablations rather than a better single number.
 4. **Predict a per-corner uncertainty** and use it to gate the heavy tail, which is the
    thing that actually blocks open-loop use.
+
+---
+
+# Runbook: the single audited v3 retrain (prepared 2026-08-01, not yet run)
+
+Everything below is prepared and smoke-tested; when the VQ2 hand labels arrive it is
+merge + upload + run-all, no code left to write. Baseline hyperparameters are held
+(batch 256, lr 3e-4*(batch/64), 200 epochs, seed 0, block split); the ONE training
+variable that changes is `--weight-mode rate` (down-weight fast-rotation auto-labels,
+1.0 -> 0.30 raised-cosine over 0.5-2 rad/s; hand labels always 1.0 -- rationale in
+`gatenet.py::instance_weight`). Negatives stay unused: no confidence head this run.
+
+## Steps (Claire)
+
+1. **Merge** the hand labels (from `labelui.html`, usually `labels_gates.json` in
+   Downloads) into the audited v3 auto-labels:
+
+   ```
+   python3 pilot/perception/mergelabels.py \
+       --hand <path to labels_gates.json> \
+       --auto pilot/perception/autolabels_vq1_v3.json \
+       --drop-unsure \
+       --out pilot/perception/labels_merged_v3.json
+   ```
+
+   It refuses to run if any hand key cannot be mapped -- that is it protecting your
+   labels, read its message. Then build the VQ2 frame zip:
+
+   ```
+   python3 pilot/perception/_mkframezip_vq2.py
+   ```
+
+2. **Upload to Drive**, folder `MyDrive/vqual2/` (same one as before):
+   * into `perception/`: current `gatenet.py`, `packcrops.py`, and
+     `labels_merged_v3.json` (replace the old copies of the .py files -- they gained
+     `--weight-mode` / `--labels`); `autolabel.py` + `label.py` are unchanged and
+     already there.
+   * into the folder root: `vq2_frames.zip` (new). `vq1_frames.zip` and
+     `gatenet_runs/block/best.pt` are already there from the baseline run; the
+     notebook checks for all of them before training and stops early if one is missing.
+
+3. **Open `pilot/perception/gatenet_colab_v3.ipynb` in Colab** (GPU runtime),
+   **Run all**. ~3 h cap. If it disconnects: reconnect, set `RESUME = True` in the
+   train cell, Run all again -- it continues from the last mirrored checkpoint.
+
+4. **Read the decision off the final cross-eval cell.** It scores the new checkpoint
+   AND the production model `gatenet_runs/block/best.pt` on the IDENTICAL new val
+   split and prints a delta table plus an ACCEPT/REJECT line.
+
+## Accept/reject rule (decided now, before the numbers exist)
+
+**ACCEPT** (new model becomes production) only if BOTH:
+* the new model beats `block/best.pt` on the cross-eval table's **ALL** row
+  (corner med), and
+* it does **not regress the `clipped` row** (clipped is where the net earns its keep
+  over the detector).
+
+Otherwise **production stays `gatenet_runs/block/best.pt`** and the run is a diagnosis,
+not a loss: the body_rate / src breakdown rows separate label error from net error for
+the first time. Never compare either model's number against the old 0.89 px headline --
+the label file changed, so the val set changed; only the cross-eval table is a
+comparison (this exact confusion is what the filtered-v1 "regression" turned out to be).
+
+Afterwards: copy `gatenet_runs/colab-v3/` back into `pilot/perception/gatenet_runs/`
+and paste both cross-eval tables + the decision table here under a heading naming the
+GPU. Smoke evidence for the prep itself: `smoke_tmp/` (disposable; fake 'hand' tags,
+2 epochs, res 64 -- its numbers mean nothing beyond "the plumbing works").
+
+## 2026-08-01 late: leakage audit overturns all three REJECTs -- production is colab-v3-nw
+
+Every cross-eval today graded checkpoints on the val split of the CURRENT label file.
+Deleting labels (v1 -> v3) shifted every block boundary, so 35% of that val sat inside
+the OLD model's training blocks -- 68% of the >=120 px bucket, 45% of clipped, exactly
+the rows that decided REJECT each time. Claire flagged the pattern ("something feels
+off"); the audit (val_clean_keys.json, crosseval_clean.py) scored all three checkpoints
+on the 1073 instances held out under BOTH splits:
+
+  clean subset          OLD block     v3+rate      v3 no-wt
+  ALL                   1.26/5.20     1.08/4.81    1.06/4.17   (med/p90 px)
+  clipped               2.73/35.65    3.21/37.50   2.61/36.85
+  clipped & >=60 px    15.37/72.87    8.65/61.86   9.29/53.85
+  size >=120           34.07/97.05   34.56/93.05  35.61/88.16
+
+VERDICT: colab-v3-nw (v3 labels + Claire's 364 VQ2 hand labels, NO rate weighting)
+beats the old model everywhere on clean data, including clipped. ACCEPT under the
+frozen rule. The old model's 10 px >=120 headline was memorization; the honest
+close-range number for EVERY model is ~34 px median -- the PnP residual gate and
+temporal consistency remain load-bearing there. Rate weighting: mildly harmful, drop it.
+
+Rule for every future cross-eval: two checkpoints are comparable ONLY on instances
+held out of BOTH their training splits. Any label edit moves the block boundaries,
+so recompute the clean intersection (mkcolab stages val_clean_keys.json) or the
+incumbent wins by home-field advantage.
+
+---
+
+# Runbook: the confidence head (`colab-conf`, prepared 2026-08-02, not yet run)
+
+`gatenet_conf.py` adds the per-crop trust/reject signal -- the last known perception
+gap (decoration false positives, coherent hallucinations, the PnP residual's blind
+spot). Design: a 328k-param head on the FROZEN production trunk
+(`gatenet_runs/colab-v3-nw/best.pt`), two outputs -- gate-vs-not logit, and predicted
+log10 regressor error (the "clipped/degraded" signal as a continuous quantity; a third
+class was considered and rejected in the module docstring). The regressor path is
+bit-identical with the head attached (asserted, `torch.equal`). Marginal flight-time
+cost: **0.21-0.24 ms** on this laptop's CPU (head on the shared feature map; budget <1 ms MET).
+
+Data (after per-run dedupe, cap 6/run): class 1 = 12306 merged-v3 instances (85
+unsure excluded); class 0 = **743**: 433 mined VQ2 decoration FPs, 167 behind-gate,
+95 no-orange phantoms (17 degenerate boxes excluded per provenance), 48
+verified-empty randoms. Split: 240-frame blocks on the raw frame counter, 45-frame
+guard -- val holds 147 negatives (87 deco). Mining safety argument and the
+LABEL_POLICY.md invariants are in `gatenet_conf.py` (`mine()`, `check_invariants()`);
+the smoke run re-asserts them, and the notebook re-asserts them on the uploaded files.
+
+## Accept/reject rule (decided now, before the numbers exist)
+
+**DEPLOY the head only if it rejects >= 80% of decoration false positives at <= 2%
+true-gate loss on the clean eval set** (clean = conf-val positives on
+`val_clean_keys.json` frames + conf-val hand instances; deco = conf-val mined crops).
+Catastrophe catch vs the PnP-residual baseline (84% of >10 px at 12.6% flags) is
+reported as a complement, not a gate. If the frozen head fails, `FINETUNE=True` is the
+escape hatch and then the notebook's cross-eval cell must clear the finetuned
+regressor on the clean subset (ALL + clipped rows) before the PAIR ships.
+
+## Steps (Claire, tonight)
+
+1. `python3 pilot/perception/mkcolab.py` -- already run; re-run if anything changed.
+2. Upload `colab_upload/perception/` -> Drive `MyDrive/vqual2/perception/` (replace on
+   collision) and `colab_upload/drive_root/` -> `MyDrive/vqual2/`. Only the files
+   marked new/STALE actually need to move; `conf_frames_vq1.zip` (1.6 MB) and
+   `gatenet_conf_colab.ipynb` are the two that must land in the folder root.
+   Already on Drive, do not re-upload: `vq1_frames.zip`, `vq2_frames.zip`,
+   `gatenet_runs/colab-v3-nw/best.pt`.
+3. Open **`gatenet_conf_colab.ipynb`** in Colab (GPU runtime), **Run all**. ~1 h.
+   If it disconnects: reconnect, set `RESUME = True` in the train cell, Run all again.
+4. Read the decision off the eval cell: the threshold table prints the ACCEPT/REJECT
+   line against the frozen rule above; `eval_report.md` is mirrored to
+   `gatenet_runs/colab-conf/` on Drive.
+
+Afterwards: copy `gatenet_runs/colab-conf/` back into
+`pilot/perception/gatenet_runs/` and paste the eval tables + decision here. Smoke
+evidence for the prep: `smoke_tmp/conf_runs/` + `smoke_tmp/conf_neg_sheet.png`
+(2 epochs, CPU, subset -- plumbing proof only; SMOKE PASSED 2026-08-02, latency
+0.21-0.24 ms marginal, invariants hold, regressor bit-identical).
+
+## 2026-08-02: confidence head VERDICT CORRECTION -- ACCEPT at p=0.020
+
+The colab-conf eval printed REJECT, but its accept-line implementation checked only
+the threshold TARGETED at 80% deco rejection (79.3% = 69/87, a discretization miss)
+instead of asking whether ANY operating point satisfies the frozen rule. One row
+down: p=0.020 rejects 89.7% of decoration FPs at 0.00% true-gate loss (0/233 clean
+positives; 95% CI upper ~1.6%, inside the <=2% rule). The frozen rule as WRITTEN
+("deploy only if >=80% deco rejected at <=2% true-gate loss") is satisfied with
+margin. ACCEPT. Operating point p=0.020, one step below the edge on purpose.
+
+Bonus: the predicted-corner-error output catches 100% of >10 px catastrophes at a
+5% flag rate on head-unseen val (n=5 small; 85.7%->100% by 15% flags on the 1352-
+instance diagnostic set) vs the PnP residual's 84% at 12.6%. Flight stack now has
+three independent rejectors: interior colour, PnP residual, learned confidence.
+
+Meta-lesson, same family as the leakage audit: a frozen rule protects nothing if
+the CODE checking it paraphrases it. The check must quantify over operating points
+exactly as the rule text does.
+
+## 2026-08-02: rotation augmentation ACCEPT -- production is colab-v3-rot
+
+Same-split cross-eval (labels_merged_v3, no leakage possible) AND clean subset agree:
+clipped 3.15 -> 2.87 (clean 2.61 -> 2.26, best posted), >=120 13.09 -> 12.66,
+60-120 clean p90 8.67 -> 7.59; every other row within +-0.1 px noise. Camera-roll
+augmentation (+-23.1 deg exact homography about the tile centre, gatenet_rotaug.py)
+was the single variable. Checkpoint gatenet_runs/colab-v3-rot/best.pt (copied local).
+
+PAIRING NOTE: the colab-conf confidence head was trained FROZEN on the colab-v3-nw
+trunk. Its calibration is invalid on rot features. Until the head is retrained with
+CKPT=colab-v3-rot (one config change, ~1 h), confidence scoring requires the nw trunk;
+do not attach the existing head to rot.
+
+## 2026-08-02: colab-conf-rot ACCEPT at p=0.082 (same verdict-line bug, same correction)
+
+Head retrained frozen on the colab-v3-rot trunk (production pairing). Notebook again
+printed REJECT by checking only the 80%-target row (79.3%); the 90% row satisfies the
+frozen rule with margin: 89.7% deco rejected at 0.00% clean-gate loss. ACCEPT,
+operating point p=0.082. AUC 0.9989/0.9992.
+
+Catastrophe channel: 5/6 caught on head-unseen val at any flag rate (one stubborn
+miss); diagnostic set 92.1% @ 5% flags but plateaus 93.7% (nw head reached 100% by
+15%). Operational read: decoration rejection excellent, catastrophe channel ~PnP-
+grade; it deploys LAYERED with the PnP residual + interior-colour test, so the miss
+has independent backstops. Deployed pair: colab-v3-rot trunk + colab-conf-rot head.

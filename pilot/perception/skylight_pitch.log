@@ -1,0 +1,12 @@
+==============================================================================
+FLOOR-GRID ALIGNMENT (yellow floor lines vs light grid, mod 90):
+  n=272 frames: median +0.32 deg, MAD 2.72, p90(|.|) 28.97
+==============================================================================
+GRID SPACING in units of ceiling height H (strafe session):
+  axis 0: spacing/H = 0.3403   (n=431)
+  axis 1: spacing/H = 0.5666   (n=421)
+==============================================================================
+CEILING HEIGHT H above camera, gate-PnP vs light-motion (strafe):
+  n=1493 frame pairs: H median 5.91 m, MAD 4.52, p10 -5.24, p90 18.34
+  -> grid pitch axis 0: 2.01 m
+  -> grid pitch axis 1: 3.35 m

@@ -1,0 +1,8 @@
+{
+  "//": "Shared project settings — tracked in git deliberately, so they apply to ANYONE who clones this repo, not just Claire's laptop. Per-machine overrides go in .claude/settings.local.json, which is gitignored.",
+
+  "//bgIsolation": "Background agents edit THIS working tree directly instead of each getting its own git worktree that must later be merged back. Set 2026-08-03 after a merge on a borrowed machine silently dropped the noise model, some of the controls, and quietly adjusted difficulty parameters — nobody noticed for hours, and any gate-pass-rate number measured in between was measured on a different problem than the one intended. The trade is deliberate: without worktrees, two agents writing the same file can collide, but a collision is LOUD and immediate, whereas a bad merge is silent and discovered late. Given agents here are run on separate concerns, loud-and-immediate is the better failure. Note this only governs BACKGROUND agents; foreground subagents already edit in place unless explicitly launched with worktree isolation.",
+  "worktree": {
+    "bgIsolation": "none"
+  }
+}

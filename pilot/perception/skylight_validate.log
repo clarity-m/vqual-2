@@ -1,0 +1,75 @@
+==============================================================================
+(a) STATIC CHECK: heading constancy over marker hovers
+  44858-vqual2-lap-pausing marker  0: n= 45  p-p  1.73 deg  std 0.36 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  1: n= 45  p-p  4.12 deg  std 1.03 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  2: n= 45  p-p  0.63 deg  std 0.11 deg
+  44858-vqual2-lap-pausing marker  3: n= 45  p-p  3.27 deg  std 0.52 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  4: n= 45  p-p  6.26 deg  std 1.21 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  5: n= 45  p-p  1.35 deg  std 0.28 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  6: n= 45  p-p  2.06 deg  std 0.42 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  7: n= 45  p-p  1.12 deg  std 0.27 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  8: n= 45  p-p  1.72 deg  std 0.34 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker  9: n= 45  p-p  1.74 deg  std 0.36 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 10: n= 45  p-p  5.25 deg  std 1.15 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 11: n= 45  p-p  2.30 deg  std 0.49 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 12: n= 45  p-p  1.55 deg  std 0.34 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 13: n= 45  p-p  0.90 deg  std 0.18 deg
+  44858-vqual2-lap-pausing marker 14: n= 45  p-p  1.40 deg  std 0.28 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 15: n= 45  p-p  1.53 deg  std 0.41 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 16: n= 45  p-p  2.84 deg  std 0.51 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 17: n= 45  p-p  1.03 deg  std 0.22 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 18: n= 45  p-p  3.09 deg  std 0.64 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 19: n= 45  p-p  2.08 deg  std 0.54 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 20: n= 45  p-p  0.93 deg  std 0.22 deg
+  44858-vqual2-lap-pausing marker 21: n= 45  p-p  1.03 deg  std 0.26 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 22: n= 45  p-p  2.53 deg  std 0.50 deg   <-- exceeds 1 deg
+  44858-vqual2-lap-pausing marker 23: n= 45  p-p  0.97 deg  std 0.23 deg
+  44858-vqual2-lap-pausing marker 24: n= 45  p-p  1.66 deg  std 0.39 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  0: n= 45  p-p  1.62 deg  std 0.35 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  1: n= 45  p-p  2.95 deg  std 0.54 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  2: n= 45  p-p  2.60 deg  std 0.67 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  3: n= 45  p-p  1.13 deg  std 0.32 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  4: n= 45  p-p  1.05 deg  std 0.25 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  5: n= 45  p-p  1.45 deg  std 0.31 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  6: n= 45  p-p  1.44 deg  std 0.38 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  7: n= 45  p-p  5.54 deg  std 0.96 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  8: n= 44  p-p  2.18 deg  std 0.45 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker  9: n= 45  p-p  1.41 deg  std 0.36 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker 10: n= 45  p-p  1.95 deg  std 0.58 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker 11: n= 45  p-p  0.46 deg  std 0.11 deg
+  5701-vq2-targeting-pairs marker 12: n= 44  p-p  0.63 deg  std 0.18 deg
+  5701-vq2-targeting-pairs marker 13: n= 45  p-p  1.03 deg  std 0.18 deg   <-- exceeds 1 deg
+  5701-vq2-targeting-pairs marker 14: n= 44  p-p 13.74 deg  std 4.73 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  0: n=120  p-p  4.99 deg  std 0.94 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  1: n=120  p-p  7.36 deg  std 1.53 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  2: n=120  p-p  2.50 deg  std 0.51 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  3: n=117  p-p 28.46 deg  std 4.72 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  4: n=120  p-p  2.18 deg  std 0.36 deg   <-- exceeds 1 deg
+  01-202110-vq2-23-67-1314 marker  5: n=120  p-p  3.24 deg  std 0.35 deg   <-- exceeds 1 deg
+  801-202923-vq2-1213-1214 marker  0: n=120  p-p  2.05 deg  std 0.34 deg   <-- exceeds 1 deg
+  801-202923-vq2-1213-1214 marker  1: n=120  p-p  1.68 deg  std 0.27 deg   <-- exceeds 1 deg
+  801-202923-vq2-1213-1214 marker  2: n=120  p-p  0.94 deg  std 0.16 deg
+  801-202923-vq2-1213-1214 marker  3: n=120  p-p  3.78 deg  std 0.64 deg   <-- exceeds 1 deg
+  801-202923-vq2-1213-1214 marker  4: n=120  p-p  2.12 deg  std 0.28 deg   <-- exceeds 1 deg
+  801-202923-vq2-1213-1214 marker  5: n=120  p-p  0.99 deg  std 0.20 deg
+  >> 52 marker windows: p-p median 1.73 deg (p90 5.22), std median 0.360 deg; 8/52 windows under 1 deg p-p
+==============================================================================
+(b) GYRO CHECK: d(heading)/dt vs gravity-projected canonical yaw rate
+  20260801-144858-vqual2-lap-pausing: 9617 confident frame pairs
+  corr(d psi_grid, d psi_gyro) = +0.4192   slope = +0.9492 (sign +1 confirmed)
+  RMS(frame-to-frame mismatch): 0.785 deg at offset 0; best offset -10 ms -> 0.784 deg
+  rotating subset (|rate| > 20 deg/s): RMS 0.933 deg over 269 pairs
+  plot -> C:\Users\USER\Projects\vqual-2\pilot\perception\vercheck\skylight_gyro_check.png
+==============================================================================
+(c1) ROTATION CHECK: a static gate's grid-frame azimuth while the nose sweeps
+  gate  5 @fid 28958: sweep  50.3 deg, n=193, range 26.9 m -> grid azimuth std  5.26 deg (p-p 18.30); wrong-sign std  24.50
+  >> 1 sweeps: grid-azimuth std median 5.26 deg; wrong-sign std median 24.50 deg
+==============================================================================
+(c2) MAP CHECK: co-visible pair angular separation vs measured_pairs distance
+  pair  0-1 : n= 29  angle error median -4.91 deg  MAD 3.80
+  pair  1-2 : n=  3  angle error median -6.51 deg  MAD 1.49
+  pair  7-8 : n= 40  angle error median -2.53 deg  MAD 2.39
+  pair 10-11: n= 18  angle error median -1.74 deg  MAD 3.83
+  pair 11-12: n=  7  angle error median -0.29 deg  MAD 8.84
+  pair 14-15: n=  3  angle error median -0.39 deg  MAD 0.39
+  >> 100 pair-frames: |angle error| median 3.66 deg (p90 11.98) -- tests PnP + levelling, heading cancels; kept for honesty

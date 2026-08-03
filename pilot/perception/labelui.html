@@ -137,7 +137,8 @@
   <button id="btnexport">Export JSON <span class="muted">(S)</span></button>
   <span class="sp"></span>
   <span class="muted">zoom</span>
-  <input id="zoom" type="range" min="1" max="8" step="0.5" value="2.5" style="width:120px">
+  <input id="zoom" type="range" min="0.25" max="8" step="0.05" value="2.5" style="width:120px"
+         title="below 1x zooms OUT so far-outside amodal corners are reachable">
   <span id="zoomv" class="muted">2.5x</span>
   <input id="goto" type="number" min="1" step="1" placeholder="frame" title="jump to frame number">
   <button id="btnhelp">Keys (?)</button>
@@ -176,12 +177,21 @@
     <tr><td><kbd>Esc</kbd></td><td>abandon the quad in progress</td></tr>
     <tr><td><kbd>&rarr;</kbd> <kbd>D</kbd> / <kbd>&larr;</kbd> <kbd>A</kbd></td><td>next / previous frame (hold <kbd>Shift</kbd> for &plusmn;10)</td></tr>
     <tr><td><kbd>Space</kbd></td><td>next frame</td></tr>
-    <tr><td><kbd>N</kbd> / <kbd>P</kbd></td><td>next / previous UNREVIEWED frame</td></tr>
+    <tr><td><kbd>N</kbd> / <kbd>P</kbd> &nbsp; <kbd>PgDn</kbd> / <kbd>PgUp</kbd></td><td>next / previous UNREVIEWED frame</td></tr>
     <tr><td><kbd>Enter</kbd></td><td>mark this frame reviewed with no gates (verified negative)</td></tr>
+    <tr><td><kbd>R</kbd></td><td>mark this frame UNREVIEWED again &mdash; removes it from the file
+      entirely, as if never opened (the inverse of <kbd>Enter</kbd>). Confirms first if the frame
+      has labels, since they are discarded.</td></tr>
     <tr><td><kbd>O</kbd> <kbd>C</kbd> <kbd>U</kbd></td><td>toggle occluded / clipped / unsure. Applies to the selected quad; while a quad is in progress it arms the flag for that quad instead.</td></tr>
     <tr><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>select next / previous quad in this frame</td></tr>
+    <tr><td><kbd>Q</kbd></td><td>PnP snap: replace the selected quad's corners with the nearest exact square projection (gate is a known 1.5&nbsp;m square). With exactly 3 corners placed, solves the 4th instead (hollow dot until you touch it); 3 corners allow 2&ndash;4 valid squares, so press <kbd>Q</kbd> again to cycle the candidates and keep the one on the gate. Skip snapping when the thing you're labelling isn't a clean square in view &mdash; your clicks win.</td></tr>
+    <tr><td><kbd>Z</kbd></td><td>revert the last snap (one level)</td></tr>
     <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>move selected quad back / forward in z (later = in front)</td></tr>
-    <tr><td><kbd>+</kbd> / <kbd>-</kbd></td><td>zoom (or mouse wheel over the image)</td></tr>
+    <tr><td><kbd>+</kbd> / <kbd>-</kbd></td><td>zoom in / out (or mouse wheel over the image).
+      Above <kbd>1x</kbd> the step is 0.5, up to 12x. Below 1x it steps out through
+      <b>0.75x &rarr; 0.5x &rarr; 0.35x &rarr; 0.25x</b> &mdash; zoom OUT to reach amodal corners
+      that sit far outside the image; at 0.25x the whole clickable margin
+      (&plusmn;1400&nbsp;px around the frame) fits on screen at once.</td></tr>
     <tr><td><kbd>S</kbd></td><td>export JSON</td></tr>
     <tr><td><kbd>?</kbd> <kbd>H</kbd></td><td>this help</td></tr>
   </table>
@@ -189,6 +199,9 @@
     AMODAL: when a gate is hidden by another gate, by the cyan ribbon, or by the image
     edge, click where the corner WOULD be &mdash; including outside the image, on the grey
     margin. Those coordinates are stored unclamped. Flag it <kbd>O</kbd> and/or <kbd>C</kbd>.
+    For a frame-filling gate whose corners land far off the image, press <kbd>-</kbd> down to
+    0.5x or 0.25x first: the dashed white rectangle still marks the real 640&times;360 frame,
+    and the corner dots stay the same size on screen however far you zoom out.
     Winding is normalised for you (clockwise from the top-left corner), so click the four
     corners in any rotational order as long as you go around the quad, not across it &mdash;
     a quad that comes out crossed is drawn <span style="color:#ff5d5d">red with a "!"</span>.
@@ -201,9 +214,43 @@
 "use strict";
 /* ------------------------------------------------------------------ config */
 var IMG_W = 640, IMG_H = 360;      // nominal; overridden per image if different
-var MARGIN = 120;                  // image-pixels of blank margin on every side,
-                                   // so amodal clicks can land outside the frame
+var MARGIN = 1400;                 // image-pixels of blank margin on every side,
+                                   // so amodal clicks can land outside the frame.
+                                   // 120, then 260, were too small to LABEL WITH,
+                                   // which is a different question from whether the
+                                   // code was right: storage never clamps, but a
+                                   // corner more than MARGIN px outside is simply not
+                                   // clickable, and VQ2's near gates routinely put
+                                   // corners several hundred px out.
+                                   // WHY 1400: it is the largest margin that still
+                                   // fits ENTIRELY on a ~1400x800 CSS-px stage at the
+                                   // lowest zoom (0.25x). Height binds:
+                                   //   (360 + 2M)*0.25 <= 800  ->  M <= 1420
+                                   //   (640 + 2M)*0.25 <= 1400 ->  M <= 2480
+                                   // so 1400 (round, under the 1420 cap). Canvas at
+                                   // 0.25x is then 860 x 790 CSS px - the whole
+                                   // clickable region visible without scrolling.
+var MARGIN_MIN = 260;              // never LESS than the pre-2026-08-01 margin
+var CANVAS_BUDGET = 6000;          // px per canvas side we are willing to allocate.
+                                   // A constant MARGIN cannot work at both ends: at
+                                   // 12x, (640+2*1400)*12 = 41280 px exceeds the
+                                   // browser's max canvas dimension and the whole
+                                   // canvas goes blank. So the margin is the largest
+                                   // that fits the budget, floored at MARGIN_MIN so
+                                   // no zoom level is worse than it was before:
+                                   //   0.25x-1.7x  -> 1400 (budget not binding)
+                                   //   2.5x -> 880   3x -> 680
+                                   //   6x  -> 260   12x -> 260  (exactly as before)
+                                   // i.e. the full margin is there at every zoom
+                                   // level where you would actually place a corner
+                                   // hundreds of px outside the frame.
+                                   // Clickability only; stored corners are NEVER
+                                   // clamped at any zoom.
 var HIT_R = 9;                     // corner grab radius, in DISPLAY pixels
+var ZOOM_OUT_LEVELS = [0.25, 0.35, 0.5, 0.75];   // discrete zoom levels below 1x
+                                   // (1x = one image px per screen px). Below 1x the
+                                   // 0.25 quantisation used above 1x would give only
+                                   // 0.25/0.5/0.75, so the ladder is explicit.
 var LS_KEY = 'vqual2.labelui.v1';
 
 /* ------------------------------------------------------------------- state */
@@ -220,6 +267,15 @@ var cur = null;        // current HTMLImageElement (decoded)
 var cache = new Map(); // name -> {img, url}
 var mouseImg = null;   // cursor position in image px
 var dirty = false;     // changed since last export
+var lastSnap = null;   // {frame, qi, before} - one-level revert of the last snap (Z)
+var solvedMark = null; // {frame, qi, ci} - 4th corner placed by the solver, not
+                       // yet touched by the labeller; drawn hollow. Transient
+                       // only, never persisted.
+var solveCycle = null; // {frame, qi, three, cands, k} - the 3-corner problem has
+                       // 2-4 valid answers (intrinsic); Q cycles through them
+                       // while the solved corner is still hollow.
+var residCache = {};   // corners-string -> fit rms; residCacheN bounds its size
+var residCacheN = 0;
 
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 var stage = document.getElementById('stage');
@@ -262,6 +318,409 @@ function centroid(p){
   return [x/p.length, y/p.length];
 }
 function r2(v){ return Math.round(v*100)/100; }
+
+/* ------------------------------------------------------- PnP snap (math)  */
+// Pose of the known 1.5 m square gate aperture from its 4 (or 3) labelled image
+// corners, through the VQ2 pinhole (fx=fy=320, cx=320, cy=180, no distortion).
+// Homography from the square via normalised DLT -> pose extraction -> Gauss-
+// Newton on reprojection error. Verified against cv2.solvePnP(IPPE_SQUARE)+
+// RefineLM on generated vectors (uitest/pnp_vectors.json). Pure geometry: no
+// clamping anywhere, corners far outside the image are just numbers.
+var PNP = (function(){
+  var FXc = 320, FYc = 320, CXc = 320, CYc = 180, HALFm = 0.75;
+  var OBJ = [[-HALFm, HALFm, 0], [HALFm, HALFm, 0],
+             [HALFm, -HALFm, 0], [-HALFm, -HALFm, 0]];  // pnpsnap.py's order
+
+  function cross(a, b){
+    return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  }
+  function m3v(M, v){
+    return [M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],
+            M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],
+            M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]];
+  }
+  function m3m(A, B){
+    var C = [[0,0,0],[0,0,0],[0,0,0]];
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++)
+      C[i][j] = A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j];
+    return C;
+  }
+  function tr3(A){
+    return [[A[0][0],A[1][0],A[2][0]],[A[0][1],A[1][1],A[2][1]],[A[0][2],A[1][2],A[2][2]]];
+  }
+  function expso3(w){
+    var th = Math.sqrt(w[0]*w[0]+w[1]*w[1]+w[2]*w[2]);
+    if (th < 1e-12) return [[1,0,0],[0,1,0],[0,0,1]];
+    var a = [w[0]/th, w[1]/th, w[2]/th], c = Math.cos(th), s = Math.sin(th), C = 1-c;
+    return [
+      [c+a[0]*a[0]*C,      a[0]*a[1]*C-a[2]*s, a[0]*a[2]*C+a[1]*s],
+      [a[1]*a[0]*C+a[2]*s, c+a[1]*a[1]*C,      a[1]*a[2]*C-a[0]*s],
+      [a[2]*a[0]*C-a[1]*s, a[2]*a[1]*C+a[0]*s, c+a[2]*a[2]*C]];
+  }
+
+  // symmetric eigen (cyclic Jacobi); used for the DLT nullspace and conditioning
+  function jacobiEig(Ain, n){
+    var A = [], V = [], i, j, k;
+    for (i = 0; i < n; i++){
+      A.push(Ain[i].slice());
+      V.push([]);
+      for (j = 0; j < n; j++) V[i].push(i === j ? 1 : 0);
+    }
+    for (var sweep = 0; sweep < 60; sweep++){
+      var off = 0;
+      for (i = 0; i < n; i++) for (j = i+1; j < n; j++) off += A[i][j]*A[i][j];
+      if (off < 1e-26) break;
+      for (i = 0; i < n-1; i++) for (j = i+1; j < n; j++){
+        if (Math.abs(A[i][j]) < 1e-30) continue;
+        var th = (A[j][j]-A[i][i]) / (2*A[i][j]);
+        var t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th*th+1));
+        var c = 1/Math.sqrt(t*t+1), s = t*c;
+        for (k = 0; k < n; k++){
+          var aik = A[i][k], ajk = A[j][k];
+          A[i][k] = c*aik - s*ajk; A[j][k] = s*aik + c*ajk;
+        }
+        for (k = 0; k < n; k++){
+          var aki = A[k][i], akj = A[k][j];
+          A[k][i] = c*aki - s*akj; A[k][j] = s*aki + c*akj;
+          var vki = V[k][i], vkj = V[k][j];
+          V[k][i] = c*vki - s*vkj; V[k][j] = s*vki + c*vkj;
+        }
+      }
+    }
+    var vals = [];
+    for (i = 0; i < n; i++) vals.push(A[i][i]);
+    return {vals: vals, vecs: V};
+  }
+
+  function solveLin(A, b, n){          // gaussian elimination, partial pivot
+    var M = [], i, j, k;
+    for (i = 0; i < n; i++) M.push(A[i].concat([b[i]]));
+    for (i = 0; i < n; i++){
+      var p = i;
+      for (j = i+1; j < n; j++) if (Math.abs(M[j][i]) > Math.abs(M[p][i])) p = j;
+      if (Math.abs(M[p][i]) < 1e-14) return null;
+      var tmp = M[i]; M[i] = M[p]; M[p] = tmp;
+      for (j = i+1; j < n; j++){
+        var f = M[j][i] / M[i][i];
+        for (k = i; k <= n; k++) M[j][k] -= f * M[i][k];
+      }
+    }
+    var x = new Array(n);
+    for (i = n-1; i >= 0; i--){
+      var s = M[i][n];
+      for (j = i+1; j < n; j++) s -= M[i][j]*x[j];
+      x[i] = s / M[i][i];
+    }
+    return x;
+  }
+
+  // homography objXY (metres) -> image px, normalised DLT, exact for 4 points
+  function dlt(objXY, img){
+    function normT(pts){
+      var mx = 0, my = 0, i;
+      for (i = 0; i < pts.length; i++){ mx += pts[i][0]; my += pts[i][1]; }
+      mx /= pts.length; my /= pts.length;
+      var d = 0;
+      for (i = 0; i < pts.length; i++)
+        d += Math.hypot(pts[i][0]-mx, pts[i][1]-my);
+      d /= pts.length;
+      var s = d > 1e-12 ? Math.SQRT2/d : 1;
+      return {s: s, x: mx, y: my};
+    }
+    var To = normT(objXY), Ti = normT(img);
+    var A = [], i;
+    for (i = 0; i < 9; i++) A.push([0,0,0,0,0,0,0,0,0]);
+    for (i = 0; i < 4; i++){
+      var X = (objXY[i][0]-To.x)*To.s, Y = (objXY[i][1]-To.y)*To.s;
+      var u = (img[i][0]-Ti.x)*Ti.s,  v = (img[i][1]-Ti.y)*Ti.s;
+      var r1 = [-X, -Y, -1, 0, 0, 0, u*X, u*Y, u];
+      var r2 = [0, 0, 0, -X, -Y, -1, v*X, v*Y, v];
+      for (var a = 0; a < 9; a++) for (var b = 0; b < 9; b++)
+        A[a][b] += r1[a]*r1[b] + r2[a]*r2[b];
+    }
+    var e = jacobiEig(A, 9), bi = 0;
+    for (i = 1; i < 9; i++) if (e.vals[i] < e.vals[bi]) bi = i;
+    var h = [];
+    for (i = 0; i < 9; i++) h.push(e.vecs[i][bi]);
+    var Hn = [[h[0],h[1],h[2]],[h[3],h[4],h[5]],[h[6],h[7],h[8]]];
+    var TiInv = [[1/Ti.s, 0, Ti.x],[0, 1/Ti.s, Ti.y],[0, 0, 1]];
+    var ToM   = [[To.s, 0, -To.s*To.x],[0, To.s, -To.s*To.y],[0, 0, 1]];
+    return m3m(m3m(TiInv, Hn), ToM);
+  }
+
+  function poseFromH(H){
+    var Kinv = [[1/FXc, 0, -CXc/FXc],[0, 1/FYc, -CYc/FYc],[0, 0, 1]];
+    var M = m3m(Kinv, H);
+    var c1 = [M[0][0], M[1][0], M[2][0]];
+    var c2 = [M[0][1], M[1][1], M[2][1]];
+    var c3 = [M[0][2], M[1][2], M[2][2]];
+    var n1 = Math.hypot(c1[0], c1[1], c1[2]), n2 = Math.hypot(c2[0], c2[1], c2[2]);
+    if (n1 < 1e-12 || n2 < 1e-12) return null;
+    var lam = 2 / (n1 + n2), i;
+    var r1 = [c1[0]*lam, c1[1]*lam, c1[2]*lam];
+    var r2 = [c2[0]*lam, c2[1]*lam, c2[2]*lam];
+    var t  = [c3[0]*lam, c3[1]*lam, c3[2]*lam];
+    if (t[2] < 0){
+      for (i = 0; i < 3; i++){ r1[i] = -r1[i]; r2[i] = -r2[i]; t[i] = -t[i]; }
+    }
+    var r3 = cross(r1, r2);
+    var R = [[r1[0],r2[0],r3[0]],[r1[1],r2[1],r3[1]],[r1[2],r2[2],r3[2]]];
+    // Newton-Schulz to the nearest orthogonal matrix (seed only; GN fixes the rest)
+    for (i = 0; i < 8; i++){
+      var RtR = m3m(tr3(R), R);
+      var G = [[0,0,0],[0,0,0],[0,0,0]];
+      for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++)
+        G[a][b] = ((a === b ? 3 : 0) - RtR[a][b]) / 2;
+      R = m3m(R, G);
+    }
+    return {R: R, t: t};
+  }
+
+  function projPose(R, t, obj){
+    var out = [];
+    for (var i = 0; i < obj.length; i++){
+      var P = m3v(R, obj[i]);
+      P = [P[0]+t[0], P[1]+t[1], P[2]+t[2]];
+      if (P[2] < 1e-6) return null;
+      out.push([CXc + FXc*P[0]/P[2], CYc + FYc*P[1]/P[2]]);
+    }
+    return out;
+  }
+
+  function rmsOf(proj, obs){
+    var s = 0, n = obs.length;
+    for (var i = 0; i < n; i++){
+      var dx = proj[i][0]-obs[i][0], dy = proj[i][1]-obs[i][1];
+      s += dx*dx + dy*dy;
+    }
+    return Math.sqrt(s / (2*n));
+  }
+
+  // Gauss-Newton on reprojection error; 6-DOF pose, n=3 or 4 points
+  function gn(R, t, obj, obs, iters){
+    R = [R[0].slice(), R[1].slice(), R[2].slice()];
+    t = t.slice();
+    var n = obs.length, JtJ = null;
+    for (var it = 0; it < iters; it++){
+      JtJ = [];
+      var Jtr = [0,0,0,0,0,0], i, a, b;
+      for (i = 0; i < 6; i++) JtJ.push([0,0,0,0,0,0]);
+      var bad = false;
+      for (i = 0; i < n; i++){
+        var Y = m3v(R, obj[i]);
+        var P = [Y[0]+t[0], Y[1]+t[1], Y[2]+t[2]];
+        if (P[2] < 1e-6){ bad = true; break; }
+        var iz = 1/P[2];
+        var ru = CXc + FXc*P[0]*iz - obs[i][0];
+        var rv = CYc + FYc*P[1]*iz - obs[i][1];
+        var du = [FXc*iz, 0, -FXc*P[0]*iz*iz];
+        var dv = [0, FYc*iz, -FYc*P[1]*iz*iz];
+        // dP/dw = -[Y]x  (left perturbation), dP/dt = I
+        var Ju = [ du[1]*(-Y[2]) + du[2]*Y[1] - 0,
+                   du[0]*Y[2] - du[2]*Y[0],
+                   du[0]*(-Y[1]) + du[1]*Y[0],
+                   du[0], du[1], du[2] ];
+        var Jv = [ dv[1]*(-Y[2]) + dv[2]*Y[1],
+                   dv[0]*Y[2] - dv[2]*Y[0],
+                   dv[0]*(-Y[1]) + dv[1]*Y[0],
+                   dv[0], dv[1], dv[2] ];
+        for (a = 0; a < 6; a++){
+          Jtr[a] += Ju[a]*ru + Jv[a]*rv;
+          for (b = 0; b < 6; b++) JtJ[a][b] += Ju[a]*Ju[b] + Jv[a]*Jv[b];
+        }
+      }
+      if (bad) return null;
+      for (a = 0; a < 6; a++) JtJ[a][a] += 1e-10;
+      var neg = [];
+      for (a = 0; a < 6; a++) neg.push(-Jtr[a]);
+      var d = solveLin(JtJ, neg, 6);
+      if (!d) return null;
+      R = m3m(expso3([d[0], d[1], d[2]]), R);
+      t = [t[0]+d[3], t[1]+d[4], t[2]+d[5]];
+      var nd = 0;
+      for (a = 0; a < 6; a++) nd += d[a]*d[a];
+      if (nd < 1e-24) break;
+    }
+    var proj = projPose(R, t, obj);
+    if (!proj) return null;
+    var e = jacobiEig(JtJ, 6);
+    var lmax = Math.max.apply(null, e.vals), lmin = Math.min.apply(null, e.vals);
+    return {R: R, t: t, proj: proj, rms: rmsOf(proj, obs),
+            cond: lmin > 0 ? Math.sqrt(lmax/lmin) : Infinity};
+  }
+
+  // the planar two-fold ambiguity twin: reflect the plane normal about the ray
+  // to the target centre, rotate the pose accordingly, and let GN re-converge
+  function twinSeed(R, t){
+    var nrm = [R[0][2], R[1][2], R[2][2]];
+    var d = Math.hypot(t[0], t[1], t[2]);
+    if (d < 1e-9) return null;
+    var v = [t[0]/d, t[1]/d, t[2]/d];
+    var nd = nrm[0]*v[0] + nrm[1]*v[1] + nrm[2]*v[2];
+    var n2 = [2*nd*v[0]-nrm[0], 2*nd*v[1]-nrm[1], 2*nd*v[2]-nrm[2]];
+    var ax = cross(nrm, n2);
+    var na = Math.hypot(ax[0], ax[1], ax[2]);
+    if (na < 1e-9) return null;
+    var dot = Math.max(-1, Math.min(1, nrm[0]*n2[0]+nrm[1]*n2[1]+nrm[2]*n2[2]));
+    var ang = Math.atan2(na, dot);
+    var Rr = expso3([ax[0]/na*ang, ax[1]/na*ang, ax[2]/na*ang]);
+    return {R: m3m(Rr, R), t: t.slice()};
+  }
+
+  // fit the square's pose to 4 image corners; proj is index-aligned with img.
+  // Tries both object windings (a mirrored click order is a relabelling the
+  // square's symmetry absorbs) and the planar twin, keeps the lowest residual.
+  function fitSquare(img){
+    var orders = [[0,1,2,3], [0,3,2,1]];
+    var best = null;
+    for (var oi = 0; oi < orders.length; oi++){
+      var obj = [], objXY = [], i;
+      for (i = 0; i < 4; i++){
+        obj.push(OBJ[orders[oi][i]]);
+        objXY.push([OBJ[orders[oi][i]][0], OBJ[orders[oi][i]][1]]);
+      }
+      var seed;
+      try { seed = poseFromH(dlt(objXY, img)); } catch (e) { seed = null; }
+      if (!seed) continue;
+      var cands = [seed], tw = twinSeed(seed.R, seed.t);
+      if (tw) cands.push(tw);
+      for (i = 0; i < cands.length; i++){
+        var f = gn(cands[i].R, cands[i].t, obj, img, 25);
+        if (f && (!best || f.rms < best.rms)) best = f;
+      }
+    }
+    return best;   // {R,t,proj,rms,cond} or null
+  }
+
+  // ---- 4th corner from 3 clicked corners of the square ----
+  // Clicked CONSECUTIVELY around the quad (the middle click is the corner
+  // adjacent to both others; either direction is fine). Exact algebra, not
+  // iteration: with unit rays a,b,c to corners A,B,C and depths al,be,ga,
+  // |AB|=|BC|=s and AB.BC=0. In x=al/be, y=ga/be:
+  //    f1:  xy(a.c) - x(a.b) - y(b.c) + 1 = 0     (right angle)
+  //    f2:  x^2 - 2x(a.b) = y^2 - 2y(b.c)         (equal sides)
+  // Eliminating y gives a QUARTIC in x -> up to 4 poses. This ambiguity is
+  // INTRINSIC (verified against ground truth in uitest/probe3.py: normally 2,
+  // sometimes 4, positive-depth solutions whose 4th corners sit px-to-tens-of-
+  // px apart, the true one always among them to ~1e-5 px). No solver can pick
+  // one without seeing the image, so we return ALL candidates, sorted by
+  // closeness to the affine (parallelogram) completion; the UI places the
+  // first and lets the labeller cycle. 4th corner in 3D: D = A + C - B.
+  function cmul(p, q){ return [p[0]*q[0]-p[1]*q[1], p[0]*q[1]+p[1]*q[0]]; }
+  function cdiv(p, q){
+    var d = q[0]*q[0] + q[1]*q[1];
+    return [(p[0]*q[0]+p[1]*q[1])/d, (p[1]*q[0]-p[0]*q[1])/d];
+  }
+  function polyRoots(co){                 // ascending real coeffs -> complex roots
+    var n = co.length - 1;
+    while (n > 0 && Math.abs(co[n]) < 1e-13 * Math.abs(co[0] || 1)) n--;
+    if (n < 1) return [];
+    var a = [], i, j;
+    for (i = 0; i <= n; i++) a.push(co[i] / co[n]);
+    var r = [];                            // Durand-Kerner from (0.4+0.9i)^k
+    var seed = [0.4, 0.9], p = [1, 0];
+    for (i = 0; i < n; i++){ p = cmul(p, seed); r.push(p.slice()); }
+    for (var it = 0; it < 200; it++){
+      var moved = 0;
+      for (i = 0; i < n; i++){
+        var f = [a[n], 0];
+        for (j = n - 1; j >= 0; j--)
+          f = [f[0]*r[i][0] - f[1]*r[i][1] + a[j], f[0]*r[i][1] + f[1]*r[i][0]];
+        var den = [1, 0];
+        for (j = 0; j < n; j++){
+          if (j === i) continue;
+          den = cmul(den, [r[i][0]-r[j][0], r[i][1]-r[j][1]]);
+        }
+        var d = cdiv(f, den);
+        r[i] = [r[i][0]-d[0], r[i][1]-d[1]];
+        moved = Math.max(moved, Math.abs(d[0]) + Math.abs(d[1]));
+      }
+      if (moved < 1e-14) break;
+    }
+    return r;
+  }
+  function ray(p){
+    var v = [(p[0]-CXc)/FXc, (p[1]-CYc)/FYc, 1];
+    var n = Math.hypot(v[0], v[1], v[2]);
+    return [v[0]/n, v[1]/n, v[2]/n];
+  }
+  function solve4th(p3){
+    var area = Math.abs((p3[1][0]-p3[0][0])*(p3[2][1]-p3[0][1])
+                      - (p3[2][0]-p3[0][0])*(p3[1][1]-p3[0][1])) / 2;
+    if (!(area > 4)) return {err: 'corners nearly collinear'};
+    var s = 2*HALFm;
+    var a = ray(p3[0]), b = ray(p3[1]), c = ray(p3[2]);
+    var ab = a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+    var bc = b[0]*c[0]+b[1]*c[1]+b[2]*c[2];
+    var ac = a[0]*c[0]+a[1]*c[1]+a[2]*c[2];
+    // poly(x) = (x^2 - 2ab x)(ac x - bc)^2 - (ab x - 1)^2 + 2 bc (ab x - 1)(ac x - bc)
+    function pmul(u, v){
+      var o = [], i, j;
+      for (i = 0; i < u.length + v.length - 1; i++) o.push(0);
+      for (i = 0; i < u.length; i++) for (j = 0; j < v.length; j++)
+        o[i+j] += u[i]*v[j];
+      return o;
+    }
+    function padd(u, v, sgn){
+      var o = [], n = Math.max(u.length, v.length);
+      for (var i = 0; i < n; i++) o.push((u[i]||0) + sgn*(v[i]||0));
+      return o;
+    }
+    var num = [-1, ab];                       // ab x - 1
+    var den = [-bc, ac];                      // ac x - bc
+    var lhs = pmul([0, -2*ab, 1], pmul(den, den));
+    var rhs = padd(pmul(num, num), pmul(pmul([2*bc], num), den), -1);
+    var poly = padd(lhs, rhs, -1);
+    var roots = polyRoots(poly);
+    var affine = [p3[0][0]+p3[2][0]-p3[1][0], p3[0][1]+p3[2][1]-p3[1][1]];
+    var cands = [], i;
+    for (i = 0; i < roots.length; i++){
+      if (Math.abs(roots[i][1]) > 1e-6 * Math.max(1, Math.abs(roots[i][0]))) continue;
+      var x = roots[i][0];
+      // Newton-polish the real root
+      for (var np = 0; np < 6; np++){
+        var f = 0, fp = 0, k;
+        for (k = poly.length - 1; k >= 0; k--){ fp = fp*x + f; f = f*x + poly[k]; }
+        if (Math.abs(fp) < 1e-18) break;
+        x -= f/fp;
+      }
+      var dd = x*ac - bc;
+      if (Math.abs(dd) < 1e-12) continue;
+      var y = (x*ab - 1) / dd;
+      if (!(x > 0) || !(y > 0)) continue;
+      var u = [x*a[0]-b[0], x*a[1]-b[1], x*a[2]-b[2]];
+      var be = s / Math.hypot(u[0], u[1], u[2]);
+      var A = [x*be*a[0], x*be*a[1], x*be*a[2]];
+      var B = [be*b[0], be*b[1], be*b[2]];
+      var C = [y*be*c[0], y*be*c[1], y*be*c[2]];
+      // verify the constraints truly hold (kills spurious/duplicated roots)
+      var e1 = Math.abs(Math.hypot(A[0]-B[0], A[1]-B[1], A[2]-B[2]) - s);
+      var e2 = Math.abs(Math.hypot(C[0]-B[0], C[1]-B[1], C[2]-B[2]) - s);
+      var e3 = Math.abs((A[0]-B[0])*(C[0]-B[0]) + (A[1]-B[1])*(C[1]-B[1])
+                      + (A[2]-B[2])*(C[2]-B[2]));
+      if (Math.max(e1, e2, e3) > 1e-4) continue;
+      if (Math.min(A[2], B[2], C[2]) <= 0.05) continue;
+      var D = [A[0]+C[0]-B[0], A[1]+C[1]-B[1], A[2]+C[2]-B[2]];
+      if (D[2] <= 0.05) continue;
+      var p4 = [CXc + FXc*D[0]/D[2], CYc + FYc*D[1]/D[2]];
+      if (!isFinite(p4[0]) || !isFinite(p4[1]) || Math.abs(p4[0]) > 1e5
+          || Math.abs(p4[1]) > 1e5) continue;
+      if (!isConvex([p3[0], p3[1], p3[2], p4])) continue;
+      var dup = false;
+      for (var j = 0; j < cands.length; j++)
+        if (Math.hypot(cands[j][0]-p4[0], cands[j][1]-p4[1]) < 0.05) dup = true;
+      if (!dup) cands.push(p4);
+    }
+    if (!cands.length) return {err: 'no valid square pose from these 3 corners'};
+    cands.sort(function(u2, v2){
+      return Math.hypot(u2[0]-affine[0], u2[1]-affine[1])
+           - Math.hypot(v2[0]-affine[0], v2[1]-affine[1]);
+    });
+    return {cands: cands};
+  }
+
+  return {fitSquare: fitSquare, solve4th: solve4th};
+})();
 
 /* ------------------------------------------------------------- label store */
 function name(){ return files.length ? files[idx].name : null; }
@@ -362,6 +821,7 @@ function acceptFiles(fl){
   arr.sort(function(a,b){ return a.path < b.path ? -1 : a.path > b.path ? 1 : 0; });
   if (!arr.length){ toast('no images in that selection'); return; }
   files = arr;
+  needCenter = true;                 // first real image: put it in the viewport
   if (idx >= files.length) idx = 0;
   document.getElementById('fcount').textContent = files.length;
   document.getElementById('goto').max = files.length;
@@ -432,19 +892,48 @@ function nextUnreviewed(dir){
 }
 
 /* ------------------------------------------------------------- transform  */
-function toDispX(x){ return (x + MARGIN) * scale; }
-function toDispY(y){ return (y + MARGIN) * scale; }
+// Effective margin at the current zoom: MARGIN, shrunk only where a canvas that
+// big would blow the per-side budget, and never below MARGIN_MIN. Pure function
+// of (scale, imgW, imgH), so every consumer in one frame agrees.
+function margin(){
+  var fit = Math.min((CANVAS_BUDGET/scale - imgW)/2, (CANVAS_BUDGET/scale - imgH)/2);
+  return Math.round(Math.min(MARGIN, Math.max(MARGIN_MIN, fit)));
+}
+function toDispX(x){ return (x + margin()) * scale; }
+function toDispY(y){ return (y + margin()) * scale; }
 function toImg(ev){
   var r = cv.getBoundingClientRect();
   var px = (ev.clientX - r.left) * (cv.width / r.width);
   var py = (ev.clientY - r.top)  * (cv.height / r.height);
-  return [px/scale - MARGIN, py/scale - MARGIN];
+  var m = margin();
+  return [px/scale - m, py/scale - m];
 }
+var needCenter = true;             // centre the view on the image once, at load
 function resize(){
-  cv.width  = Math.round((imgW + 2*MARGIN) * scale);
-  cv.height = Math.round((imgH + 2*MARGIN) * scale);
+  var m = margin();
+  cv.width  = Math.round((imgW + 2*m) * scale);
+  cv.height = Math.round((imgH + 2*m) * scale);
   cv.style.width  = cv.width + 'px';
   cv.style.height = cv.height + 'px';
+  if (needCenter){ needCenter = false; centerOn([imgW/2, imgH/2]); }
+}
+// The image is a small island in a big margin now, so scroll has to be managed:
+// without this, opening a folder at 2.5x shows nothing but grey.
+function stageCenterImg(){
+  var r = cv.getBoundingClientRect(), s = stage.getBoundingClientRect();
+  var m = margin();
+  // When the canvas is SMALLER than the stage on an axis it cannot scroll and sits
+  // pinned at the origin, so the middle of the stage is not the middle of anything -
+  // at 0.25x it lands in the empty area to the right of the canvas, and zooming back
+  // in would then re-centre on a point 1300 px outside the image (the image vanishes).
+  var cx = s.width  >= r.width  ? r.width /2 : s.left + s.width /2 - r.left;
+  var cy = s.height >= r.height ? r.height/2 : s.top  + s.height/2 - r.top;
+  return [cx/scale - m, cy/scale - m];
+}
+function centerOn(p){
+  var s = stage.getBoundingClientRect();
+  stage.scrollLeft = toDispX(p[0]) - s.width/2;
+  stage.scrollTop  = toDispY(p[1]) - s.height/2;
 }
 
 /* ----------------------------------------------------------------- render */
@@ -455,11 +944,19 @@ function draw(){
   ctx.fillRect(0, 0, cv.width, cv.height);
   if (cur) ctx.drawImage(cur, toDispX(0), toDispY(0), imgW*scale, imgH*scale);
 
-  // image boundary
-  ctx.strokeStyle = 'rgba(255,255,255,.45)';
-  ctx.lineWidth = 1;
+  // Image boundary. Below 1x the real 640x360 frame is a small island in a large
+  // grey margin, so it gets a dark backing stroke plus a brighter, thicker dashed
+  // line: everything here is in SCREEN px, so it does not shrink with the image.
+  var bx = toDispX(0), by = toDispY(0), bw = imgW*scale, bh = imgH*scale;
+  if (scale < 1){
+    ctx.strokeStyle = 'rgba(0,0,0,.8)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(bx-2, by-2, bw+4, bh+4);
+  }
+  ctx.strokeStyle = scale < 1 ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.45)';
+  ctx.lineWidth = scale < 1 ? 2 : 1;
   ctx.setLineDash([5,4]);
-  ctx.strokeRect(toDispX(0)+.5, toDispY(0)+.5, imgW*scale-1, imgH*scale-1);
+  ctx.strokeRect(bx+.5, by+.5, bw-1, bh-1);
   ctx.setLineDash([]);
 
   var a = list();
@@ -497,7 +994,11 @@ function drawQuad(q, i, isSel){
   ctx.closePath();
   ctx.stroke();
   ctx.setLineDash([]);
-  for (var m = 0; m < 4; m++) dot(q.corners[m], String(m), col);
+  for (var m = 0; m < 4; m++){
+    var hollow = solvedMark && solvedMark.frame === name() &&
+                 solvedMark.qi === i && solvedMark.ci === m;
+    dot(q.corners[m], String(m), col, hollow);
+  }
 
   var c = centroid(q.corners);
   var tag = (bad ? '! ' : '') + 'z' + q.z +
@@ -510,17 +1011,54 @@ function drawQuad(q, i, isSel){
   ctx.fillRect(toDispX(c[0]) - w/2, toDispY(c[1]) - 8, w, 16);
   ctx.fillStyle = col;
   ctx.fillText(tag, toDispX(c[0]), toDispY(c[1]));
+
+  // live PnP residual: how far these 4 corners sit from the nearest realizable
+  // square projection. A silent mis-click detector; display only, never blocks.
+  if (!bad){
+    var rr = quadResidual(q.corners);
+    if (rr !== null && isFinite(rr)){
+      var rtxt = rr.toFixed(2) + 'px';
+      ctx.font = '600 10px ui-monospace,Consolas,monospace';
+      var rw = ctx.measureText(rtxt).width + 6;
+      ctx.fillStyle = 'rgba(0,0,0,.62)';
+      ctx.fillRect(toDispX(c[0]) - rw/2, toDispY(c[1]) + 9, rw, 13);
+      ctx.fillStyle = residColor(rr);
+      ctx.fillText(rtxt, toDispX(c[0]), toDispY(c[1]) + 15.5);
+    }
+  }
 }
 
-function dot(p, txt, col){
+function residColor(r){
+  return r < 0.3 ? getCss('--sel') : r < 1 ? getCss('--accent') : getCss('--warn');
+}
+function quadResidual(cs){
+  var key = JSON.stringify(cs);
+  if (Object.prototype.hasOwnProperty.call(residCache, key)) return residCache[key];
+  var f = null;
+  try { f = PNP.fitSquare(cs); } catch (e) {}
+  if (residCacheN > 400){ residCache = {}; residCacheN = 0; }
+  residCache[key] = f ? f.rms : null;
+  residCacheN++;
+  return residCache[key];
+}
+
+function dot(p, txt, col, hollow){
   var X = toDispX(p[0]), Y = toDispY(p[1]);
   ctx.beginPath();
-  ctx.arc(X, Y, 4, 0, 6.284);
-  ctx.fillStyle = col;
-  ctx.fill();
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.arc(X, Y, hollow ? 5 : 4, 0, 6.284);
+  if (hollow){
+    ctx.fillStyle = '#15171c';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
   ctx.font = '600 11px ui-monospace,Consolas,monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
@@ -629,6 +1167,8 @@ function undo(){
   if (a.length){
     a.pop();
     sel = a.length - 1;
+    if (solvedMark && solvedMark.frame === name()) solvedMark = null;
+    if (lastSnap && lastSnap.frame === name()) lastSnap = null;
     changed();
     toast('deleted last quad');
   }
@@ -638,6 +1178,8 @@ function delSel(){
   if (sel < 0 || sel >= a.length) return;
   a.splice(sel, 1);
   sel = Math.min(sel, a.length - 1);
+  if (solvedMark && solvedMark.frame === name()) solvedMark = null;
+  if (lastSnap && lastSnap.frame === name()) lastSnap = null;
   changed();
   toast('deleted quad');
 }
@@ -655,6 +1197,8 @@ function restack(dir){
   if (j < 0 || j >= a.length) return;
   var t = a[sel]; a[sel] = a[j]; a[j] = t;
   sel = j;
+  if (solvedMark && solvedMark.frame === name()) solvedMark = null;
+  if (lastSnap && lastSnap.frame === name()) lastSnap = null;   // indices shifted
   changed();
 }
 function markEmpty(){
@@ -663,6 +1207,119 @@ function markEmpty(){
   ensure();
   changed();
   toast('frame marked reviewed');
+}
+// The inverse of Enter: remove the frame's KEY entirely, so it goes back to "never
+// looked at". Deleting the last quad leaves an empty array, which means the opposite
+// thing (reviewed, no gates) - there was no way back from that until now. Destructive
+// when the frame has quads, so that case confirms first.
+function markUnreviewed(){
+  var n = name();
+  if (!n) return;
+  if (!labels[n]){ toast('frame is already unreviewed'); return; }
+  if (labels[n].length &&
+      !confirm('Discard ' + labels[n].length + ' label(s) on this frame and mark it ' +
+               'UNREVIEWED (as if never opened)?')) return;
+  delete labels[n];
+  inProg = [];
+  pend = {occluded:false, clipped:false, unsure:false};
+  sel = -1;
+  if (solvedMark && solvedMark.frame === n) solvedMark = null;
+  if (lastSnap && lastSnap.frame === n) lastSnap = null;
+  dirty = true;
+  save();
+  draw();
+  refresh();
+  toast('frame marked UNREVIEWED - it will not appear in the export');
+}
+
+/* -------------------------------------------------------------- PnP snap  */
+// Q with a selected 4-corner quad: replace its corners with the nearest valid
+// square projection (pose fit + reproject). Q with exactly 3 corners placed:
+// solve the pose from those 3 and drop in the 4th (drawn hollow until touched).
+// Z: revert the last snap, one level. Purely additive; storage schema unchanged.
+function toastR(m, rms){
+  toast(m);
+  var t = document.getElementById('toast');
+  if (t) t.style.color = residColor(rms);
+  setTimeout(function(){ if (t) t.style.color = ''; }, 1900);
+}
+function nearestCi(q, p){
+  var bd = 0, bi = 0;
+  for (var i = 0; i < 4; i++){
+    var d = Math.hypot(q.corners[i][0] - p[0], q.corners[i][1] - p[1]);
+    if (i === 0 || d < bd){ bd = d; bi = i; }
+  }
+  return bi;
+}
+function doSnap(){
+  if (inProg.length === 3){                       // 4th-corner solve
+    var s = PNP.solve4th(inProg);
+    if (!s || s.err || !s.cands){ toast('4th corner: ' + (s && s.err ? s.err : 'solve failed')); return; }
+    var three = [inProg[0].slice(), inProg[1].slice(), inProg[2].slice()];
+    var p4 = [s.cands[0][0], s.cands[0][1]];
+    addCorner(p4);                                // completes + canonicalises the quad
+    var a0 = list();
+    if (a0.length){
+      var qi0 = a0.length - 1;
+      solvedMark = {frame: name(), qi: qi0, ci: nearestCi(a0[qi0], p4)};
+      solveCycle = {frame: name(), qi: qi0, three: three, cands: s.cands, k: 0};
+    }
+    toast(s.cands.length > 1
+      ? '4th corner: candidate 1/' + s.cands.length + ' - geometry allows several; Q cycles, pick the one on the gate'
+      : '4th corner solved (hollow dot; drag it to accept)');
+    draw();
+    return;
+  }
+  if (inProg.length){ toast('snap needs 3 or 4 corners (' + inProg.length + ' placed)'); return; }
+  // while the solver's 4th corner is still hollow, Q cycles the alternatives
+  if (solveCycle && solvedMark && solveCycle.frame === name() &&
+      solvedMark.frame === name() && solvedMark.qi === solveCycle.qi &&
+      solveCycle.cands.length > 1){
+    var aC = list(), qC = aC[solveCycle.qi];
+    // only if this is still the SAME quad: all 3 clicked corners must be present
+    var sameQuad = !!qC && solveCycle.three.every(function(p){
+      return qC.corners.some(function(cc){
+        return Math.abs(cc[0]-p[0]) < 1e-6 && Math.abs(cc[1]-p[1]) < 1e-6; });
+    });
+    if (!sameQuad){
+      solvedMark = null;                 // stale: fall through to a normal snap
+      solveCycle = null;
+    } else {
+      solveCycle.k = (solveCycle.k + 1) % solveCycle.cands.length;
+      var pC = solveCycle.cands[solveCycle.k];
+      qC.corners = canon([solveCycle.three[0], solveCycle.three[1],
+                          solveCycle.three[2], [pC[0], pC[1]]]);
+      solvedMark.ci = nearestCi(qC, pC);
+      changed();
+      toast('4th corner: candidate ' + (solveCycle.k + 1) + '/' + solveCycle.cands.length);
+      return;
+    }
+  }
+  var a = list();
+  var qi = (sel >= 0 && sel < a.length) ? sel : a.length - 1;
+  if (qi < 0){ toast('no quad to snap'); return; }
+  var q = a[qi];
+  if (!isConvex(q.corners)){ toast('quad is non-convex; fix the crossed corners first'); return; }
+  var f = null;
+  try { f = PNP.fitSquare(q.corners); } catch (e) {}
+  if (!f){ toast('snap failed: no valid pose'); return; }
+  lastSnap = {frame: name(), qi: qi, before: [
+    q.corners[0].slice(), q.corners[1].slice(),
+    q.corners[2].slice(), q.corners[3].slice()]};
+  q.corners = canon(f.proj);
+  if (solvedMark && solvedMark.frame === name() && solvedMark.qi === qi) solvedMark = null;
+  changed();
+  toastR('snapped; residual ' + f.rms.toFixed(2) + ' px (Z reverts)', f.rms);
+}
+function revertSnap(){
+  if (!lastSnap){ toast('nothing to revert'); return; }
+  if (lastSnap.frame !== name()){ toast('last snap was on ' + lastSnap.frame); return; }
+  var a = list();
+  if (lastSnap.qi >= a.length){ toast('snapped quad is gone'); lastSnap = null; return; }
+  a[lastSnap.qi].corners = canon(lastSnap.before);
+  lastSnap = null;
+  changed();
+  toast('snap reverted');
 }
 
 /* ----------------------------------------------------------------- mouse  */
@@ -704,6 +1361,9 @@ window.addEventListener('mouseup', function(){
     var a = list();
     var q = a[drag.qi];
     if (q) q.corners = canon(q.corners);   // re-normalise after a move
+    if (solvedMark && solvedMark.frame === name() && solvedMark.qi === drag.qi){
+      solvedMark = null;   // she touched the quad: solved corner is hers now
+    }
     drag = null;
     changed();
   }
@@ -713,19 +1373,49 @@ cv.addEventListener('contextmenu', function(ev){ ev.preventDefault(); undo(); })
 stage.addEventListener('wheel', function(ev){
   if (!files.length) return;
   ev.preventDefault();
-  var r = cv.getBoundingClientRect();
-  var ax = (ev.clientX - r.left) / scale, ay = (ev.clientY - r.top) / scale;  // in padded img px
+  var r = cv.getBoundingClientRect(), m = margin();
+  // anchor in IMAGE px, not padded-canvas px: the margin itself changes with zoom.
+  // Clamped to the canvas, so a wheel over the empty stage beside a small canvas
+  // cannot fling the view somewhere unreachable.
+  var ax = Math.max(-m, Math.min(imgW + m, (ev.clientX - r.left)/scale - m));
+  var ay = Math.max(-m, Math.min(imgH + m, (ev.clientY - r.top )/scale - m));
   setScale(scale * (ev.deltaY < 0 ? 1.25 : 0.8));
-  stage.scrollLeft = ax*scale - (ev.clientX - stage.getBoundingClientRect().left);
-  stage.scrollTop  = ay*scale - (ev.clientY - stage.getBoundingClientRect().top);
+  var s = stage.getBoundingClientRect();
+  stage.scrollLeft = toDispX(ax) - (ev.clientX - s.left);
+  stage.scrollTop  = toDispY(ay) - (ev.clientY - s.top);
 }, {passive:false});
 
+// Above 1x: quarter steps up to 12x, exactly as before. Below 1x: the explicit
+// ZOOM_OUT_LEVELS ladder. 0.875 is the midpoint of 0.75 and 1, so a continuous
+// input (wheel, slider) lands on the nearer of the two; ties inside the ladder go
+// to the LARGER level, which is what keeps wheel-up from stalling (0.5*1.25 =
+// 0.625 is equidistant from 0.5 and 0.75).
+function snapScale(s){
+  if (!isFinite(s)) return scale;
+  if (s >= 0.875) return Math.max(1, Math.min(12, Math.round(s*4)/4));
+  var best = ZOOM_OUT_LEVELS[0];
+  for (var i = 0; i < ZOOM_OUT_LEVELS.length; i++)
+    if (Math.abs(s - ZOOM_OUT_LEVELS[i]) <= Math.abs(s - best)) best = ZOOM_OUT_LEVELS[i];
+  return best;
+}
 function setScale(s){
-  scale = Math.max(1, Math.min(12, Math.round(s*4)/4));
+  var c = stageCenterImg();
+  scale = snapScale(s);
   resize();
+  centerOn(c);                       // keep the same image point under the centre
   draw();
   refresh();
   save();
+}
+// +/- : half steps at and above 1x (unchanged), one ladder rung below it.
+function stepScale(dir){
+  if (scale > 1 || (scale >= 1 && dir > 0)){ setScale(scale + dir*0.5); return; }
+  var lad = ZOOM_OUT_LEVELS.concat([1]), i = 0, bd = Infinity;
+  for (var k = 0; k < lad.length; k++){
+    var d = Math.abs(lad[k] - scale);
+    if (d < bd){ bd = d; i = k; }
+  }
+  setScale(lad[Math.max(0, Math.min(lad.length - 1, i + dir))]);
 }
 
 /* -------------------------------------------------------------- keyboard  */
@@ -746,8 +1436,9 @@ document.addEventListener('keydown', function(ev){
     case 'ArrowRight': case 'd': case 'D': goto_(idx + step); break;
     case ' ':                              goto_(idx + 1); break;
     case 'ArrowLeft':  case 'a': case 'A': goto_(idx - step); break;
-    case 'n': case 'N': nextUnreviewed(1); break;
-    case 'p': case 'P': nextUnreviewed(-1); break;
+    case 'n': case 'N': case 'PageDown': nextUnreviewed(1); break;
+    case 'p': case 'P': case 'PageUp':   nextUnreviewed(-1); break;
+    case 'r': case 'R': markUnreviewed(); break;
     case 'Backspace': undo(); break;
     case 'Delete': case 'x': case 'X': delSel(); break;
     case 'Escape':
@@ -763,10 +1454,12 @@ document.addEventListener('keydown', function(ev){
       if (a.length){ sel = ((sel + (ev.shiftKey ? -1 : 1)) % a.length + a.length) % a.length; refresh(); draw(); }
       break;
     }
+    case 'q': case 'Q': doSnap(); break;
+    case 'z': case 'Z': revertSnap(); break;
     case '[': restack(-1); break;
     case ']': restack(1); break;
-    case '+': case '=': setScale(scale + 0.5); break;
-    case '-': case '_': setScale(scale - 0.5); break;
+    case '+': case '=': stepScale(1); break;
+    case '-': case '_': stepScale(-1); break;
     case 's': case 'S': exportJson(); break;
     case '?': case 'h': case 'H': help.classList.toggle('show'); break;
     default: return;

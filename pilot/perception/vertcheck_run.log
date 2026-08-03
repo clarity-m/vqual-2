@@ -1,0 +1,53 @@
+  0/6303  t=0.0s gate=0 valid=True
+  300/6303  t=10.0s gate=0 valid=False
+  600/6303  t=20.0s gate=1 valid=True
+  900/6303  t=30.0s gate=0 valid=True
+  1200/6303  t=40.0s gate=2 valid=True
+  1500/6303  t=50.0s gate=3 valid=True
+  1800/6303  t=60.0s gate=4 valid=True
+  2100/6303  t=70.0s gate=5 valid=True
+  2400/6303  t=80.0s gate=6 valid=True
+  2700/6303  t=90.0s gate=7 valid=True
+  3000/6303  t=100.0s gate=8 valid=True
+  3300/6303  t=110.0s gate=9 valid=True
+  3600/6303  t=120.0s gate=10 valid=True
+  3900/6303  t=130.0s gate=10 valid=False
+  4200/6303  t=140.0s gate=10 valid=True
+  4500/6303  t=150.0s gate=11 valid=True
+  4800/6303  t=160.0s gate=12 valid=True
+  5100/6303  t=170.0s gate=12 valid=True
+  5400/6303  t=180.0s gate=14 valid=True
+  5700/6303  t=190.0s gate=15 valid=True
+  6000/6303  t=200.0s gate=15 valid=True
+  6300/6303  t=210.0s gate=0 valid=True
+
+== REPLAY 20260801-121520-vq2-lap-0-15: 6303 frames ==
+current gate valid: 90.2%   pose_valid: 50.6%   mean staleness (valid frames): 0.186 s   max coast gap: 2.50 s
+current range > map bound: 1.16% of 5686 checkable frames (66 frames)
+approach monotonicity (frac decreasing steps, 2 s pre-crossing, 17 crossings): median 0.93 min 0.83
+coast->reacquire misses (n=151, gap median 0.33 s): pos median 3.84 m p90 14.38 m | image median 6 px p90 206 px
+attitude_conf: overall median 0.88 | during |gyro|>1 rad/s (11% of frames) median 0.51 p10 0.00
+latency ms (median / p90 / n): detect 15.1/42.3/6303  net 23.1/40.1/4863  compass 37.0/57.0/631  pnp 7.0/14.9/6303  total 56.1/104.8/6303
+map frame anchor: s=-1 c=+173.3 deg (64 anchor obs)
+
+9081 ambiguous-pose observations with gravity available
+
+| gate | n | tilt0 med | tilt0 p90 | tilt0 max | n tilt0>10deg |
+|---:|---:|---:|---:|---:|---:|
+| 0 | 497 | 11.17 | 25.28 | 55.80 | 267 (54%) |
+| 1 | 604 | 9.13 | 42.32 | 84.93 | 289 (48%) |
+| 2 | 546 | 5.92 | 23.56 | 75.56 | 179 (33%) |
+| 3 | 365 | 4.88 | 16.57 | 48.14 | 67 (18%) |
+| 4 | 462 | 7.61 | 19.26 | 40.10 | 171 (37%) |
+| 5 | 585 | 4.92 | 11.30 | 29.25 | 77 (13%) |
+| 6 | 570 | 5.11 | 13.66 | 23.11 | 120 (21%) |
+| 7 | 712 | 6.01 | 18.96 | 35.83 | 179 (25%) |
+| 8 | 352 | 11.39 | 34.16 | 65.76 | 207 (59%) |
+| 9 | 599 | 13.34 | 21.81 | 83.26 | 353 (59%) |
+| 10 | 788 | 5.32 | 21.59 | 62.22 | 343 (44%) |
+| 11 | 203 | 8.76 | 68.56 | 77.60 | 86 (42%) |
+| 12 | 646 | 5.54 | 14.84 | 63.28 | 145 (22%) |
+| 13 | 793 | 3.51 | 12.30 | 45.53 | 126 (16%) |
+| 14 | 574 | 2.05 | 8.85 | 25.58 | 50 (9%) |
+| 15 | 541 | 4.71 | 14.33 | 57.59 | 100 (18%) |
+| 16 | 244 | 5.31 | 18.28 | 70.17 | 66 (27%) |

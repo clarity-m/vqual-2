@@ -99,7 +99,11 @@ from torch.utils.data import DataLoader, Dataset
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))          # repo root
 SESSIONS = os.path.join(ROOT, 'pilot', 'sessions')
-LABELS = os.path.join(HERE, 'autolabels_vq1.json')
+# LABEL FILE IS SWITCHABLE WITHOUT EDITING CODE: env var GATENET_LABELS, or --labels on
+# the CLI (which wins). Default is unchanged -- autolabels_vq1.json -- so every existing
+# invocation, cache fingerprint and notebook keeps meaning exactly what it meant.
+LABELS = os.path.abspath(os.environ.get('GATENET_LABELS')
+                         or os.path.join(HERE, 'autolabels_vq1.json'))
 RUNS = os.path.join(HERE, 'gatenet_runs')
 REPORT = os.path.join(HERE, 'TRAINING.md')
 
@@ -122,6 +126,52 @@ GUARD = 45               # 1.5 s of frames either side of a val block, dropped f
 SESSION_TRAIN = '20260731-195307'
 SESSION_VAL = '20260731-204841-vq1-lap-slow'
 SIZE_BANDS = ((0, 15), (15, 30), (30, 60), (60, 120), (120, 1e9))
+RATE_BANDS = ((0.0, 0.5), (0.5, 1.0), (1.0, 1e9))   # rad/s; see instance_weight()
+
+# ----------------------------------------------------------------------------------------
+# per-instance loss weight (--weight-mode rate; default 'none' leaves training IDENTICAL
+# to every run already in TRAINING.md)
+#
+# WHY: the auto-labels are projected through the pose stream, and NOTES.md ("Auto-label
+# error is rate-dependent, not per-gate", 2026-08-01) measured the label error itself:
+# ~1.0 px median below 0.2 rad/s body rate, 3.4 px above 1 rad/s, 4.0 px median / 11 px
+# p90 above 2 rad/s -- attitude interpolation/aliasing, not fixable after the fact. 21.6%
+# of v3 instances sit above 1 rad/s. Training on them at full weight teaches the net the
+# aliasing error as if it were geometry.
+#
+# THE CURVE: a raised-cosine ramp from 1.0 at 0.5 rad/s down to a 0.30 floor at 2.0 rad/s,
+# flat outside. Chosen because (a) the two anchors come straight from the measurement --
+# label error is flat below ~0.5 and plateaus by ~2; (b) the floor 0.30 is roughly the
+# inverse of the measured error RATIO (1.0 px / 3.4 px = 0.29), i.e. an inverse-error
+# weighting in spirit without pretending we know the variance well enough for 1/sigma^2
+# (which would say 0.09 and mostly delete 21.6% of the data); and (c) it is C1-smooth, so
+# no instance sits on a weight cliff where a tiny body_rate difference flips its gradient
+# contribution -- a step function would make the run sensitive to exactly the noisy
+# quantity we distrust.
+#
+# HAND LABELS (src == 'hand') GET 1.0 REGARDLESS OF body_rate: mechanism A is a
+# projection error and hand labels are drawn on the frame, so their error does not rise
+# with rate. A modest UPWEIGHT (1.5-2x) for hand labels was considered because they are
+# the only in-domain VQ2 data, and REJECTED for this run: the last label-change retrain
+# regressed for reasons never fully isolated, so this run changes ONE training variable
+# (rate down-weighting) and must stay diagnosable against the baseline; upweighting an
+# unknown-sized, probably-small hand set is a second variable and an lr raise on a few
+# hundred crops. If the cross-eval shows the hand-labelled bins are label-starved, the
+# upweight is a one-constant change (W_HAND below) for a later run.
+W_LO, W_HI, W_FLOOR, W_HAND = 0.5, 2.0, 0.30, 1.0
+
+
+def instance_weight(d):
+    """Loss weight for one label-index item. 1.0 everywhere for src='hand'."""
+    if d.get('src', 'auto') == 'hand':
+        return W_HAND
+    r = float(d.get('body_rate', 0.0))
+    if r <= W_LO:
+        return 1.0
+    if r >= W_HI:
+        return W_FLOOR
+    t = (r - W_LO) / (W_HI - W_LO)
+    return W_FLOOR + (1.0 - W_FLOOR) * 0.5 * (1.0 + math.cos(math.pi * t))
 
 
 # ---------------------------------------------------------------------------------------
@@ -155,6 +205,11 @@ def load_index():
                 'clipped': bool(inst['clipped']),
                 'occluded': bool(inst['occluded']),
                 'size_px': max(edges),
+                # v3 label fields, absent in older files -> harmless defaults. body_rate
+                # (rad/s) drives --weight-mode rate; src distinguishes VQ2 hand labels
+                # ('hand', via mergelabels.py) from projected VQ1 autos ('auto').
+                'src': inst.get('src', 'auto'),
+                'body_rate': float(inst.get('body_rate', 0.0)),
             })
     return out
 
@@ -414,6 +469,30 @@ def breakdown(res, items):
     # the comparable-to-detector subset: detect.py only ever reports these
     add('detector-comparable (unclipped, unoccluded, >=15 px)',
         (~clip) & (~occl) & (size >= 15))
+    # BY BODY RATE AND PROVENANCE (additive; rows with n=0 are simply absent, so old
+    # label files render the old table plus one all-instances rate row). Auto-label error
+    # is rate-dependent (NOTES.md 2026-08-01: ~1 px below 0.2 rad/s, 3.4 px above 1),
+    # so part of any "net error" in the >1 rad/s row is LABEL error, and the hand row is
+    # the only one whose ground truth does not carry that mechanism. These rows exist so
+    # that reading a table can separate the two, instead of arguing about it.
+    rate = np.array([float(items[i].get('body_rate', 0.0)) for i in idx])
+    src = np.array([items[i].get('src', 'auto') for i in idx])
+    for lo, hi in RATE_BANDS:
+        add(f'body_rate {lo:g}-{hi:g} rad/s' if hi < 1e8 else f'body_rate >{lo:g} rad/s',
+            (rate >= lo) & (rate < hi))
+    add('src auto', src == 'auto')
+    add('src hand (VQ2)', src == 'hand')
+
+    # `unsure` is Claire's own confidence flag, and it turned out to mark TWO populations:
+    # frame-filling clipped gates whose amodal corners are hard to place exactly (valuable
+    # -- the bucket the model is worst at) and small ambiguous specks (dubious). Splitting
+    # the row by size settles empirically whether keeping them helped, instead of deciding
+    # it by argument. Kept in training; if the small row is bad, drop THAT row, not both.
+    unsure = np.array([bool(items[i].get('unsure', False)) for i in idx])
+    hand = src == 'hand'
+    add('  hand confident', hand & ~unsure)
+    add('  hand unsure, >=60 px', hand & unsure & (size >= 60))
+    add('  hand unsure, <60 px', hand & unsure & (size < 60))
     return rows
 
 
@@ -496,6 +575,20 @@ def train(args):
         log_line(logf, 'epoch,train_loss,val_loss,val_corner_med_px,val_corner_p90_px,'
                        'val_centre_med_px,lr,batch,secs,elapsed_h')
 
+    # --weight-mode rate: per-instance loss weights, precomputed once from the label
+    # index and looked up by the dataset index `i` that every loader already returns.
+    # Doing it here rather than in the Dataset keeps GateCrops/CachedGateCrops and the
+    # cache format untouched for the default path, and 'none' is BIT-identical to the
+    # baseline (the weighted branch is never entered). getattr(): older callers (the v1
+    # colab notebook's SimpleNamespace) predate the flag.
+    weight_mode = getattr(args, 'weight_mode', 'none')
+    w_tr = (torch.tensor([instance_weight(d) for d in tr_items], dtype=torch.float32)
+            if weight_mode == 'rate' else None)
+    if w_tr is not None:
+        print(f'[{args.tag}] weight-mode rate: train weight mean {w_tr.mean():.3f}  '
+              f'min {w_tr.min():.3f}  (={int((w_tr < 1).sum())} of {len(w_tr)} '
+              f'instances down-weighted; val stays unweighted)', flush=True)
+
     tr_loader, va_loader = make_loaders(tr_items, va_items, bs, args.workers, args.hflip)
     t0 = time.time()
     deadline = t0 + args.max_hours * 3600.0
@@ -505,6 +598,7 @@ def train(args):
         model.train()
         ep_t = time.time()
         tot, cnt = 0.0, 0
+        w_sum, w_n = 0.0, 0                      # mean APPLIED weight, logged per epoch
         it = iter(tr_loader)
         while True:
             try:
@@ -514,11 +608,23 @@ def train(args):
             except Exception as e:                       # a corrupt JPEG must not end the night
                 print(f'[{args.tag}] loader error, skipping batch: {e}', flush=True)
                 continue
-            x, y, g, _ = batch
+            x, y, g, bi = batch
             try:
                 x, y = x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
                 with torch.amp.autocast('cuda', enabled=dev.type == 'cuda'):
-                    loss = F.smooth_l1_loss(model(x), y, beta=0.05)
+                    if w_tr is None:
+                        loss = F.smooth_l1_loss(model(x), y, beta=0.05)
+                    else:
+                        # weight multiplies the per-INSTANCE loss inside the same
+                        # reduction; normalising by w.sum() (not len) keeps the loss on
+                        # the baseline's scale, so lr/schedule keep their meaning and
+                        # all-weights-1 reproduces the unweighted value exactly.
+                        w = w_tr[bi].to(dev, non_blocking=True)
+                        per = F.smooth_l1_loss(model(x), y, beta=0.05,
+                                               reduction='none').mean(1)
+                        loss = (per * w).sum() / w.sum()
+                        w_sum += float(w.sum())
+                        w_n += len(w)
                 opt.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
                 scaler.unscale_(opt)
@@ -559,9 +665,10 @@ def train(args):
         trl = tot / max(cnt, 1)
         log_line(logf, f'{ep},{trl:.6f},{res["loss"]:.6f},{med:.3f},{p90:.3f},{cmed:.3f},'
                        f'{opt.param_groups[0]["lr"]:.6g},{bs},{secs:.1f},{elapsed_h:.3f}')
+        wtxt = f'  w~{w_sum / w_n:.3f}' if w_n else ''
         print(f'[{args.tag}] ep {ep:3d}  train {trl:.5f}  val {res["loss"]:.5f}  '
-              f'corner med {med:.2f} px p90 {p90:.2f}  centre {cmed:.2f}  {secs:.0f}s',
-              flush=True)
+              f'corner med {med:.2f} px p90 {p90:.2f}  centre {cmed:.2f}  {secs:.0f}s'
+              f'{wtxt}', flush=True)
 
         ck = {'model': model.state_dict(), 'opt': opt.state_dict(),
               'sched': sched.state_dict(), 'scaler': scaler.state_dict(),
@@ -592,6 +699,8 @@ def train(args):
         '',
         f'* {stop_reason}; {(time.time()-t0)/3600.0:.2f} h, {ep+1-start} epochs this invocation',
         f'* parameters: {nparam:,}   input {RES}x{RES}   batch {bs}   crop margin {MARGIN}',
+        f'* labels {os.path.basename(LABELS)}   weight-mode {weight_mode}' +
+        (f' (train weight mean {w_tr.mean():.3f})' if w_tr is not None else ''),
         f'* train {len(tr_items)} / val {len(va_items)} instances '
         f'({len(items)} labelled total)',
         f'* best val median corner error: **{best:.2f} px**',
@@ -920,8 +1029,16 @@ def main():
     ap.add_argument('--cpu', action='store_true')
     ap.add_argument('--res', type=int, default=RES)
     ap.add_argument('--seed', type=int, default=0)
+    ap.add_argument('--labels', default=None,
+                    help='label file (default: $GATENET_LABELS or autolabels_vq1.json)')
+    ap.add_argument('--weight-mode', default='none', choices=['none', 'rate'],
+                    help="'rate': down-weight fast-rotation auto-labels (see "
+                         'instance_weight). Default none = baseline-identical.')
     args = ap.parse_args()
 
+    global LABELS
+    if args.labels:
+        LABELS = os.path.abspath(args.labels)
     RES = args.res
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)

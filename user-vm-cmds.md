@@ -7,9 +7,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Z:\claude-drop\runner.ps1
 C:\Users\clarity\AppData\Local\aigp\AIGP_3391\FlightSim.exe
  - physics is realtime keep 30 fps
 
-
 # teleop record to local disk
-python Z:\vqual-2\pilot\teleop.py --sessions C:\Users\clarity\AppData\Local\aigp\sessions
+python Z:\vqual-2\pilot\teleop.py --sessions C:\Users\clarity\AppData\Local\aigp\sessions --slow-lap
  - remember default is record pass --no-frames for frames --no-record if necessary
 
 # zips up local session (session name printed after teleop F8)

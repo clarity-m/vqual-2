@@ -1,0 +1,8 @@
+GRID SPACING (units of H), strafe session:
+  axis 0: spacing/H = 0.3403 (n=431)
+  axis 1: spacing/H = 0.5666 (n=421)
+CEILING HEIGHT H, V2 (chained frame-to-frame light motion, endpoint-smoothed PnP):
+  n=65 windows: H median 6.074 m, MAD 2.218, p10 3.652, p90 10.782
+  baselines: median 1.68 m, p10 1.01, p90 2.87
+  -> grid pitch axis 0: 2.067 m
+  -> grid pitch axis 1: 3.441 m

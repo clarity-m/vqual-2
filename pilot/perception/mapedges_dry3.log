@@ -1,0 +1,417 @@
+
+=== 20260801-121520-vq2-lap-0-15  6303 frames
+  tracks >= 4 obs: 1234   longest [306, 244, 232, 219, 202, 196, 190, 184, 176, 174]
+  gate  0: track 6 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 95 un-named, contradicts track 84 in-frame by >3 m
+  gate  0: track 4 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 85 un-named, contradicts track 84 in-frame by >3 m
+  gate  0: track 92 un-named, contradicts track 84 in-frame by >3 m
+  gate  1: track 253 un-named, contradicts track 300 in-frame by >3 m
+  gate  1: track 117 un-named, contradicts track 106 in-frame by >3 m
+  gate  1: track 270 un-named, contradicts track 300 in-frame by >3 m
+  gate  1: track 166 un-named, contradicts track 106 in-frame by >3 m
+  gate  3: track 647 un-named, contradicts track 591 in-frame by >3 m
+  gate  4: track 719 un-named, contradicts track 721 in-frame by >3 m
+  gate  5: track 811 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 775 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 737 un-named, contradicts track 723 in-frame by >3 m
+  gate  7: track 971 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 983 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 960 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 957 un-named, contradicts track 954 in-frame by >3 m
+  gate  7: track 980 un-named, contradicts track 977 in-frame by >3 m
+  gate  7: track 961 un-named, contradicts track 954 in-frame by >3 m
+  gate  8: track 1002 un-named, contradicts track 1060 in-frame by >3 m
+  gate 11: track 1448 un-named, contradicts track 1503 in-frame by >3 m
+  gate 11: track 1443 un-named, contradicts track 1503 in-frame by >3 m
+  gate 12: track 1549 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1550 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1540 un-named, contradicts track 1558 in-frame by >3 m
+  gate 12: track 1551 un-named, contradicts track 1541 in-frame by >3 m
+  gate 14: track 1755 un-named, contradicts track 1751 in-frame by >3 m
+  gate 14: track 1724 un-named, contradicts track 1751 in-frame by >3 m
+  gate 14: track 1716 un-named, contradicts track 1751 in-frame by >3 m
+  gate 15: track 1842 un-named, contradicts track 1857 in-frame by >3 m
+  gate 15: track 1809 un-named, contradicts track 1857 in-frame by >3 m
+  gate  0:  2 track(s),   252 obs   102193-102410 101973-102066
+  gate  1:  3 track(s),   185 obs   102912-103062 102389-102552 102687-102717
+  gate  2:  2 track(s),   112 obs   103055-103262 103398-103411
+  gate  3:  1 track(s),    50 obs   103380-103525
+  gate  4:  1 track(s),    89 obs   103669-103804
+  gate  5:  1 track(s),   232 obs   103696-104104
+  gate  6:  1 track(s),   306 obs   104049-104424
+  gate  7:  3 track(s),    77 obs   104593-104648 104470-104509 104545-104556
+  gate  8:  1 track(s),    36 obs   104859-104933
+  gate  9:  1 track(s),    20 obs   105180-105208
+  gate 10:  1 track(s),    17 obs   106193-106209
+  gate 11:  2 track(s),    91 obs   106106-106353 106449-106455
+  gate 12:  3 track(s),   274 obs   106606-106745 106768-106895 106386-106560
+  gate 13:  0 track(s),     0 obs   
+  gate 14:  1 track(s),    51 obs   107405-107482
+  gate 15:  2 track(s),    93 obs   107499-107639 107849-107886
+  gate 16:  1 track(s),   184 obs   107861-108061   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 1->0@102799, 16->0@108061
+  backward extension added 1952 observations
+  identified co-visible pair measurements: 938 from 3160 frames
+  gates with at least one measured pair: 55  [('g', 0), ('g', 1), ('g', 3), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 10), ('g', 12), ('t', 1), ('t', 4), ('t', 85), ('t', 92), ('t', 95), ('t', 98), ('t', 117), ('t', 270), ('t', 289), ('t', 342), ('t', 344), ('t', 348), ('t', 355), ('t', 650), ('t', 657), ('t', 660), ('t', 717), ('t', 719), ('t', 737), ('t', 775), ('t', 957), ('t', 960), ('t', 980), ('t', 983), ('t', 987), ('t', 1002), ('t', 1054), ('t', 1067), ('t', 1319), ('t', 1329), ('t', 1330), ('t', 1331), ('t', 1335), ('t', 1336), ('t', 1361), ('t', 1384), ('t', 1399), ('t', 1446), ('t', 1540), ('t', 1543), ('t', 1550), ('t', 1556), ('t', 1572), ('t', 1899), ('t', 1903)]
+
+=== 20260801-115735-vq2-lap-0-11  6647 frames
+  tracks >= 4 obs: 804   longest [1484, 438, 407, 376, 322, 275, 247, 245, 235, 233]
+  gate  0: track 87 un-named, contradicts track 79 in-frame by >3 m
+  gate  0: track 7 un-named, contradicts track 6 in-frame by >3 m
+  gate  0: track 81 un-named, contradicts track 79 in-frame by >3 m
+  gate  1: track 93 un-named, contradicts track 191 in-frame by >3 m
+  gate  1: track 99 un-named, contradicts track 174 in-frame by >3 m
+  gate  1: track 181 un-named, contradicts track 191 in-frame by >3 m
+  gate  3: track 357 un-named, contradicts track 368 in-frame by >3 m
+  gate  4: track 415 un-named, contradicts track 370 in-frame by >3 m
+  gate  5: track 507 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 510 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 496 un-named, contradicts track 462 in-frame by >3 m
+  gate  5: track 523 un-named, contradicts track 462 in-frame by >3 m
+  gate  7: track 711 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 687 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 699 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 728 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 696 un-named, contradicts track 692 in-frame by >3 m
+  gate  7: track 691 un-named, contradicts track 692 in-frame by >3 m
+  gate  8: track 789 un-named, contradicts track 742 in-frame by >3 m
+  gate  8: track 786 un-named, contradicts track 742 in-frame by >3 m
+  gate 10: track 951 un-named, contradicts track 973 in-frame by >3 m
+  gate 10: track 965 un-named, contradicts track 973 in-frame by >3 m
+  gate  0:  2 track(s),   370 obs   71615-71969 70034-70125
+  gate  1:  2 track(s),   116 obs   72052-72165 72234-72287
+  gate  2:  1 track(s),     9 obs   72529-72537
+  gate  3:  2 track(s),   153 obs   72820-72943 72645-72749
+  gate  4:  1 track(s),   245 obs   72839-73196
+  gate  5:  1 track(s),   438 obs   73233-73739
+  gate  6:  1 track(s),    37 obs   74059-74161
+  gate  7:  2 track(s),   274 obs   74453-74741 74367-74420
+  gate  8:  3 track(s),   190 obs   74739-75031 75132-75169 75088-75099
+  gate  9:  2 track(s),   111 obs   75373-75507 75612-75651
+  gate 10:  2 track(s),    91 obs   75844-75983 75742-75786
+  gate 11:  2 track(s),   152 obs   75932-76195 76224-76233
+  gate 12:  1 track(s),     4 obs   76344-76349   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 12->0@76424
+  backward extension added 2866 observations
+  identified co-visible pair measurements: 1582 from 2742 frames
+  gates with at least one measured pair: 45  [('g', 0), ('g', 1), ('g', 3), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 10), ('t', 0), ('t', 7), ('t', 81), ('t', 87), ('t', 90), ('t', 93), ('t', 99), ('t', 103), ('t', 146), ('t', 181), ('t', 366), ('t', 415), ('t', 496), ('t', 501), ('t', 507), ('t', 510), ('t', 519), ('t', 523), ('t', 530), ('t', 564), ('t', 585), ('t', 589), ('t', 593), ('t', 691), ('t', 696), ('t', 699), ('t', 703), ('t', 711), ('t', 714), ('t', 744), ('t', 763), ('t', 786), ('t', 965), ('t', 1126), ('t', 1134)]
+
+=== 20260801-144858-vqual2-lap-pausing  10117 frames
+  tracks >= 4 obs: 1547   longest [649, 581, 489, 485, 484, 469, 426, 424, 420, 397]
+  gate  0: track 86 un-named, contradicts track 105 in-frame by >3 m
+  gate  0: track 4 un-named, contradicts track 0 in-frame by >3 m
+  gate  0: track 93 un-named, contradicts track 105 in-frame by >3 m
+  gate  0: track 95 un-named, contradicts track 105 in-frame by >3 m
+  gate  1: track 365 un-named, contradicts track 381 in-frame by >3 m
+  gate  1: track 183 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 201 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 188 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 195 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 191 un-named, contradicts track 200 in-frame by >3 m
+  gate  1: track 303 un-named, contradicts track 347 in-frame by >3 m
+  gate  1: track 401 un-named, contradicts track 381 in-frame by >3 m
+  gate  1: track 173 un-named, contradicts track 138 in-frame by >3 m
+  gate  1: track 96 un-named, contradicts track 200 in-frame by >3 m
+  gate  2: track 542 un-named, contradicts track 596 in-frame by >3 m
+  gate  3: track 619 un-named, contradicts track 672 in-frame by >3 m
+  gate  4: track 825 un-named, contradicts track 723 in-frame by >3 m
+  gate  4: track 828 un-named, contradicts track 723 in-frame by >3 m
+  gate  5: track 987 un-named, contradicts track 1007 in-frame by >3 m
+  gate  5: track 972 un-named, contradicts track 957 in-frame by >3 m
+  gate  5: track 981 un-named, contradicts track 980 in-frame by >3 m
+  gate  5: track 968 un-named, contradicts track 957 in-frame by >3 m
+  gate  5: track 963 un-named, contradicts track 957 in-frame by >3 m
+  gate  6: track 986 un-named, contradicts track 999 in-frame by >3 m
+  gate  6: track 1038 un-named, contradicts track 999 in-frame by >3 m
+  gate  7: track 1204 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1286 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1241 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1256 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1292 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1329 un-named, contradicts track 1261 in-frame by >3 m
+  gate  7: track 1270 un-named, contradicts track 1261 in-frame by >3 m
+  gate  9: track 1495 un-named, contradicts track 1493 in-frame by >3 m
+  gate 11: track 1730 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1700 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1725 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1698 un-named, contradicts track 1743 in-frame by >3 m
+  gate 11: track 1753 un-named, contradicts track 1791 in-frame by >3 m
+  gate 11: track 1761 un-named, contradicts track 1768 in-frame by >3 m
+  gate 12: track 1762 un-named, contradicts track 1835 in-frame by >3 m
+  gate 12: track 1833 un-named, contradicts track 1835 in-frame by >3 m
+  gate 13: track 2026 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1996 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1956 un-named, contradicts track 1949 in-frame by >3 m
+  gate 13: track 2021 un-named, contradicts track 2035 in-frame by >3 m
+  gate 13: track 1934 un-named, contradicts track 1949 in-frame by >3 m
+  gate 13: track 1987 un-named, contradicts track 1995 in-frame by >3 m
+  gate 13: track 2000 un-named, contradicts track 2035 in-frame by >3 m
+  gate 15: track 2225 un-named, contradicts track 2217 in-frame by >3 m
+  gate  0:  3 track(s),   327 obs   25091-25320 25353-25444 24877-24970
+  gate  1:  6 track(s),   364 obs   25427-25671 26342-26538 26099-26235
+  gate  2:  3 track(s),   243 obs   26837-26993 27071-27190 27231-27246
+  gate  3:  2 track(s),    97 obs   27349-27419 27582-27657
+  gate  4:  1 track(s),   489 obs   27891-28543
+  gate  5:  5 track(s),   575 obs   28986-29312 28711-28915 29332-29404
+  gate  6:  1 track(s),   581 obs   29480-30122
+  gate  7:  3 track(s),   352 obs   30558-31018 30246-30364 30516-30573
+  gate  8:  1 track(s),   263 obs   30996-31329
+  gate  9:  1 track(s),   188 obs   31628-31839
+  gate 10:  1 track(s),   147 obs   32032-32406
+  gate 11:  5 track(s),   377 obs   32812-33041 32584-32728 32397-32516
+  gate 12:  2 track(s),   131 obs   33239-33422 33578-33605
+  gate 13:  4 track(s),   269 obs   34041-34211 33579-33669 33764-33820
+  gate 14:  2 track(s),    94 obs   34543-34650 34722-34733
+  gate 15:  1 track(s),    72 obs   34834-34991   <- NO CROSSING (last gate, approach only)
+  backward extension added 3107 observations
+  identified co-visible pair measurements: 2642 from 6242 frames
+  gates with at least one measured pair: 100  [('g', 0), ('g', 1), ('g', 2), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 10), ('g', 11), ('g', 12), ('g', 13), ('g', 14), ('g', 15), ('t', 1), ('t', 2), ('t', 4), ('t', 8), ('t', 84), ('t', 86), ('t', 93), ('t', 95), ('t', 96), ('t', 109), ('t', 115), ('t', 148), ('t', 173), ('t', 177), ('t', 183), ('t', 188), ('t', 191), ('t', 195), ('t', 201), ('t', 303), ('t', 408), ('t', 538), ('t', 542), ('t', 577), ('t', 733), ('t', 825), ('t', 828), ('t', 898), ('t', 963), ('t', 965), ('t', 986), ('t', 990), ('t', 992), ('t', 995), ('t', 1063), ('t', 1071), ('t', 1072), ('t', 1081), ('t', 1093), ('t', 1094), ('t', 1104), ('t', 1204), ('t', 1205), ('t', 1241), ('t', 1256), ('t', 1258), ('t', 1276), ('t', 1277), ('t', 1286), ('t', 1291), ('t', 1292), ('t', 1311), ('t', 1332), ('t', 1379), ('t', 1387), ('t', 1394), ('t', 1495), ('t', 1587), ('t', 1602), ('t', 1606), ('t', 1614), ('t', 1627), ('t', 1730), ('t', 1745), ('t', 1748), ('t', 1753), ('t', 1761), ('t', 1762), ('t', 1774), ('t', 1795), ('t', 1833), ('t', 1841), ('t', 1845), ('t', 1857), ('t', 1861), ('t', 1900), ('t', 1934), ('t', 1956), ('t', 1982), ('t', 1987), ('t', 2000), ('t', 2021), ('t', 2026), ('t', 2125), ('t', 2136)]
+  markers: 25   pair rows in marker windows: 485 (41 gate-gate)
+    marker  1 (active  1): named gates co-visible [1]
+    marker  2 (active  1): named gates co-visible []
+    marker  3 (active  2): named gates co-visible [2]
+    marker  4 (active  2): named gates co-visible [2]
+    marker  5 (active  3): named gates co-visible []
+    marker  6 (active  3): named gates co-visible []
+    marker  7 (active  4): named gates co-visible []
+    marker  8 (active  5): named gates co-visible [5]
+    marker  9 (active  5): named gates co-visible []
+    marker 10 (active  6): named gates co-visible [6]
+    marker 11 (active  6): named gates co-visible []
+    marker 12 (active  7): named gates co-visible []
+    marker 13 (active  7): named gates co-visible [7, 8]
+    marker 14 (active  8): named gates co-visible [8]
+    marker 15 (active  8): named gates co-visible []
+    marker 16 (active  9): named gates co-visible [9]
+    marker 17 (active 10): named gates co-visible [10, 11]
+    marker 18 (active 10): named gates co-visible [10, 11]
+    marker 19 (active 11): named gates co-visible [11]
+    marker 20 (active 11): named gates co-visible [11, 12]
+    marker 21 (active 12): named gates co-visible [12]
+    marker 22 (active 12): named gates co-visible [13]
+    marker 23 (active 13): named gates co-visible [13]
+    marker 24 (active 14): named gates co-visible [14]
+    marker 25 (active 14): named gates co-visible [14, 15]
+
+=== 20260801-155701-vq2-targeting-pairs  10910 frames
+  tracks >= 4 obs: 1594   longest [601, 525, 450, 448, 400, 386, 380, 357, 353, 343]
+  gate  0: track 147 un-named, contradicts track 124 in-frame by >3 m
+  gate  0: track 151 un-named, contradicts track 124 in-frame by >3 m
+  gate  0: track 146 un-named, contradicts track 124 in-frame by >3 m
+  gate  0: track 2 un-named, contradicts track 0 in-frame by >3 m
+  gate  1: track 215 un-named, contradicts track 285 in-frame by >3 m
+  gate  1: track 20 un-named, contradicts track 18 in-frame by >3 m
+  gate  1: track 230 un-named, contradicts track 285 in-frame by >3 m
+  gate  1: track 113 un-named, contradicts track 118 in-frame by >3 m
+  gate  1: track 13 un-named, contradicts track 18 in-frame by >3 m
+  gate  3: track 438 un-named, contradicts track 467 in-frame by >3 m
+  gate  3: track 413 un-named, contradicts track 415 in-frame by >3 m
+  gate  4: track 518 un-named, contradicts track 523 in-frame by >3 m
+  gate  4: track 513 un-named, contradicts track 477 in-frame by >3 m
+  gate  5: track 595 un-named, contradicts track 594 in-frame by >3 m
+  gate  6: track 773 un-named, contradicts track 801 in-frame by >3 m
+  gate  6: track 763 un-named, contradicts track 801 in-frame by >3 m
+  gate  6: track 832 un-named, contradicts track 855 in-frame by >3 m
+  gate  6: track 762 un-named, contradicts track 801 in-frame by >3 m
+  gate  6: track 744 un-named, contradicts track 801 in-frame by >3 m
+  gate  6: track 734 un-named, contradicts track 723 in-frame by >3 m
+  gate  7: track 1023 un-named, contradicts track 1080 in-frame by >3 m
+  gate  7: track 1216 un-named, contradicts track 1233 in-frame by >3 m
+  gate  7: track 1093 un-named, contradicts track 1080 in-frame by >3 m
+  gate  7: track 1136 un-named, contradicts track 1233 in-frame by >3 m
+  gate  7: track 1202 un-named, contradicts track 1233 in-frame by >3 m
+  gate  7: track 1039 un-named, contradicts track 1080 in-frame by >3 m
+  gate  7: track 1132 un-named, contradicts track 1233 in-frame by >3 m
+  gate  7: track 1058 un-named, contradicts track 1080 in-frame by >3 m
+  gate  7: track 1087 un-named, contradicts track 1080 in-frame by >3 m
+  gate  7: track 985 un-named, contradicts track 1017 in-frame by >3 m
+  gate  7: track 1128 un-named, contradicts track 1114 in-frame by >3 m
+  gate  7: track 1050 un-named, contradicts track 1042 in-frame by >3 m
+  gate  7: track 1046 un-named, contradicts track 1042 in-frame by >3 m
+  gate  7: track 1090 un-named, contradicts track 1080 in-frame by >3 m
+  gate  8: track 1240 un-named, contradicts track 1270 in-frame by >3 m
+  gate  8: track 1273 un-named, contradicts track 1270 in-frame by >3 m
+  gate  9: track 1548 un-named, contradicts track 1544 in-frame by >3 m
+  gate  9: track 1603 un-named, contradicts track 1594 in-frame by >3 m
+  gate  9: track 1541 un-named, contradicts track 1544 in-frame by >3 m
+  gate  9: track 1446 un-named, contradicts track 1494 in-frame by >3 m
+  gate  9: track 1478 un-named, contradicts track 1494 in-frame by >3 m
+  gate  9: track 1499 un-named, contradicts track 1494 in-frame by >3 m
+  gate  9: track 1553 un-named, contradicts track 1544 in-frame by >3 m
+  gate 10: track 1740 un-named, contradicts track 1775 in-frame by >3 m
+  gate 10: track 1739 un-named, contradicts track 1775 in-frame by >3 m
+  gate 11: track 1861 un-named, contradicts track 1921 in-frame by >3 m
+  gate 11: track 1880 un-named, contradicts track 1921 in-frame by >3 m
+  gate 11: track 1825 un-named, contradicts track 1829 in-frame by >3 m
+  gate 11: track 1821 un-named, contradicts track 1829 in-frame by >3 m
+  gate 11: track 1863 un-named, contradicts track 1868 in-frame by >3 m
+  gate 12: track 1958 un-named, contradicts track 1978 in-frame by >3 m
+  gate 12: track 1919 un-named, contradicts track 1879 in-frame by >3 m
+  gate 12: track 1930 un-named, contradicts track 1879 in-frame by >3 m
+  gate 13: track 2077 un-named, contradicts track 2146 in-frame by >3 m
+  gate 13: track 2080 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2092 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2003 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2085 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2060 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2088 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2091 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2059 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2078 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2068 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2040 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2041 un-named, contradicts track 1966 in-frame by >3 m
+  gate 13: track 2089 un-named, contradicts track 1966 in-frame by >3 m
+  gate 14: track 2180 un-named, contradicts track 2183 in-frame by >3 m
+  gate 14: track 2181 un-named, contradicts track 2187 in-frame by >3 m
+  gate  0:  3 track(s),   270 obs   147772-148103 147378-147471 147464-147467
+  gate  1:  5 track(s),   175 obs   148127-148308 147454-147528 147774-147800
+  gate  2:  2 track(s),   411 obs   148454-148893 148937-148962
+  gate  3:  2 track(s),    52 obs   148949-149033 149149-149168
+  gate  4:  2 track(s),   376 obs   149154-149370 149371-149558
+  gate  5:  1 track(s),   131 obs   149629-149779
+  gate  6:  7 track(s),   732 obs   151195-151668 149951-150358 150623-150827
+  gate  7:  8 track(s),   579 obs   152730-153079 152475-152667 152318-152459
+  gate  8:  1 track(s),   200 obs   153445-153734
+  gate  9:  7 track(s),  1028 obs   153722-154254 154655-154916 155525-155737
+  gate 10:  1 track(s),    37 obs   156193-156230
+  gate 11:  5 track(s),   190 obs   156298-156402 156395-156546 156593-156632
+  gate 12:  2 track(s),   142 obs   156702-156934 157021-157029
+  gate 13:  4 track(s),   631 obs   156986-157858 158081-158108 157897-157901
+  gate 14:  1 track(s),    12 obs   158252-158278   <- NO CROSSING (last gate, approach only)
+  index reversals in race.csv: 1->0@147858
+  backward extension added 3058 observations
+  identified co-visible pair measurements: 2539 from 5048 frames
+  gates with at least one measured pair: 99  [('g', 0), ('g', 1), ('g', 2), ('g', 3), ('g', 4), ('g', 5), ('g', 6), ('g', 7), ('g', 8), ('g', 9), ('g', 11), ('g', 12), ('g', 13), ('g', 14), ('t', 2), ('t', 4), ('t', 13), ('t', 20), ('t', 112), ('t', 113), ('t', 115), ('t', 125), ('t', 128), ('t', 129), ('t', 132), ('t', 144), ('t', 146), ('t', 151), ('t', 152), ('t', 155), ('t', 170), ('t', 215), ('t', 230), ('t', 262), ('t', 275), ('t', 413), ('t', 513), ('t', 518), ('t', 520), ('t', 538), ('t', 542), ('t', 595), ('t', 596), ('t', 709), ('t', 734), ('t', 744), ('t', 762), ('t', 972), ('t', 985), ('t', 1015), ('t', 1023), ('t', 1024), ('t', 1039), ('t', 1046), ('t', 1058), ('t', 1078), ('t', 1087), ('t', 1093), ('t', 1115), ('t', 1128), ('t', 1132), ('t', 1136), ('t', 1212), ('t', 1216), ('t', 1235), ('t', 1240), ('t', 1273), ('t', 1275), ('t', 1289), ('t', 1305), ('t', 1319), ('t', 1446), ('t', 1478), ('t', 1499), ('t', 1603), ('t', 1774), ('t', 1785), ('t', 1861), ('t', 1873), ('t', 1874), ('t', 1880), ('t', 1919), ('t', 1967), ('t', 2059), ('t', 2060), ('t', 2069), ('t', 2077), ('t', 2078), ('t', 2080), ('t', 2085), ('t', 2088), ('t', 2089), ('t', 2091), ('t', 2092), ('t', 2096), ('t', 2117), ('t', 2180), ('t', 2181), ('t', 2183)]
+  markers: 15   pair rows in marker windows: 116 (0 gate-gate)
+    marker  1 (active  2): named gates co-visible [2]
+    marker  2 (active  6): named gates co-visible [6]
+    marker  3 (active  6): named gates co-visible []
+    marker  4 (active  6): named gates co-visible []
+    marker  5 (active  7): named gates co-visible [7]
+    marker  6 (active  7): named gates co-visible [7]
+    marker  7 (active  7): named gates co-visible []
+    marker  8 (active  7): named gates co-visible [8]
+    marker  9 (active  9): named gates co-visible []
+    marker 10 (active  9): named gates co-visible [9]
+    marker 11 (active  9): named gates co-visible []
+    marker 12 (active  9): named gates co-visible [9]
+    marker 13 (active 13): named gates co-visible []
+    marker 14 (active 13): named gates co-visible []
+    marker 15 (active 13): named gates co-visible []
+
+=== strafing session, gates 15/16 by Claire's note (no race index)
+    445 frames with exactly two clean detections
+    horizontal separation  median 21.00 m  p10 20.24  p90 22.02
+    |height step|          median 0.90 m
+  [mapedges 2-lap-0-15] accepted=331  candidates=2839  continuity-unchecked=43  pair-rows=30  refused-aspect=1  refused-continuity=14  refused-range-disagree=28  refused-small=1359  refused-unstable=1106
+  [mapedges 2-lap-0-11] accepted=369  candidates=1897  continuity-unchecked=27  pair-rows=99  refused-aspect=1  refused-continuity=33  refused-range-disagree=11  refused-small=895  refused-unstable=588
+  [mapedges ap-pausing] accepted=628  candidates=3413  continuity-unchecked=66  pair-rows=85  pair-same-object=9  pair-sub-metre=8  refused-continuity=19  refused-range-disagree=99  refused-small=1046  refused-unstable=1621
+  [mapedges ting-pairs] accepted=709  candidates=3575  continuity-unchecked=104  pair-rows=68  refused-aspect=5  refused-continuity=20  refused-range-disagree=6  refused-small=1126  refused-unstable=1709
+
+--- missing-edge diagnosis (both gates over the run windows)
+  edge 2-3: co-present frames 803
+      both in frame: g2=clean            g3=small            x183
+      both in frame: g2=unstable         g3=small            x177
+      both in frame: g2=unstable         g3=unstable         x152
+      both in frame: g2=clean            g3=unstable         x129
+      both in frame: g2=accepted         g3=unstable         x52
+      both in frame: g2=accepted         g3=small            x46
+      g2 alone: 160 frames  (smallx93  unstablex66  cleanx1)
+      g3 alone: 458 frames  (unstablex229  cleanx120  smallx91  acceptedx18)
+  edge 6-7: co-present frames 434
+      both in frame: g6=clean            g7=small            x110
+      both in frame: g6=unstable         g7=unstable         x76
+      both in frame: g6=clean            g7=unstable         x71
+      both in frame: g6=unstable         g7=small            x53
+      both in frame: g6=accepted         g7=small            x33
+      both in frame: g6=unstable         g7=clean            x26
+      g6 alone: 1011 frames  (unstablex319  smallx303  acceptedx212  cleanx161)
+      g7 alone: 686 frames  (unstablex280  cleanx253  acceptedx113  smallx39)
+  edge 9-10: co-present frames 70
+      both in frame: g9=accepted         g10=small            x32
+      both in frame: g9=clean            g10=small            x16
+      both in frame: g9=unstable         g10=unstable         x9
+      both in frame: g9=clean            g10=unstable         x6
+      both in frame: g9=unstable         g10=small            x5
+      both in frame: g9=accepted         g10=unstable         x2
+      g9 alone: 1057 frames  (acceptedx384  unstablex353  cleanx207  smallx80)
+      g10 alone: 696 frames  (unstablex441  cleanx147  acceptedx54  smallx53)
+  edge 13-14: co-present frames 58
+      both in frame: g13=unstable         g14=small            x22
+      both in frame: g13=unstable         g14=unstable         x14
+      both in frame: g13=clean            g14=unstable         x13
+      both in frame: g13=clean            g14=small            x8
+      both in frame: g13=accepted         g14=small            x1
+      g13 alone: 999 frames  (smallx385  cleanx244  acceptedx226  unstablex136)
+      g14 alone: 539 frames  (smallx264  unstablex155  range-disagreex74  cleanx36)
+
+--- residual-gate sensitivity (accepted net measurements / pair rows)
+    resid <= 0.30 px: 1728 measurements,  263 pair rows
+    resid <= 0.50 px: 2002 measurements,  280 pair rows
+    resid <= 1.00 px: 2028 measurements,  282 pair rows
+
+--- gatenet rows at resid <= 0.3 px, by pair (targets flagged *)
+     1-2  n=  2  d med  23.27  MAD  3.06  p10-p90  20.8-25.7   resid med 0.100 max 0.135  markers 0
+     1-5  n=  3  d med  19.40  MAD  0.60  p10-p90  17.4-19.9   resid med 0.057 max 0.077  markers 0
+     2-3  n=  7  d med  30.10  MAD  0.54  p10-p90  24.4-30.5   resid med 0.137 max 0.237  markers 0 *
+     3-4  n= 25  d med  21.92  MAD  0.10  p10-p90  21.3-22.4   resid med 0.029 max 0.100  markers 0
+     4-5  n=  2  d med  27.49  MAD  1.36  p10-p90  26.4-28.6   resid med 0.055 max 0.099  markers 0
+     5-6  n=110  d med  14.18  MAD  0.65  p10-p90  13.1-15.8   resid med 0.071 max 0.139  markers 0
+     7-8  n= 35  d med  10.70  MAD  0.59  p10-p90  10.2-12.5   resid med 0.098 max 0.289  markers 20 *
+     8-9  n= 40  d med  22.18  MAD  7.72  p10-p90  12.9-31.4   resid med 0.148 max 0.274  markers 0
+    10-11 n= 18  d med  33.50  MAD  0.70  p10-p90  32.7-34.9   resid med 0.174 max 0.296  markers 18
+    11-12 n= 10  d med  19.08  MAD  0.17  p10-p90  18.8-19.4   resid med 0.091 max 0.124  markers 2
+    12-13 n= 10  d med  17.15  MAD  0.55  p10-p90  16.1-17.9   resid med 0.058 max 0.130  markers 4 *
+    14-15 n=  1  d med  31.77  MAD  0.00  p10-p90  31.8-31.8   resid med 0.039 max 0.039  markers 1
+
+--- 17 directly measured gate-to-gate pairs (of 136 possible)
+  pair      n    dist m   MAD   p10-p90       horiz     dz m   n_h  nearest  n_mark  dropped
+   0-1     95    20.43   0.75   19.3-22.5     20.00   +3.33    90     5.6      0       0
+   0-2      7    20.31   0.00   20.3-26.2     20.08   +3.03     7     4.8      0       0
+   1-2     18    18.91   0.47   18.3-24.1     19.12   -2.19     6     2.5      0       5
+   1-5      3    19.40   0.60   17.4-19.9       nan    +nan     1    29.7      0       0
+   2-3      7    30.10   0.54   24.4-30.5       nan    +nan     2     6.0      0       0
+   3-4     56    21.89   0.70   16.9-24.9     21.92   -0.50    39     2.1      0       0
+   4-5    265    22.24   0.89   20.7-24.1     22.27   -0.42   219     2.5      0       0
+   4-6     32    22.74   0.78   21.1-23.8     23.02   +0.19     8    11.4      0       0
+   5-6    306    15.65   1.04   13.7-17.5     14.90   +5.09   202    10.5      0      35
+   6-7      5    15.82   1.10   14.8-22.9     15.77   +1.30     5     2.3      0       0
+   7-8    202    25.23   4.01   10.6-28.1     12.57   -0.71   101     3.4     45       0
+   8-9    143    14.90   0.86   13.9-28.3     15.39   -0.52    93     1.7      0       0
+  10-11    45    33.93   0.65   32.7-35.1     33.91   -1.69    45     1.7     25       0
+  11-12    26    19.48   0.52   18.8-20.7     19.67   +2.28    10     1.5      5       0
+  12-13    14    16.84   0.95   11.4-17.9     15.99   -0.20    10     4.4      4       0
+  14-15     7    32.89   1.12   32.4-35.4     32.78   -2.77     7     2.9      7       0
+  15-16   446    20.93   0.50   20.1-21.9     21.01    +nan     1     3.7      0       0
+
+--- edges minted by gatenet (absent from the contour-only map): [(1, 5), (2, 3)]
+
+--- 3 connected components with 2+ gates (was 5 without gatenet rows)
+    gates [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] 174 nodes 270 edges  MDS stress med 11.16 m  p90 20.03 m
+    gates [10, 11, 12, 13]          67 nodes  93 edges  MDS stress med 13.08 m  p90 20.61 m
+    gates [14, 15, 16]               8 nodes   8 edges  MDS stress med 20.51 m  p90 24.75 m
+
+--- METRIC SCALE from 17 identified gate pairs
+    gates 10-11  measured  33.91 m  sketch  0.59 u ->  57.70 m/station (n=45, MAD 0.65)
+    gates 14-15  measured  32.78 m  sketch  0.52 u ->  63.44 m/station (n=7, MAD 1.12)
+    gates  2-3   measured  30.10 m  sketch  0.71 u ->  42.55 m/station (n=7, MAD 0.54)
+    gates  4-6   measured  23.02 m  sketch  1.61 u ->  14.26 m/station (n=32, MAD 0.78)
+    gates  4-5   measured  22.27 m  sketch  1.01 u ->  22.08 m/station (n=265, MAD 0.89)
+    gates  3-4   measured  21.92 m  sketch  0.84 u ->  25.96 m/station (n=56, MAD 0.70)
+    gates 15-16  measured  21.01 m  sketch  0.58 u ->  36.29 m/station (n=446, MAD 0.50)
+    gates  0-2   measured  20.08 m  sketch  1.68 u ->  11.98 m/station (n=7, MAD 0.00)
+    gates  0-1   measured  20.00 m  sketch  1.09 u ->  18.38 m/station (n=95, MAD 0.75)
+    gates 11-12  measured  19.67 m  sketch  0.91 u ->  21.69 m/station (n=26, MAD 0.52)
+    gates  1-5   measured  19.40 m  sketch  2.85 u ->   6.80 m/station (n=3, MAD 0.60)
+    gates  1-2   measured  19.12 m  sketch  0.61 u ->  31.27 m/station (n=18, MAD 0.47)
+    gates 12-13  measured  15.99 m  sketch  0.82 u ->  19.41 m/station (n=14, MAD 0.95)
+    gates  6-7   measured  15.77 m  sketch  0.92 u ->  17.11 m/station (n=5, MAD 1.10)
+    gates  8-9   measured  15.39 m  sketch  0.94 u ->  16.29 m/station (n=143, MAD 0.86)
+    gates  5-6   measured  14.90 m  sketch  0.71 u ->  20.85 m/station (n=306, MAD 1.04)
+    gates  7-8   measured  12.57 m  sketch  0.58 u ->  21.56 m/station (n=202, MAD 4.01)
+    median 21.56 m/station  p10 13.35  p90 48.61
+
+wrote C:\Users\USER\Projects\vqual-2\pilot\perception\mapedges_accepted.json (1728 accepted), C:\Users\USER\Projects\vqual-2\pilot\perception\mapedges_rows.json (263 rows)
+[dry] not writing map JSON

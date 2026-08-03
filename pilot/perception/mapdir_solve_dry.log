@@ -1,0 +1,176 @@
+direction rows usable: 2060; rejected off-median: {(0, 1): 11, (1, 2): 24, (2, 3): 1, (3, 4): 17, (3, 5): 1, (4, 5): 8, (5, 6): 39, (7, 8): 109, (7, 9): 4, (8, 9): 16, (12, 13): 10, (13, 14): 4, (14, 15): 1, (15, 16): 12}
+
+--- per (pair, session) direction measurements (session-frame bearings)
+   0-1  0801-115735-vq2-lap-0-11               n=  23  bearing  118.16  MAD  0.52
+   0-1  0801-121520-vq2-lap-0-15               n=  20  bearing   27.38  MAD  0.61
+   0-1  44858-vqual2-lap-pausing               n=  40  bearing  117.90  MAD  0.83
+   0-1  01-202110-vq2-23-67-1314               n=   3  bearing  118.42  MAD  0.16
+   0-1  801-202923-vq2-1213-1214               n=   5  bearing  118.37  MAD  0.34
+   1-2  44858-vqual2-lap-pausing               n=   5  bearing  106.94  MAD  2.05
+   1-2  801-202923-vq2-1213-1214               n=   6  bearing  287.74  MAD  0.60
+   2-3  801-202923-vq2-1213-1214               n=   1  bearing   22.13  MAD  0.00
+   2-3  0260802-005725-vq2-2-3-b               n=   6  bearing   49.09  MAD  0.37
+   2-3  -010914-vq2-strafe-2-3-c               n=  73  bearing  320.92  MAD  2.09
+   3-4  0801-115735-vq2-lap-0-11               n=  19  bearing   40.27  MAD  0.85
+   3-4  0801-121520-vq2-lap-0-15               n=   2  bearing  312.05  MAD  0.07
+   3-4  801-202923-vq2-1213-1214               n=  19  bearing   43.92  MAD  0.63
+   4-5  0801-115735-vq2-lap-0-11               n=  98  bearing   66.35  MAD  0.55
+   4-5  0801-121520-vq2-lap-0-15               n=  24  bearing  337.31  MAD  0.81
+   4-6  0801-121520-vq2-lap-0-15               n=  32  bearing  337.69  MAD  0.56
+   5-6  0801-115735-vq2-lap-0-11               n=  89  bearing   90.22  MAD  0.87
+   5-6  0801-121520-vq2-lap-0-15               n= 104  bearing    0.06  MAD  1.47
+   6-7  02-005431-vq2-strafe-6-7               n= 556  bearing   89.70  MAD  0.33
+   7-8  0801-115735-vq2-lap-0-11               n=   9  bearing  163.03  MAD  0.76
+   7-8  0801-121520-vq2-lap-0-15               n=   1  bearing   49.69  MAD  0.00
+   7-8  44858-vqual2-lap-pausing               n=  84  bearing  162.07  MAD  0.43
+   7-9  01-202110-vq2-23-67-1314               n=   7  bearing  150.91  MAD  0.41
+   7-9  801-202923-vq2-1213-1214               n=  10  bearing  153.49  MAD  0.08
+   8-9  0801-115735-vq2-lap-0-11               n=   4  bearing  145.07  MAD  0.15
+   8-9  5701-vq2-targeting-pairs               n=  25  bearing   57.90  MAD  0.56
+   8-9  01-202110-vq2-23-67-1314               n=  55  bearing  144.63  MAD  0.46
+   9-10 5701-vq2-targeting-pairs               n=  12  bearing  348.37  MAD  0.71
+  10-11 44858-vqual2-lap-pausing               n=  76  bearing   57.47  MAD  0.28
+  11-12 44858-vqual2-lap-pausing               n=  28  bearing   44.97  MAD  1.00
+  12-13 44858-vqual2-lap-pausing               n=   1  bearing  134.55  MAD  0.00
+  12-13 01-202110-vq2-23-67-1314               n=  12  bearing   41.98  MAD  0.28
+  12-14 01-202110-vq2-23-67-1314               n=  15  bearing   78.17  MAD  0.23
+  13-14 01-202110-vq2-23-67-1314               n=  77  bearing  118.01  MAD  1.97
+  13-14 801-202923-vq2-1213-1214               n=  52  bearing  115.73  MAD  2.01
+  13-15 01-202110-vq2-23-67-1314               n=  12  bearing  127.67  MAD  0.31
+  13-15 801-202923-vq2-1213-1214               n=  12  bearing  127.65  MAD  1.27
+  14-15 01-202110-vq2-23-67-1314               n=   9  bearing  137.24  MAD  0.84
+  15-16 14948-vq2-strafing-15-16               n= 433  bearing    3.25  MAD  0.76  (mod 180)
+  15-16 0801-121520-vq2-lap-0-15               n=   1  bearing    5.09  MAD  0.00
+
+grid->sketch rotation: 48.3 deg (|res| median 81.9 deg over 38 pair-sessions)
+  20260801-114948-vq2-strafing-15-16: sketch-prior branch k=0 (err 1000000000.0, margin 0.0 deg)
+  20260802-005431-vq2-strafe-6-7: sketch-prior branch k=0 (err 9.2, margin 71.7 deg)
+
+--- session branch offsets (add to session-frame bearing)
+  20260801-114948-vq2-strafing-15-16: +0 deg   [SKETCH-PRIOR branch: err 1000000000.0 deg vs next-best 1000000000.0 deg]
+  20260801-115735-vq2-lap-0-11: +360 deg   [shared pairs [(0, 1), (7, 8)]; residual after branch -0.61 deg (n=2)]
+  20260801-121520-vq2-lap-0-15: +90 deg   [shared pairs [(0, 1), (3, 4), (4, 5), (5, 6), (7, 8)]; residual after branch 0.52 deg (n=7)]
+  20260801-144858-vqual2-lap-pausing: +0 deg   [reference session]
+  20260801-155701-vq2-targeting-pairs: +90 deg   [shared pairs [(8, 9)]; residual after branch -2.83 deg (n=1)]
+  20260801-202110-vq2-23-67-1314: +0 deg   [shared pairs [(0, 1), (8, 9), (12, 13)]; residual after branch 0.09 deg (n=6)]
+  20260801-202923-vq2-1213-1214: +360 deg   [shared pairs [(0, 1), (1, 2), (3, 4), (7, 9), (13, 14), (13, 15)]; residual after branch -0.73 deg (n=10)]
+  20260802-005431-vq2-strafe-6-7: +0 deg   [SKETCH-PRIOR branch: err 9.2 deg vs next-best 80.8 deg]
+  20260802-005725-vq2-2-3-b: +360 deg   [shared pairs [(2, 3)]; residual after branch -26.95 deg (n=1)]
+  20260802-010914-vq2-strafe-2-3-c: +90 deg   [shared pairs [(2, 3)]; residual after branch -15.31 deg (n=2)]
+
+--- absolute grid-frame pair directions (deg), cross-session agreement
+   0-1    117.90 deg  sessions 5  rows   91  row-MAD 0.52  x-session spread 0.52
+   1-2    287.74 deg  sessions 2  rows   11  row-MAD 1.32  x-session spread 179.21
+   2-3     50.92 deg  sessions 3  rows   80  row-MAD 0.37  x-session spread 28.78
+   3-4     42.05 deg  sessions 3  rows   40  row-MAD 0.63  x-session spread 1.86
+   4-5     66.35 deg  sessions 2  rows  122  row-MAD 0.68  x-session spread 0.96
+   4-6     67.69 deg  sessions 1  rows   32  row-MAD 0.56  x-session spread   --
+   5-6     90.14 deg  sessions 2  rows  193  row-MAD 1.17  x-session spread 0.08
+   6-7     89.70 deg  sessions 1  rows  556  row-MAD 0.33  x-session spread   --
+   7-8    162.07 deg  sessions 3  rows   94  row-MAD 0.43  x-session spread 22.38
+   7-9    153.49 deg  sessions 2  rows   17  row-MAD 0.24  x-session spread 2.57
+   8-9    144.63 deg  sessions 3  rows   84  row-MAD 0.46  x-session spread 3.28
+   9-10    78.37 deg  sessions 1  rows   12  row-MAD 0.71  x-session spread   --
+  10-11    57.47 deg  sessions 1  rows   76  row-MAD 0.28  x-session spread   --
+  11-12    44.97 deg  sessions 1  rows   28  row-MAD 1.00  x-session spread   --
+  12-13    41.98 deg  sessions 2  rows   13  row-MAD 0.14  x-session spread 92.57
+  12-14    78.17 deg  sessions 1  rows   15  row-MAD 0.23  x-session spread   --
+  13-14   116.87 deg  sessions 2  rows  129  row-MAD 1.99  x-session spread 1.14
+  13-15   127.66 deg  sessions 2  rows   24  row-MAD 0.79  x-session spread 0.01
+  14-15   137.24 deg  sessions 1  rows    9  row-MAD 0.84  x-session spread   --
+  15-16    95.09 deg  sessions 2  rows  434  row-MAD 0.38  x-session spread   --
+  >> cross-session bearing spread: median 2.22 deg  max 179.21 deg (pairs measured in 2+ sessions)
+
+--- vector-solve residuals per pair (measured vector vs solved offset)
+   0-1   |residual|  0.00 m
+   1-2   |residual|  0.00 m
+   2-3   |residual|  0.00 m
+   3-4   |residual|  0.00 m
+   4-5   |residual|  2.75 m
+   4-6   |residual|  6.92 m
+   5-6   |residual|  5.52 m
+   6-7   |residual|  0.00 m
+   7-8   |residual|  0.12 m
+   7-9   |residual|  0.41 m
+   8-9   |residual|  0.14 m
+   9-10  |residual|  0.00 m
+  10-11  |residual|  0.00 m
+  11-12  |residual|  0.00 m
+  12-13  |residual|  0.11 m
+  12-14  |residual|  0.12 m
+  13-14  |residual|  0.22 m
+  13-15  |residual|  0.19 m
+  14-15  |residual|  0.54 m
+  15-16  |residual|  0.00 m
+  >> median 0.11 m  p90 3.03 m over 20 vector constraints
+
+--- loop closures (sum of measured vectors around measured cycles)
+  cycle (4, 5, 6)      closure 15.19 m  (perimeter  60.9 m, 25.0%)
+  cycle (7, 8, 9)      closure  0.66 m  (perimeter  52.0 m, 1.3%)
+  cycle (12, 13, 14)   closure  0.41 m  (perimeter  46.1 m, 0.9%)
+  cycle (13, 14, 15)   closure  0.84 m  (perimeter  51.7 m, 1.6%)
+
+--- leave-one-edge-out with directions (edge fully removed)
+   0-1  held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+   1-2  held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+   2-3  held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+   3-4  held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+   4-5  held out -> d  10.21 vs measured  22.46 (err -12.25 m), bearing err -34.49 deg
+   4-6  held out -> d  37.32 vs measured  22.74 (err +14.58 m), bearing err  +8.40 deg
+   5-6  held out -> d   0.60 vs measured  15.65 (err -15.05 m), bearing err +38.91 deg
+   6-7  held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+   7-8  held out -> d  11.21 vs measured  11.42 (err -0.21 m), bearing err  +3.20 deg
+   7-9  held out -> d  25.99 vs measured  25.67 (err +0.32 m), bearing err  -1.29 deg
+   8-9  held out -> d  14.48 vs measured  14.87 (err -0.39 m), bearing err  +2.10 deg
+   9-10 held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+  10-11 held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+  11-12 held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+  12-13 held out -> d  13.15 vs measured  13.55 (err -0.40 m), bearing err  -0.31 deg
+  12-14 held out -> d  20.63 vs measured  20.27 (err +0.37 m), bearing err  -0.50 deg
+  13-14 held out -> d  12.46 vs measured  12.31 (err +0.15 m), bearing err  +1.74 deg
+  13-15 held out -> d  25.28 vs measured  26.08 (err -0.80 m), bearing err  +0.26 deg
+  14-15 held out -> d  14.12 vs measured  13.35 (err +0.78 m), bearing err  -1.01 deg
+  15-16 held out -> graph disconnects (bridge): unpredictable, stated rather than scored
+  >> non-bridge |d err| median 0.40 m  p90 14.58 m  (n=11; distance-only LOO was median 9.47 m with 4 unplaceable hinges)
+
+--- 1-2 adjudication: contour 8.32 m channel vs dropped gatenet 13.0 m
+  contour/kept     n= 35  d med 12.67  p10-p90  7.1-21.9  bearing med  232.52  MAD 26.07  (n_bearing=35, sessions ['ap-pausing', '23-67-1314', '-1213-1214'])
+  gatenet-dropped: no rows
+
+--- gate plane angles in the grid frame (normal azimuth, mod 180)
+  gate  0: normal az   88.98 deg  MAD  7.32  n= 680
+  gate  1: normal az  111.98 deg  MAD  8.81  n= 770
+  gate  2: normal az   96.97 deg  MAD 12.88  n= 391
+  gate  3: normal az   46.26 deg  MAD 14.48  n= 435
+  gate  4: normal az   42.70 deg  MAD 10.45  n= 691
+  gate  5: normal az   88.89 deg  MAD 11.31  n=1083
+  gate  6: normal az   93.64 deg  MAD  8.56  n= 933
+  gate  7: normal az  174.72 deg  MAD  6.69  n= 649
+  gate  8: normal az  161.32 deg  MAD 21.83  n=1094   <-- REFUSED (IPPE head-on valley), not drawn
+  gate  9: normal az  130.19 deg  MAD 12.47  n= 382
+  gate 10: normal az   71.25 deg  MAD  2.42  n= 151
+  gate 11: normal az   31.15 deg  MAD 10.89  n= 527
+  gate 12: normal az  115.16 deg  MAD 31.63  n=1817   <-- REFUSED (IPPE head-on valley), not drawn
+  gate 13: normal az   96.22 deg  MAD 37.24  n= 528   <-- REFUSED (IPPE head-on valley), not drawn
+  gate 14: normal az  128.03 deg  MAD 16.99  n=  56
+  gate 15: normal az   91.62 deg  MAD 13.12  n= 301
+  gate 16: normal az   87.95 deg  MAD 17.85  n= 123
+
+--- layout (sketch-aligned axes, metres, origin gate 0)
+  gate  0: x   -0.00  y    0.00
+  gate  1: x  -19.83  y    4.86
+  gate  2: x  -12.23  y    1.48
+  gate  3: x  -14.37  y   14.65
+  gate  4: x  -14.53  y   36.48
+  gate  5: x  -21.90  y   55.01
+  gate  6: x  -29.57  y   61.62
+  gate  7: x  -41.78  y   72.60
+  gate  8: x  -51.54  y   66.75
+  gate  9: x  -65.93  y   63.32
+  gate 10: x  -71.97  y   71.42
+  gate 11: x  -81.20  y  104.02
+  gate 12: x  -82.31  y  123.24
+  gate 13: x  -82.37  y  136.68
+  gate 14: x  -94.40  y  139.65
+  gate 15: x -108.21  y  138.46
+  gate 16: x -125.02  y  150.93

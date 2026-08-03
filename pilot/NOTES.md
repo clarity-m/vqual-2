@@ -179,7 +179,73 @@ absolute yaw.
 
 Consequence: `ATTITUDE_IGNORE` stays set. Do not reopen for a smoother inner loop.
 
-## The course
+### The live harness + scripted fallback — BUILT 2026-08-02, not yet flown
+
+`autopilot.py` closes the loop live: producer on its own 30 Hz thread (fresh frame when
+one arrived, `frame=None` tick otherwise), any `interface.Policy` at 50 Hz, AUTO_ATTENTION
+yaw servo, the −1 mirror applied in exactly ONE place (`wire()`), failsafe to IMU-level
+hover if perception stalls > 0.75 s. Reuses teleop's Telemetry/VisionRX/Pilot/Recorder
+unmodified (imported, not forked); cmd.csv schema identical, wire convention, so plant-fit
+tooling reads autopilot sessions like teleop ones. Commands are teleop's own F-key
+bindings via the same global hook (F5 arm+takeoff, F6 disarm, F8 quit, F9 reset, F11 hold
+toggle, F12 marker) — muscle memory carries over, and the abort works with ANY window
+focused, which a cv2-window key cannot promise. ESC in the cv2 window also aborts.
+
+`policy_servo.py` is the scripted fallback: P-attitude inner loop at teleop's flight-proven
+`LEVEL_GAIN`/`LEVEL_MAX_RATE`, outer loop steering at the current gate in a gravity-levelled
+frame, speed open-loop through the drag-limited tilt schedule (tilt t ⇒ terminal
+`sqrt(g·tan t / k)`, k=0.0425 — commanding tilt IS commanding speed, the plant closes the
+loop). Defined degradation: no gate → level+hover under SEARCH; `attitude_conf` < 0.05 →
+freeze; range < 4 m → ballistic commit. `HoverPolicy` (inner loop only) is the first thing
+to fly and the failsafe body.
+
+**Sign provenance (the part that has burned us three times):** the inner loop inherits its
+proof — producer `ImuFilter` vs teleop `TiltEstimator` on the fast lap's imu.csv: roll corr
++0.997, pitch +0.982, **100% roll sign agreement over all 797 frames with |roll| > 10°**
+(scratchpad `signref.py`, 2026-08-02). Same formula, same constants, same mirror as the
+`--imu-level` assist that flew VQ2 live. `policy_dryrun.py` replays a recorded session
+through producer+policy offline; on the two laps the policy tracks 48–49% of frames, commits
+17%, thrust stays 0.25–0.34. Its command-vs-pilot sign comparison is OFF-POLICY and reads
+chance on the gentle lap (48–57%) and below chance (39%) on the fast lap where the
+body-frame bearing cut diverges from the levelled one at race bank — her commands are not a
+referee for a P-servo's outer loop; the geometry and the estimator referee above are.
+
+First flight protocol: `--policy hover` (arm, take off, hold — proves inner loop + thrust
+channel), then servo with Claire watching. Gains are constants at the top of
+`policy_servo.py`, each with units and provenance, expecting live tuning.
+
+### First live campaign, 2026-08-02 evening — 2 hover tests + 3 autonomous hops
+
+Flown solo via `--reset-first --arm --duration N`; every run recorded; sessions
+20260802-{194421,194659,195348,195732,204323,205619,210027}. Findings, in the order the
+sim taught them:
+
+* **Inner attitude loop: proven live** (level, no oscillation, from the first hover).
+* **Open-loop hover cannot hold altitude in this sim** — hover thrust is zero NET force,
+  climb rate persists (vertical drag ~0.04 m/s² at 1 m/s); and the accel channel carries
+  a phantom-descent bias (+0.1–0.5 m/s² in flight), so naive vz damping FEEDS a climb.
+  `ClimbDamper` is therefore washout-based (bias-free) + runaway-cut only. Hover thrust
+  bisected live: 0.266 climbs, 0.262 sinks, **0.264 shipped** as the autopilot default.
+* **The parked IMU reads (−3.0, 0, −9.34)** — not an artifact: the start pedestal tops
+  hold the drone 17.8° nose-down (Claire's screenshot + the numbers agree). The filter
+  absorbs it; takeoff levels correctly.
+* **PRODUCER BUG, live-flight killer for ANY policy: a start pedestal captured the
+  current-gate track** (hop 1, 204323) — pedestals are solid emissive gate-orange, the
+  quadless `outer` fallback (centroid+size, conf 0.4) has no interior referee, and the
+  track walked 10.5→1.07 m of pure fiction; servo flew into the pedestal at speed. Fixed
+  in producer.py `_solid_fill_frac`: an outer det whose 70% interior is >60% saturated
+  orange is decoration (real outer boundary ≤~0.4 even point-blank — ring around a dark
+  aperture). Also added `_emissive_frac` on net acceptances (ring outside the quad must
+  contain emissive-orange; kills dim reflections, V≈42 vs real-gate V p10 185).
+* **SEARCH deadlock** (hop 2, 205619): level-and-hover while blind + climb bias ⇒ drone
+  rises until gates can never re-enter the +49.4/−9.4° frame; it photographed the
+  ceiling for 40 s. Fixed in policy: blind mode now pitches −4° and sinks ~0.15 m/s² —
+  hop 3 re-acquired gate 0 after ~30 s blind and flew a second approach.
+* **Hop 3 (210027): two controlled approaches to 1.6 m and 0.5 m — no crossing.** 12
+  contact episodes around the approaches (impulses ≤7): it reaches the gate and clips
+  the frame / stops short instead of threading. THE REMAINING PROBLEM IS THE FINAL
+  METRE: commit-phase geometry (what attitude/speed to freeze at R_COMMIT, and lateral
+  centring accuracy at handoff). Everything upstream of it now works.
 
 Indoor hangar. **17 gates** (Claire-observed 2026-07-31, superseding an earlier "~20,
 unconfirmed"). **The path winds** far more than VQ1's near-straight line — this is the real

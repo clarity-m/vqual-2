@@ -1,0 +1,65 @@
+true: 278 sure + 78 unsure; deco: 438
+
+== confusion (headline = SURE labels) ==
+  TODAY: bright                                        deco rej  96.8%  sure lost  9.71% (27/278)  unsure lost  38.5% (30/78)
+  bright & dark60<0.02                                 deco rej  96.8%  sure lost  1.44% (4/278)  unsure lost  17.9% (14/78)
+  bright & dark60<0.05                                 deco rej  96.8%  sure lost  1.80% (5/278)  unsure lost  19.2% (15/78)
+  bright & dark60<0.1                                  deco rej  96.8%  sure lost  3.24% (9/278)  unsure lost  19.2% (15/78)
+  bright & dark90<0.02                                 deco rej  96.6%  sure lost  1.08% (3/278)  unsure lost  15.4% (12/78)
+  bright & dark90<0.05                                 deco rej  96.6%  sure lost  1.44% (4/278)  unsure lost  16.7% (13/78)
+  bright & dark90<0.1                                  deco rej  96.8%  sure lost  1.80% (5/278)  unsure lost  17.9% (14/78)
+  bright & dark120<0.02                                deco rej  96.6%  sure lost  0.72% (2/278)  unsure lost  15.4% (12/78)
+  bright & dark120<0.05                                deco rej  96.6%  sure lost  1.08% (3/278)  unsure lost  15.4% (12/78)
+  bright & dark120<0.1                                 deco rej  96.6%  sure lost  1.44% (4/278)  unsure lost  16.7% (13/78)
+
+== bright & dark60<0.05: loss by size band (sure) / deco rejection by size ==
+  0-20px: sure lost   1.9% (n=54)   deco rej  96.1% (n=360)
+  20-40px: sure lost   2.1% (n=95)   deco rej 100.0% (n=63)
+  40-80px: sure lost   2.8% (n=72)   deco rej 100.0% (n=11)
+  80-1000000000px: sure lost   0.0% (n=57)   deco rej 100.0% (n=4)
+    LOST 015_00074970.jpg sz24 w0.02 v240 d60=0.031 d90=0.034 d120=0.034 occl
+    LOST 037_00073886.jpg sz14 w0.00 v158 d60=0.000 d90=0.000 d120=0.009
+    LOST 109_00071678.jpg sz44 w0.02 v166 d60=0.000 d90=0.002 d120=0.103
+    LOST 123_00076100.jpg sz20 w0.01 v249 d60=0.000 d90=0.000 d120=0.000 occl
+    LOST 153_00071708.jpg sz46 w0.02 v151 d60=0.000 d90=0.116 d120=0.354
+  deco survivors: 14
+    SURV 20260801-115735-vq2-lap-0-11/00073512.jpg sz12 w0.00 v13 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073542.jpg sz12 w0.00 v13 d60=0.970 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073576.jpg sz13 w0.00 v10 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073980.jpg sz9 w0.00 v34 d60=0.870 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00074140.jpg sz9 w0.00 v41 d60=0.907 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00074608.jpg sz13 w0.03 v103 d60=0.133 d120=0.633
+
+== bright & dark90<0.05: loss by size band (sure) / deco rejection by size ==
+  0-20px: sure lost   1.9% (n=54)   deco rej  95.8% (n=360)
+  20-40px: sure lost   2.1% (n=95)   deco rej 100.0% (n=63)
+  40-80px: sure lost   1.4% (n=72)   deco rej 100.0% (n=11)
+  80-1000000000px: sure lost   0.0% (n=57)   deco rej 100.0% (n=4)
+    LOST 015_00074970.jpg sz24 w0.02 v240 d60=0.031 d90=0.034 d120=0.034 occl
+    LOST 037_00073886.jpg sz14 w0.00 v158 d60=0.000 d90=0.000 d120=0.009
+    LOST 109_00071678.jpg sz44 w0.02 v166 d60=0.000 d90=0.002 d120=0.103
+    LOST 123_00076100.jpg sz20 w0.01 v249 d60=0.000 d90=0.000 d120=0.000 occl
+  deco survivors: 15
+    SURV 20260801-115735-vq2-lap-0-11/00072640.jpg sz11 w0.00 v202 d60=0.000 d120=0.165
+    SURV 20260801-115735-vq2-lap-0-11/00073512.jpg sz12 w0.00 v13 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073542.jpg sz12 w0.00 v13 d60=0.970 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073576.jpg sz13 w0.00 v10 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073980.jpg sz9 w0.00 v34 d60=0.870 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00074140.jpg sz9 w0.00 v41 d60=0.907 d120=1.000
+
+== bright & dark120<0.10: loss by size band (sure) / deco rejection by size ==
+  0-20px: sure lost   1.9% (n=54)   deco rej  95.8% (n=360)
+  20-40px: sure lost   2.1% (n=95)   deco rej 100.0% (n=63)
+  40-80px: sure lost   0.0% (n=72)   deco rej 100.0% (n=11)
+  80-1000000000px: sure lost   1.8% (n=57)   deco rej 100.0% (n=4)
+    LOST 015_00074970.jpg sz24 w0.02 v240 d60=0.031 d90=0.034 d120=0.034 occl
+    LOST 037_00073886.jpg sz14 w0.00 v158 d60=0.000 d90=0.000 d120=0.009
+    LOST 082_00075124.jpg sz149 w0.00 v191 d60=0.070 d90=0.084 d120=0.098
+    LOST 123_00076100.jpg sz20 w0.01 v249 d60=0.000 d90=0.000 d120=0.000 occl
+  deco survivors: 15
+    SURV 20260801-115735-vq2-lap-0-11/00072640.jpg sz11 w0.00 v202 d60=0.000 d120=0.165
+    SURV 20260801-115735-vq2-lap-0-11/00073512.jpg sz12 w0.00 v13 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073542.jpg sz12 w0.00 v13 d60=0.970 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073576.jpg sz13 w0.00 v10 d60=1.000 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00073980.jpg sz9 w0.00 v34 d60=0.870 d120=1.000
+    SURV 20260801-115735-vq2-lap-0-11/00074140.jpg sz9 w0.00 v41 d60=0.907 d120=1.000

@@ -1,0 +1,39 @@
+{
+ "source": "labelfix_gate1fit.py - full-pose fit, TRANSLATION-ONLY (REG=3000): rotation component was not session-consistent and bought no held-out improvement, so it is pinned to zero",
+ "gate": 4,
+ "old_centre": [
+  -135.37508332196282,
+  -0.7734714775836125,
+  24.26070780388154
+ ],
+ "n_frames": 229,
+ "rate_max": 0.5,
+ "occl_max": 0.2,
+ "holdout": {
+  "n_test": 109,
+  "old_median_px": 1.6291771600169345,
+  "new_median_px": 1.5190110964076662,
+  "old_p90_px": 7.040070175489121,
+  "new_p90_px": 3.5628714710069493
+ },
+ "all_frames": {
+  "old_median_px": 1.585607139260071,
+  "new_median_px": 1.467189523643504
+ },
+ "centre": [
+  -135.5577290659084,
+  -0.7777023468166169,
+  24.25542871062491
+ ],
+ "centre_delta_m": [
+  -0.1826457439455843,
+  -0.004230869233004404,
+  -0.005279093256633495
+ ],
+ "rvec": [
+  0.00024004891005431555,
+  4.1240120939080885e-05,
+  0.00019295173156707435
+ ],
+ "rotation_deg": 0.017803652597776425
+}

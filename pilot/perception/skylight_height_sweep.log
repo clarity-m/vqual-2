@@ -1,0 +1,4 @@
+min_net 0.25: n= 65  H median 6.074  MAD 2.218  p10 3.652  p90 10.782  base_m median 1.68
+min_net 0.50: n= 57  H median 5.421  MAD 1.458  p10 0.912  p90 10.269  base_m median 2.66
+min_net 1.00: n= 21  H median 4.710  MAD 0.524  p10 3.450  p90 5.983  base_m median 4.66
+min_net 1.50: n=  6  H median 4.565  MAD 0.144  p10 4.368  p90 4.709  base_m median 4.49

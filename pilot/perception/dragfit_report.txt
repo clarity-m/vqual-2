@@ -1,0 +1,95 @@
+DRAG / SPEED MODEL -- fit and out-of-sample validation
+==============================================================================
+
+DATA. The fit needs TRUE velocity, which only the VQ1 build streams
+(LOCAL_POSITION_NED, canonical per CONVENTIONS.md). VQ1 and VQ2 have identical
+physics per the spec diff, so this is valid plant data for VQ2 -- and it is the
+ONLY data that can carry this fit, since VQ2 blocks every pose stream. The
+2026-08-02 VM race-pace session is therefore NOT a fit input; it is a validation
+and diagnosis population, and it is used as one below.
+
+THE CUT, and the seconds surviving each stage:
+
+  session                           raw s airborne +noContact  +steady
+  20260731-130744                    73.5      2.4      2.4      1.3
+  20260731-131305                   479.7    119.4    119.4     78.4
+  20260731-132659                  1196.9      9.3      8.3      3.6
+  20260731-143025                    35.3     11.7     11.7      6.8
+  20260731-144815                    48.5     33.7     33.7     22.2
+  20260731-150712                   303.3    161.0    161.0    128.7
+  20260731-195307                   198.7     16.0     16.0      0.0
+  20260731-203428                    17.7      0.0      0.0      0.0
+  20260731-204841-vq1-lap-slow       97.9     12.5     12.5      3.6
+  TOTAL                            2451.5    366.0    365.0    244.8
+
+  airborne   = LOCAL_POSITION_NED z < -0.5 m. Non-negotiable: a drone parked on
+               the 17.8 deg start pad reads a CONSTANT |a_xy| = 3.00 m/s^2 at zero
+               speed (pad normal force through a tilted airframe), and it is 34-99%
+               of several sessions. Pooled in, it pins the intercept on an artefact.
+  noContact  = collision EPISODES (>0.5 s gaps) with a 0.5 s guard either side.
+               Raw |a_xy| reaches 106 m/s^2; nothing aerodynamic does that.
+  steady     = additionally |gyro| <= 1.5 rad/s, |v| >= 5 m/s, in runs lasting
+               >= 0.5 s. This is the "clean fast straight-ish" population.
+
+THE LAW. Horizontal body specific force is quadratic in the IN-PLANE speed
+component, not in the total speed:
+
+    a_body[0:2] = -k * |v_xy| * v_xy
+
+  candidate laws, pooled, airborne + no contact, |v| >= 2 m/s (n = 18355):
+    R2 0.8259   total          k = [0.02484]
+    R2 0.9562   inplane        k = [0.04249]
+    R2 0.8840   total+lin      k = [0.25812 0.01249]
+    R2 0.9564   inplane+lin    k = [0.01842 0.04101]
+
+  Binning by TOTAL speed makes the implied coefficient saturate above ~14 m/s and
+  the law look broken; binning by |v_xy| makes it flat over 2-25 m/s. That is
+  anisotropic drag (the airframe has its own coefficient in the rotor plane), and
+  it matters twice over: it fits far better (R2 0.956 vs 0.826), and it makes the
+  inversion |v_xy| = sqrt(|a_xy|/k) exact -- no assumption inside it at all.
+
+  per-session k (the stability test the total-speed law failed at 2.35x spread):
+    20260731-131305                k = 0.04425  R2 0.9472  n  4535
+    20260731-132659                k = 0.04479  R2 0.9537  n   232
+    20260731-143025                k = 0.04050  R2 0.9169  n   713
+    20260731-144815                k = 0.03657  R2 0.9836  n  2066
+    20260731-150712                k = 0.04304  R2 0.9614  n  9679
+    20260731-195307                k = 0.04463  R2 0.9457  n   456
+    20260731-204841-vq1-lap-slow   k = 0.04775  R2 0.9702  n   674
+    spread max/min = 1.31   median 0.04425
+
+  robustness of k to the steadiness cut (if the cut moved k, the fit would be
+  measuring the cut rather than the airframe):
+    |gyro| <= None   k = 0.04249  R2 0.9562  n =  18355 (  301 s)
+    |gyro| <= 2.0    k = 0.04173  R2 0.9605  n =  17472 (  286 s)
+    |gyro| <= 1.0    k = 0.04184  R2 0.9613  n =  16275 (  267 s)
+    |gyro| <= 0.5    k = 0.04181  R2 0.9612  n =  15909 (  261 s)
+
+  ADOPTED  k = 0.04249  (R2 0.9562, n = 18355)
+
+OUT-OF-SAMPLE (leave one SESSION out -- a whole session, not a time block, so no
+split boundary can leak the way the gatenet label edit did on 2026-08-01):
+
+  held out                            n |v_xy| med/p90    |v| med/p90
+  20260731-131305                  4379    0.47 /  0.85    1.27 /  8.97
+  20260731-132659                   223    0.32 /  0.53    0.18 /  0.68
+  20260731-143025                   708    0.62 /  0.89    0.47 /  2.65
+  20260731-144815                  2047    0.49 /  1.29    0.38 /  1.48
+  20260731-150712                  9341    0.58 /  0.77    1.96 / 16.10
+  20260731-195307                   441    0.22 /  0.31    0.19 /  0.45
+  20260731-204841-vq1-lap-slow      580    0.22 /  0.49    0.25 /  5.64
+  POOLED                          17719    0.53 /  0.88    1.24 / 14.96
+
+  |v_xy| is what SHIPS: median 0.53 m/s, p90 0.88 m/s, bias +0.21, ~7% relative,
+  and flat across every speed band from 2 to 34 m/s.
+
+  |v| is what IS REFUSED: median looks fine at 1.24 m/s but p90 is 14.96 m/s and the
+  22-40 m/s band carries a -14.3 m/s bias. The total speed needs the body-z
+  velocity component, which is not observable (thrust sits on that axis; the
+  barometer reads nan in this sim). Closing the system with a world-horizontal-
+  velocity assumption is what fails: the recorded flight-path angle has a 26-34 deg
+  median and only a third to two thirds of frames sit under 20 deg.
+
+  So speed_est_mps carries the IN-PLANE speed and says so, and
+  (vel_bearing_rad, speed_est_mps) together are the body-horizontal velocity
+  vector. Nothing in the stack claims to know the climb rate.

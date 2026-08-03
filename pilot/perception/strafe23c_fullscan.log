@@ -1,0 +1,108 @@
+0/4242
+400/4242
+800/4242
+1200/4242
+1600/4242
+2000/4242
+2400/4242
+2800/4242
+3200/4242
+3600/4242
+4000/4242
+
+GOLD: 49 frames (stride 4)
+  t=   9.9s 01141673.jpg sep=275px ranges 13.2/24.0 m
+  t=  10.0s 01141677.jpg sep=172px ranges 11.9/9.5 m
+  t=  21.9s 01142033.jpg sep=173px ranges 25.1/17.0 m
+  t=  22.4s 01142049.jpg sep=308px ranges 20.1/21.7 m
+  t=  22.7s 01142057.jpg sep=199px ranges 19.4/18.2 m
+  t=  22.8s 01142061.jpg sep=192px ranges 8.9/21.4 m
+  t=  22.9s 01142065.jpg sep=306px ranges 21.6/21.3 m
+  t=  23.1s 01142069.jpg sep=302px ranges 20.6/21.3 m
+  t=  23.2s 01142073.jpg sep=290px ranges 14.1/20.4 m
+  t=  23.3s 01142077.jpg sep=291px ranges 13.3/20.5 m
+  t=  23.6s 01142085.jpg sep=310px ranges 16.7/20.1 m
+  t=  24.5s 01142113.jpg sep=234px ranges 15.1/22.3 m
+  t=  24.7s 01142117.jpg sep=188px ranges 9.1/22.2 m
+  t=  24.8s 01142121.jpg sep=185px ranges 9.3/22.1 m
+  t=  24.9s 01142125.jpg sep=183px ranges 11.3/22.1 m
+  t=  25.1s 01142129.jpg sep=181px ranges 11.4/22.5 m
+  t=  25.2s 01142133.jpg sep=210px ranges 14.1/23.1 m
+  t=  25.3s 01142137.jpg sep=198px ranges 14.4/22.5 m
+  t=  25.5s 01142141.jpg sep=175px ranges 10.0/22.6 m
+  t=  25.6s 01142145.jpg sep=174px ranges 10.2/22.7 m
+  t=  25.7s 01142149.jpg sep=170px ranges 12.1/22.7 m
+  t=  25.9s 01142153.jpg sep=168px ranges 12.3/22.2 m
+  t=  29.7s 01142269.jpg sep=172px ranges 18.9/16.3 m
+  t=  29.9s 01142273.jpg sep=187px ranges 16.2/15.5 m
+  t=  30.0s 01142277.jpg sep=185px ranges 9.8/21.8 m
+  t=  30.4s 01142289.jpg sep=326px ranges 21.5/19.8 m
+  t=  31.1s 01142309.jpg sep=348px ranges 25.1/19.5 m
+  t=  32.8s 01142361.jpg sep=429px ranges 30.7/22.6 m
+  t=  43.2s 01142673.jpg sep=443px ranges 20.0/29.9 m
+  t=  44.1s 01142701.jpg sep=416px ranges 16.4/25.3 m
+  t=  58.5s 01143133.jpg sep=357px ranges 11.7/15.7 m
+  t=  58.7s 01143137.jpg sep=357px ranges 11.8/19.1 m
+  t=  58.8s 01143141.jpg sep=359px ranges 11.6/19.7 m
+  t= 100.5s 01144393.jpg sep=239px ranges 14.3/14.0 m
+  t= 101.2s 01144413.jpg sep=230px ranges 14.2/14.3 m
+  t= 101.3s 01144417.jpg sep=230px ranges 14.4/14.4 m
+  t= 101.6s 01144425.jpg sep=236px ranges 14.1/14.4 m
+  t= 102.0s 01144437.jpg sep=250px ranges 13.9/14.1 m
+  t= 102.1s 01144441.jpg sep=254px ranges 14.1/13.8 m
+  t= 120.1s 01144981.jpg sep=188px ranges 11.5/17.2 m
+  t= 131.3s 01145317.jpg sep=190px ranges 13.4/20.5 m
+  t= 131.6s 01145325.jpg sep=187px ranges 12.9/22.5 m
+  t= 131.7s 01145329.jpg sep=192px ranges 12.8/20.4 m
+  t= 132.0s 01145337.jpg sep=207px ranges 20.6/17.4 m
+  t= 133.1s 01145369.jpg sep=214px ranges 13.6/24.0 m
+  t= 133.6s 01145385.jpg sep=156px ranges 10.6/11.6 m
+  t= 133.9s 01145393.jpg sep=167px ranges 11.0/10.7 m
+  t= 134.3s 01145405.jpg sep=213px ranges 9.0/20.0 m
+  t= 135.1s 01145429.jpg sep=237px ranges 14.3/22.2 m
+
+ONECLIP: 30 frames (stride 4)
+  t=   9.2s 01141653.jpg sep=206px ranges 16.9/9.8 m
+  t=  22.3s 01142045.jpg sep=309px ranges 22.3/23.0 m
+  t=  23.7s 01142089.jpg sep=190px ranges 10.3/20.5 m
+  t=  23.9s 01142093.jpg sep=189px ranges 10.1/20.7 m
+  t=  31.5s 01142321.jpg sep=278px ranges 8.0/12.0 m
+  t=  32.0s 01142337.jpg sep=295px ranges 17.1/23.9 m
+  t=  32.5s 01142353.jpg sep=426px ranges 29.8/24.3 m
+  t=  32.7s 01142357.jpg sep=428px ranges 27.8/23.4 m
+  t=  32.9s 01142365.jpg sep=431px ranges 28.4/21.3 m
+  t=  48.9s 01142845.jpg sep=276px ranges 14.2/18.7 m
+  t=  49.1s 01142849.jpg sep=298px ranges 13.8/18.3 m
+  t=  57.1s 01143089.jpg sep=373px ranges 8.4/19.3 m
+  t=  57.6s 01143105.jpg sep=360px ranges 8.1/16.4 m
+  t=  57.7s 01143109.jpg sep=366px ranges 11.3/19.5 m
+  t=  60.8s 01143201.jpg sep=366px ranges 10.6/21.3 m
+  t=  67.3s 01143397.jpg sep=366px ranges 9.7/18.3 m
+  t=  67.5s 01143401.jpg sep=366px ranges 9.5/19.0 m
+  t=  67.6s 01143405.jpg sep=367px ranges 9.4/18.5 m
+  t= 100.7s 01144397.jpg sep=256px ranges 12.8/14.3 m
+  t= 100.8s 01144401.jpg sep=263px ranges 12.8/14.2 m
+  t= 100.9s 01144405.jpg sep=262px ranges 12.8/14.0 m
+  t= 101.1s 01144409.jpg sep=250px ranges 15.3/14.2 m
+  t= 101.5s 01144421.jpg sep=248px ranges 13.0/14.2 m
+  t= 101.7s 01144429.jpg sep=255px ranges 12.7/14.1 m
+  t= 126.9s 01145185.jpg sep=178px ranges 17.2/17.5 m
+  t= 127.1s 01145189.jpg sep=178px ranges 13.9/21.3 m
+  t= 127.2s 01145193.jpg sep=231px ranges 15.2/9.8 m
+  t= 127.6s 01145205.jpg sep=236px ranges 13.4/29.5 m
+  t= 128.4s 01145229.jpg sep=154px ranges 23.1/20.3 m
+  t= 133.3s 01145377.jpg sep=345px ranges 23.7/12.9 m
+
+BOTHCLIP: 12 frames (stride 4)
+  t=  30.5s 01142293.jpg sep=368px ranges 17.3/18.5 m
+  t=  51.6s 01142925.jpg sep=196px ranges 8.3/14.4 m
+  t=  60.9s 01143205.jpg sep=363px ranges 11.5/17.4 m
+  t=  98.3s 01144325.jpg sep=326px ranges 9.2/10.5 m
+  t=  98.4s 01144329.jpg sep=324px ranges 9.3/10.4 m
+  t=  98.5s 01144333.jpg sep=321px ranges 9.6/10.4 m
+  t=  98.7s 01144337.jpg sep=318px ranges 9.9/10.3 m
+  t= 102.5s 01144453.jpg sep=297px ranges 15.2/13.6 m
+  t= 102.7s 01144457.jpg sep=303px ranges 15.9/13.4 m
+  t= 103.5s 01144481.jpg sep=312px ranges 12.4/12.8 m
+  t= 103.6s 01144485.jpg sep=313px ranges 12.3/12.7 m
+  t= 127.7s 01145209.jpg sep=250px ranges 13.4/27.3 m
