@@ -25,7 +25,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from pilot.control.train.actionmap import resolve_action_map  # noqa: E402
+from pilot.control.train.actionmap import (ResidualThrustMap,  # noqa: E402
+                                          resolve_action_map)
 from pilot.control.train.curriculum import (  # noqa: E402
     Curriculum,
     CurriculumConfig,
@@ -150,6 +151,17 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--n-envs", type=int, default=256)
     p.add_argument("--n-steps", type=int, default=128, help="rollout length per env")
     p.add_argument("--frame-stack", type=int, default=6)
+    p.add_argument("--frame-offsets", type=str, default=None,
+                   help="comma-separated frame lags in DECISION STEPS, e.g. "
+                        "'32,16,8,4,2,0'. Must have --frame-stack entries and include 0. "
+                        "Default (unset) is consecutive steps, i.e. 0.111 s at k=6 and "
+                        "55 Hz, which holds only ~3.3 distinct camera frames.")
+    p.add_argument("--thrust-residual", action="store_true",
+                   help="make the thrust action a residual about "
+                        "hover/(cos roll cos pitch), so u[2]=0 holds altitude at any "
+                        "attitude instead of the network learning that term from reward.")
+    p.add_argument("--thrust-residual-span", type=float, default=0.30,
+                   help="authority of the thrust residual either side of hover.")
     p.add_argument("--hidden", default="256,256")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", default="cpu")
@@ -233,7 +245,19 @@ def run(args: argparse.Namespace) -> dict:
                            f"expected {OBS_DIM} and 3")
 
     action_map = resolve_action_map()
-    thrust_bias = action_map.thrust_pre_tanh_bias(HOVER_THRUST)
+    frame_offsets = None
+    if args.frame_offsets:
+        frame_offsets = [int(x) for x in str(args.frame_offsets).replace(" ", "").split(",") if x != ""]
+    thrust_residual = None
+    if args.thrust_residual:
+        action_map = ResidualThrustMap(action_map, hover_thrust=HOVER_THRUST,
+                                       span=args.thrust_residual_span)
+        thrust_residual = {"hover_thrust": HOVER_THRUST,
+                           "span": float(action_map.span),
+                           "min_cos": float(action_map.min_cos)}
+    # Under the residual map u[2]=0 already IS hover, so the head needs no bias at all.
+    thrust_bias = (0.0 if thrust_residual is not None
+                   else action_map.thrust_pre_tanh_bias(HOVER_THRUST))
 
     net = ActorCritic(
         obs_dim=obs_dim,
@@ -245,6 +269,8 @@ def run(args: argparse.Namespace) -> dict:
         hover_thrust=HOVER_THRUST,
         thrust_floor=action_map.thrust_floor,
     ).to(args.device)
+    net._frame_offsets = frame_offsets
+    net._thrust_residual = thrust_residual
 
     ppo_cfg = PPOConfig(
         n_steps=args.n_steps,
@@ -270,6 +296,7 @@ def run(args: argparse.Namespace) -> dict:
         n_envs=args.n_envs,
         cfg=ppo_cfg,
         action_map=action_map,
+        frame_offsets=frame_offsets,
         obs_norm=obs_norm,
         rew_scaler=rew_scaler,
         device=args.device,
@@ -392,6 +419,8 @@ def _save(args, agent: PPO, net: ActorCritic, env_cfg, action_map, tag: str = ""
         agent.stack.k,
         env_config_dict(env_cfg),
         agent.global_step,
+        frame_offsets=getattr(net, "_frame_offsets", None),
+        thrust_residual=getattr(net, "_thrust_residual", None),
         extra_json={
             "env_kind": args.env,
             "action_map_source": action_map.source,

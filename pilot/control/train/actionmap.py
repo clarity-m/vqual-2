@@ -156,6 +156,20 @@ class ResidualThrustMap:
         c = np.maximum(np.abs(c), self.min_cos)
         return np.clip(self.hover_thrust / c, self.thrust_floor, 1.0)
 
+    def thrust_of(self, u_thrust: float) -> float:
+        """Physical thrust for a scalar thrust action, AT LEVEL ATTITUDE.
+
+        Only meaningful as a reference point (banners, logs): under this map thrust is a
+        function of attitude too, so there is no single scalar answer. Level is the
+        honest one to quote because it is the map's own zero.
+        """
+        return float(np.clip(self.hover_thrust + self.span * float(np.clip(u_thrust, -1.0, 1.0)),
+                             self.thrust_floor, 1.0))
+
+    def thrust_pre_tanh_bias(self, thrust: float) -> float:
+        """Under the residual map, hover IS the zero action -- no bias is needed."""
+        return 0.0
+
     def __call__(self, u: np.ndarray, roll=None, pitch=None) -> np.ndarray:
         a = np.asarray(u, dtype=np.float32)
         single = a.ndim == 1

@@ -79,6 +79,7 @@ class PPO:
         n_envs: int,
         cfg: PPOConfig,
         action_map,
+        frame_offsets=None,
         obs_norm: ObsNormalizer | None = None,
         rew_scaler: RewardScaler | None = None,
         device: str = "cpu",
@@ -95,7 +96,8 @@ class PPO:
         self.completion_fn = completion_fn
 
         self.opt = torch.optim.Adam(net.parameters(), lr=cfg.lr, eps=1e-5)
-        self.stack = FrameStack(self.obs_dim, frame_stack, self.n_envs)
+        self.stack = FrameStack(self.obs_dim, frame_stack, self.n_envs,
+                                offsets=frame_offsets)
         self.obs_norm = obs_norm if obs_norm is not None else ObsNormalizer(self.obs_dim)
         self.rew_scaler = (
             rew_scaler if rew_scaler is not None else RewardScaler(self.n_envs, gamma=cfg.gamma)

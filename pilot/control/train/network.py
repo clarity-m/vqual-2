@@ -199,6 +199,14 @@ class ActorCritic(nn.Module):
 
 CHECKPOINT_KEYS = ("model", "obs_mean", "obs_std", "frame_stack", "net_config", "env_config", "step")
 
+# Optional keys, absent from every checkpoint written before them. They describe the
+# INPUT PIPELINE and the ACTION MAPPING, neither of which is recoverable from the
+# weights, so a checkpoint that used either and did not record it is unflyable.
+#   'frame_offsets'    list of k frame lags, oldest first; None/absent = consecutive
+#   'thrust_residual'  dict(hover_thrust, span, min_cos); None/absent = plain affine map
+# Both default to the pre-existing behaviour, so old checkpoints load and fly unchanged.
+OPTIONAL_CHECKPOINT_KEYS = ("frame_offsets", "thrust_residual")
+
 
 def _json_safe(obj):
     if isinstance(obj, dict):
@@ -228,6 +236,8 @@ def save_checkpoint(
     step: int,
     net_config: dict | None = None,
     extra_json: dict | None = None,
+    frame_offsets=None,
+    thrust_residual: dict | None = None,
 ) -> Path:
     """Write `<path>.pt` and the `<path>.json` sidecar. Returns the .pt path.
 
@@ -256,6 +266,12 @@ def save_checkpoint(
         "env_config": _json_safe(env_config),
         "step": int(step),
     }
+    # Written only when in use, so a default run produces a byte-comparable checkpoint
+    # to one from before these existed.
+    if frame_offsets is not None:
+        ckpt["frame_offsets"] = [int(o) for o in frame_offsets]
+    if thrust_residual is not None:
+        ckpt["thrust_residual"] = _json_safe(thrust_residual)
     pt_path = path.with_suffix(".pt")
     torch.save(ckpt, pt_path)
 
