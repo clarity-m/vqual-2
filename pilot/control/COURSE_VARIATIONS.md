@@ -40,6 +40,62 @@ Validity is judged by eye against the mapped course, not by an acceptance predic
 displaced into one another, and corners sharper than the real course has (see the turn
 filter below).
 
+## Start conditions — every episode begins at gate 0
+
+Observed in VQ2: the drone sits **on a platform, at rest, ~10 m out, level with gate 0,
+pitched 20° nose-down** so the 20°-up camera looks ahead. And by decision, **every episode
+starts there** — no mid-course spawns.
+
+The route matches this: the lead-in runs 10 m back along gate 0's normal (horizontal,
+z = 0.000, so the start is level with gate 0 without further work) and the speed profile
+opens at **0 m/s**, reaching 8 m/s after 4 m — at pace 6 m before gate 0.
+
+The 10 m matters for reward correctness, not tidiness. `s₀` is initialized by nearest
+point, so at the old 6 m lead-in a drone spawning at 10 m sat 4 m *behind* the line, pinned
+to the first vertex with `d⊥ = 4 m`, and every episode opened on a corridor multiplier of
+**0.077**. It is now 1.000. Gate-0-only starts also make `s₀ = 0` always, which retires a
+whole class of projection bug: no nearest-point ambiguity, no need to restrict the search
+to a spawn gate's neighbourhood.
+
+### What the surrogate does instead
+
+Three deltas, none applied here — `env.py` is spawn config and outside this module.
+
+| | observed | `env.py` today |
+|---|---|---|
+| spawn gate | always 0 | 25% mid-course (`start_probs[1]`) |
+| speed | 0 (on a platform) | `U(0.35, 1.05) × cruise` = 3.5–10.5 m/s |
+| pitch | −20° (nose-down) | `N(0, 0.06)` = level ±3.4° |
+| platform | 3–4 m structure under the start | not modelled |
+
+`a0 = where(mode == 1, random, 0)`, so only mode 1 leaves gate 0: dropping mid-course
+spawns is `start_probs[1] = 0`, renormalizing to `(0.667, 0, 0.16, 0.107, 0.067)`. With
+every spawn now at the start line there is no flying start left to preserve, so
+`start_speed_frac` goes to zero outright.
+
+The pitch gap is the one with teeth. `camera.py` mounts the camera **20° UP**, putting
+body-forward at image row 296 of 360 with a vertical span of +49.4°/−9.4° about it. Gate 0
+sits at the drone's own altitude, so:
+
+* spawning level (today) renders gate 0 at **row 296** — 9.4° from leaving the frame, and
+  any nose-down to accelerate pushes it out;
+* spawning at −20° renders it at **row 180**, dead centre.
+
+`camera.py`'s own docstring names that lower edge as the binding constraint on this course.
+
+### The cost of gate-0-only starts, stated once
+
+Mid-course spawns were buying **coverage**, not variety: with `collision_terminates=True`
+a policy that dies at gate 3 never sees gates 4–16, and course deformation does not carry
+it downcourse. Back-half exposure is now gated on front-half reliability.
+
+The mechanism that recovers it without reintroducing mid-course spawns is
+**`collision_terminates=False`** (`TRAINING_ARCHITECTURE.md` E5, already a config flag):
+contact costs `k_collision` and hands back to a recovered state instead of ending the
+episode, so a single gate-0 episode still reaches the back half. That also puts the
+recovery-handback distribution back where it belongs — arising mid-race from an actual
+crash, rather than being synthesized at the start line by spawn modes 2–4.
+
 ## The route is a spline, not a pursuit path
 
 `spline_route()` is the generator. A centripetal Catmull-Rom curve is interpolated
