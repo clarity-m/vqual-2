@@ -41,6 +41,7 @@ BEFORE the step, and the terminal point is solved along the last segment.
 """
 
 import argparse
+import ast
 import datetime
 import json
 import os
@@ -56,7 +57,7 @@ if _ROOT not in sys.path:
 
 from pilot.control.evalsuite.run_policy import (                       # noqa: E402
     _Env, add_common_args, add_policy_args, build_config, config_dict,
-    make_policy, override, parse_pair, parse_seeds, write_json)
+    make_policy, parse_pair, parse_seeds, steps_for, write_json)
 from pilot.control.surrogate import camera, course, vmath              # noqa: E402
 
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "viz3d_template.html")
@@ -149,7 +150,7 @@ def _det_row(g, is_fp):
             int(g.index), flags)
 
 
-def capture_episode(policy, cfg, seed, max_steps=5000, want_det=True):
+def capture_episode(policy, cfg, seed, max_steps=None, want_det=True):
     """Fly one seed, recording privileged truth BEFORE every step. Full rate."""
     env = _Env(cfg, seed)
     obs = env.reset()
@@ -166,6 +167,8 @@ def capture_episode(policy, cfg, seed, max_steps=5000, want_det=True):
                   steps=0, gates=0, t_end=0.0, ret=0.0, rows=[], term=None)
         return ep
 
+    if max_steps is None:
+        max_steps = steps_for(cfg)
     vec = getattr(env, "vec", None)
     rows, term, info = [], None, {}
     for i in range(1, int(max_steps) + 1):
@@ -253,6 +256,15 @@ def classify_terminal(info, prev, dt, world, cfg):
         # that fires at 11.99 s reads as a wall-clock timeout.
         gt = float(getattr(cfg, "gate_timeout_s", 12.0))
         out["sub"] = "gate stall" if float(prev["t_gate"]) + dt > gt else "wall clock"
+        return out
+    # `gate_timeout` is its OWN info flag, not part of `timeout` -- env.py split them so
+    # PPO would stop bootstrapping a stuck policy with the value of a course it was never
+    # going to fly. This branch was written before that split and never updated, so every
+    # gate stall fell through to FRAME? below and the dominant ending of a pass-through
+    # run got reported as "cause unknown".
+    if bool(info.get("gate_timeout")):
+        out["kind"] = "TIMEOUT"
+        out["sub"] = "gate stall"
         return out
     if not bool(info.get("collision")):
         out["kind"] = "FRAME?"
@@ -527,16 +539,33 @@ def main(argv=None):
     ap.add_argument("--no-timestamp", action="store_true")
     ap.add_argument("--full-config", action="store_true")
     ap.add_argument("--no-check", action="store_true", help="skip the geometry invariants")
+    # Arbitrary EnvConfig overrides, python literals, same spelling as train.py's.
+    # Needed because a checkpoint can be trained under env settings this tool had no flag
+    # for -- `gate_contact_terminates=False` and `gate_inner_scale>1` in particular. A
+    # pass-through policy rendered with terminal gates ends every episode at its first
+    # clip, which is the one thing it was trained not to do, and the picture is a lie.
+    ap.add_argument("--env-kwarg", action="append", default=[], metavar="KEY=VALUE",
+                    help="EnvConfig override, e.g. gate_inner_scale=1.45 (repeatable)")
     args = ap.parse_args(argv)
 
     seeds = parse_seeds(args.seeds)
+    # vq2_frac MUST match training (1.0 for a VQ2-only checkpoint). Default normal
+    # starts: the training mix can spawn mid-course / outside the corridor and dies
+    # on step 1, which makes the pictures unreadable.
     cfg = build_config(args.difficulty, args.speed_cap, parse_pair(args.decision_hz),
-                       parse_pair(args.n_gates), args.time_penalty)
-    if not args.random_starts:
-        # The training mix spawns 25% mid-course, 12% hovering and 8% laterally offset by
-        # 0.45*corridor_r -- devices that make the pictures unreadable, and in the last
-        # case can spawn OUTSIDE the corridor and die on step 1.
-        cfg = override(cfg, start_probs=(1.0, 0.0, 0.0, 0.0, 0.0))
+                       parse_pair(args.n_gates), args.time_penalty,
+                       vq2_frac=args.vq2_frac, random_starts=args.random_starts)
+    for item in args.env_kwarg:
+        k, _, v = str(item).partition("=")
+        k = k.strip()
+        if not hasattr(cfg, k):
+            raise SystemExit(f"viz3d: EnvConfig has no field {k!r}")
+        try:
+            val = ast.literal_eval(v.strip())
+        except (ValueError, SyntaxError):
+            val = v.strip()
+        setattr(cfg, k, val)
+        print(f"[viz3d] env override: {k} = {val!r}")
 
     policy, name = (None, "none")
     if args.policy != "none":
