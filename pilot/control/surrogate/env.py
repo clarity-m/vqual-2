@@ -352,6 +352,31 @@ class EnvConfig:
     launch_pad: bool = True
     launch_pad_r_m: float = 1.5
 
+    # -- gate aperture, the curriculum axis nobody had -------------------------
+    #
+    # Multiplier on the CLEAR opening (`course.GATE_INNER_M`, 1.5 m). 1.0 is the real
+    # course and is the only value a shippable policy may finish training at.
+    #
+    # Why this exists. `difficulty` scales noise and course tightness, `speed_cap` scales
+    # commanded rates, `gates_per_episode` scales episode length -- and none of them is
+    # what the policy actually fails on. Measured over 12 rendered rollouts of the
+    # completed 200M run (`evalsuite/viz3d.py`): every episode ended on a gate frame,
+    # median miss 0.590 m against a usable margin of 0.536 m (0.75 half-aperture minus the
+    # 0.214 bounding sphere), with 76% of the squared miss on the VERTICAL axis. The
+    # failures are near-misses clustered on the aperture edge, which is why `gate_rate`
+    # sits near 0.46 rather than near 0 or near 1.
+    #
+    # At 2x aperture, 83% of those misses clear. Meanwhile `speed_cap` was being RAISED
+    # from 0.5 to 0.7, making the precision problem harder while the one constraint that
+    # binds stayed fixed. Widening the gate first and closing it as accuracy improves is
+    # the ordinary form of the curriculum this course needed.
+    #
+    # DO NOT SHIP A POLICY TRAINED ABOVE 1.0. The real gates are 1.5 m; a checkpoint left
+    # at 2.0 has been optimised against a hole twice the size and will be WORSE than one
+    # trained honestly. `train.py` anneals this to 1.0 and refuses to write a final
+    # checkpoint that has not landed there.
+    gate_inner_scale: float = 1.0
+
     # -- perception ----------------------------------------------------------
     noise: noise_mod.NoiseParams = field(default_factory=noise_mod.NoiseParams)
     # Sensor-error strength, independent of `difficulty`. 1.0 is the measured model;
@@ -982,8 +1007,23 @@ class VecSurrogate:
         self._cross0 = cross[:, 0]
 
         r = self.sphere_r[:, None]
-        inner = 0.5 * course.GATE_INNER_M
-        outer = 0.5 * self.cfg.gate_outer_m
+        # Read live from the config, like `gate_outer_m` already is, so `train.py` can
+        # anneal the aperture by mutating `env_cfg` without rebuilding the env -- the same
+        # mechanism the sensor-noise ramp uses.
+        sc = float(self.cfg.gate_inner_scale)
+        inner = 0.5 * course.GATE_INNER_M * sc
+        # The STRUCTURE scales with the opening. Widening the aperture alone would drive
+        # `inner` past `outer` (0.75*2 = 1.50 against 1.35) and leave the frame with
+        # negative width: the collision annulus inverts and wide misses stop registering
+        # at all. Scaling both is just a bigger gate.
+        #
+        # Perception is untouched by this. `camera.size_px_from_range` and
+        # `range_from_size_px` are inverses over camera.GATE_INNER_M and never read the
+        # real geometry, so apparent size and the range estimate stay self-consistent
+        # whatever the collision gate is doing. The anneal therefore changes the precision
+        # REQUIRED, not the information available -- which is what makes it a clean
+        # curriculum axis rather than a second confound.
+        outer = 0.5 * self.cfg.gate_outer_m * sc
         # The sphere clips the frame: through the plane, outside the clear aperture, and
         # not so wide that it missed the 2700 mm structure entirely.
         hit = cross & (lat + r > inner) & (lat - r < outer)

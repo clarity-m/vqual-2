@@ -128,6 +128,30 @@ def noise_scale_at(args, step: int):
     return float(min(max(s0 + (1.0 - s0) * min(max(f, 0.0), 1.0), 0.0), 1.0))
 
 
+def gate_scale_at(args, step: int):
+    """Gate-aperture multiplier for this global step, or None if no anneal was asked for.
+
+    Linear from `--gate-scale-start` down to 1.0 (the real 1.5 m gate) at
+    `--gate-scale-until`, flat at 1.0 after. ABSOLUTE steps, for the same reason the noise
+    ramp uses them: the scale is a pure function of `global_step`, so a resume rejoins the
+    schedule instead of restarting it and handing the policy wide gates all over again.
+
+    Clamped to >= 1.0 throughout. Annealing UP -- starting narrow and widening -- is not a
+    curriculum, it is training a policy for a course that does not exist, so the flag
+    cannot express it.
+    """
+    if args.gate_scale_start is None or float(args.gate_scale_start) <= 1.0:
+        return None
+    s0 = float(args.gate_scale_start)
+    b = int(args.gate_scale_until)
+    a = int(args.gate_scale_from or 0)
+    if b <= a:
+        return 1.0 if step >= b else s0
+    f = (float(step) - a) / float(b - a)
+    f = min(max(f, 0.0), 1.0)
+    return float(max(1.0, s0 + (1.0 - s0) * f))
+
+
 def restore_env_config(d: dict, cls=None):
     """Rebuild an EnvConfig from a checkpoint's `env_config` dict.
 
@@ -320,6 +344,20 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--noise-ramp-to", type=int, default=None,
                    help="ABSOLUTE global step where noise reaches full strength. Absolute "
                         "so the ramp survives a resume instead of restarting.")
+    # Gate-aperture anneal. The curriculum axis the schedule never had: `difficulty`,
+    # `speed_cap` and `gates_per_episode` all scale something the policy was NOT failing
+    # on. Rendered rollouts of the finished 200M run put the median gate-plane miss at
+    # 0.590 m against a 0.536 m usable margin, 76% of it vertical -- near-misses on the
+    # aperture edge. At 2x aperture 83% of them clear.
+    #
+    # Starts wide, closes to 1.0 (the real 1.5 m gate) by --gate-scale-until, and the run
+    # REFUSES to write a final checkpoint above 1.0.
+    p.add_argument("--gate-scale-start", type=float, default=None,
+                   help="gate aperture multiplier at --gate-scale-from (e.g. 2.0)")
+    p.add_argument("--gate-scale-from", type=int, default=None,
+                   help="absolute step the anneal begins (default 0)")
+    p.add_argument("--gate-scale-until", type=int, default=None,
+                   help="absolute step by which the aperture is back to 1.0")
     p.add_argument("--difficulty-start", type=float, default=0.0)
     p.add_argument("--speed-cap-start", type=float, default=0.5)
     p.add_argument("--no-curriculum", action="store_true")
@@ -631,6 +669,14 @@ def run(args: argparse.Namespace) -> dict:
         if ns is not None:
             env_cfg.noise_scale = ns
 
+        # Gate-aperture anneal, same mechanism and the same absolute-step anchoring.
+        # `_gate_geometry` reads `gate_inner_scale` off the live config every step, so
+        # mutating it here is enough -- no env rebuild, and therefore no episode reset on
+        # every increment the way a curriculum-driven rebuild would cause.
+        gs = gate_scale_at(args, agent.global_step)
+        if gs is not None:
+            env_cfg.gate_inner_scale = gs
+
         stats = agent.collect()
         losses = agent.update()
         curriculum.record(stats.completions, stats.gate_passes, stats.gate_attempts)
@@ -701,7 +747,11 @@ def run(args: argparse.Namespace) -> dict:
                 # collisions-per-episode once it does not. Same column, right meaning.
                 f"coll={(row['collisions_per_ep'] if row['collisions_per_ep'] != '' else row['collision_rate'])!s:>5} "
                 f"{split}"
-                f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} "+ (f"nz={row['noise_scale']:.2f} " if row['noise_scale'] < 1.0 else "") + "| "
+                f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} "
+                + (f"nz={row['noise_scale']:.2f} " if row['noise_scale'] < 1.0 else "")
+                # Only while it is off nominal, so a normal run's line is unchanged.
+                + (f"gate={env_cfg.gate_inner_scale:.2f}x " if getattr(env_cfg, "gate_inner_scale", 1.0) > 1.0 else "")
+                + "| "
                 f"{curriculum.summary()} | "
                 f"pl={row['policy_loss']:+.4f} vl={row['value_loss']:.4f} "
                 f"ent={row['entropy']:.3f} kl={row['approx_kl']:.4f} "
@@ -716,6 +766,22 @@ def run(args: argparse.Namespace) -> dict:
         if update % 10 == 0 or update == total_updates:
             _save(args, agent, net, env_cfg, action_map,  # rolling latest
                   resume_state=_resume_state(curriculum, update, next_archive, n_rebuilds))
+
+    # The aperture anneal must LAND. A checkpoint written while the gate is still wide has
+    # been optimised against a hole bigger than the real one and will fly the actual course
+    # WORSE than a policy trained honestly -- and nothing downstream can tell, because the
+    # scale lives in the env, not in the weights. So say it loudly at the one moment it can
+    # still be acted on, and stamp the checkpoint either way (`env_config` carries
+    # `gate_inner_scale`, so `select.py` and `RLPolicy` can see it too).
+    final_scale = float(getattr(env_cfg, "gate_inner_scale", 1.0))
+    if final_scale > 1.0 + 1e-9:
+        print(
+            f"\n[train] *** WARNING: gate_inner_scale is {final_scale:.3f}, not 1.0 ***\n"
+            f"[train] This run ENDED on gates {final_scale:.2f}x the real 1.5 m aperture.\n"
+            f"[train] The checkpoint is NOT shippable: extend --gate-scale-until beyond\n"
+            f"[train] --total-steps, or train further until the anneal completes.",
+            flush=True,
+        )
 
     final = _save(args, agent, net, env_cfg, action_map, tag="_final",
                   resume_state=_resume_state(curriculum, update, next_archive, n_rebuilds))
