@@ -95,16 +95,22 @@ only when in use, so a default run still produces exactly the seven original key
   Magnitude ~0.00013/step against a ~0.09 progress signal — negligible, but it is there if
   `k_jerk` is ever raised substantially.
 
-## Findings handed to the environment work, not acted on here
+## Findings handed to the environment work
 
-* **Spawn attitude.** The surrogate spawns at ~0° pitch (`env.py:537`); the real vehicle
-  starts ~20° nose-down on a platform. That puts gate 0 at image row 294/360 instead of
-  178, and leaves **11% of forward starts with the target gate out of frame**. The frame
-  stack then fills all six slots with that mis-framed observation, and `k_nogate` penalizes
-  the condition the spawn created.
-* **The surrogate also spawns *moving*** (3.5–10.5 m/s) where the real drone starts
-  stationary on a platform — and `vel_bearing`/`speed` are drag-derived, so they are
-  **invalid at rest**. At t=0 the real aircraft has no velocity signal at all.
+**Spawn — already fixed by that session, verified here 2026-08-03.** `EnvConfig
+.start_pitch_rad = -0.349` (−20°) now applies to race starts (`env.py:539`). Measured on
+VQ2 forward starts: median pitch **−20.1°**, gate 0 at image row **174** of 360, **100% in
+frustum** (was 89% at the old ~0° spawn), and start speed **0.00 m/s** — so the platform is
+modelled too. Both findings this review raised are closed. Nothing to do.
+
+One consequence worth carrying: `vel_bearing`/`speed` are drag-derived and therefore
+**invalid at rest**, so at t=0 the aircraft genuinely has no velocity signal, and
+`FrameStack.reset` fills all six slots with that. The derived vertical-rate channels start
+at zero there too — correct, but it means the first ~0.3 s of every episode is flown with
+no rate information of any kind.
+
+Still open on the environment side:
+
 * **The noise model is optimistic in three measured ways** (`perception-error.md`):
   ρ(0.1 s) is 0.954 modelled vs **0.43 measured**; `p_detect` 0.62–0.92 modelled vs
   **0.53–0.60 measured** with 0.57 s p90 blackouts; and the size-fallback range bias is
