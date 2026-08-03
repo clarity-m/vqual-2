@@ -30,7 +30,7 @@ Recorded flights  →  Fit drone model  →  Surrogate races  →  Train / tune 
 | Surrogate simulator | **Built** — self-checks exist and are meant to pass |
 | Detection noise model | **Guessed** — deliberately pessimistic placeholders |
 | Reactive baseline | **Written & evolving** — not yet a reliable lap-finisher on the surrogate |
-| PPO training | **Running / ran** (~5M steps) — **never completed a course** |
+| PPO training | **Harness complete** (~5M steps logged) — **never completed a course**; truncation bootstrap + `--resume` now in code |
 | Live deployment path | **Code exists** — not evidenced end-to-end on disk |
 
 ---
@@ -67,7 +67,7 @@ A vectorized environment can run thousands of parallel races with no pixel rende
 
 - **Noise is not measured.** Visibility ranges in particular look too pessimistic relative to probes on real frames (gates still look orange much farther out than the fallback assumes). Training against vanishing gates teaches search behavior the real course may not need.
 - **Attention is a stub**, not Claire’s real module. Mismatch here transfers badly.
-- **Courses mean-revert in altitude**, so they struggle to reproduce the sustained one-way descent seen on the real VQ1 map — exactly the case that pushes gates under the camera’s lower edge.
+- **Vertical envelope is hangar-sized.** `alt_revert` is now `0.3` (was 0.9), which only mildly lengthens downhill runs. The bigger limit is the 9–16 m ceiling draw: courses cannot drop ~24 m like VQ1 because the band is only ~12 m tall. That long descent is exactly the case that pushes gates under the camera’s lower edge.
 - Every training episode throws the course away: good for generalization, bad for comparing a surrogate lap time to a live one. A fixed measured 6-gate map would close that loop.
 
 ---
@@ -89,7 +89,7 @@ Unit checks for this policy live in `policies/selfcheck.py` and have been update
 
 ## Learning (PPO) — what’s happening
 
-The training harness is complete: stacked observations, running normalization, curriculum on difficulty and speed, checkpoints with frozen stats for deployment, curriculum stall logic that weakens near-gate progress reward (never the collision penalty).
+The training harness is complete: stacked observations, running normalization, curriculum on difficulty and speed, checkpoints with frozen stats for deployment, curriculum stall logic that weakens near-gate progress reward (never the collision penalty). Time-limit truncations bootstrap from the ending observation (`terminal_obs`); real crashes/finishes still count as value zero. You can continue a named run with `--resume` (clean if a matching `*_resume.pt` exists beside the checkpoint; otherwise weights-only with a loud warning).
 
 A real run named **`run1`** is on disk:
 
@@ -100,7 +100,7 @@ A real run named **`run1`** is on disk:
 - Collision rate dipped mid-run then climbed back toward ~90%+.
 - Episode return went deeply negative, then recovered into small positives — some learning of “don’t die instantly,” not of finishing.
 
-Curriculum did notice a stall and eased near-gate progress shaping once (`progress_gate_scale` 1.0 → 0.85 in the checkpoint sidecar). That alone did not unlock completions.
+Curriculum did notice a stall and eased near-gate progress shaping once (`progress_gate_scale` 1.0 → 0.85 in the checkpoint sidecar). That alone did not unlock completions. The truncation-bootstrap fix landed after this run; it is a correctness patch for the ~6% of endings that are timeouts, not an explanation of zero completions.
 
 There is also an earlier **smoke** run (~400k steps) with the same qualitative failure.
 
@@ -129,7 +129,7 @@ The simulator mirrors body rates and some attitude streams relative to textbook 
 ## What to do next (practical order)
 
 1. **Get the baseline through gates** on easy surrogate seeds. Sweep gains if needed. This is the floor for the deadline.
-2. **Explain or fix `run1`’s zero completion** before burning another 20M steps blind — reward timescale, noise pessimism, course geometry, collision margins, and the unused terminal observation in PPO are all candidates.
+2. **Explain or fix `run1`’s zero completion** before burning another 20M steps blind — reward timescale, noise pessimism, course geometry, and collision / gate-pass tolerance are still the live candidates. Truncation handling is already fixed in the harness.
 3. **Measure detection visibility** from frames already on disk (orange mask + projected gates). Replace the guessed max-range band.
 4. **Improve the course generator** (sustained descents) and optionally lock a fixed eval course from the measured 6-gate map.
 5. Only then: full eval selection, supervisor stress, and scarce live sim runs.
@@ -148,6 +148,7 @@ python pilot/control/evalsuite/run_policy.py --policy baseline --seeds 0-9 --dif
 ```
 
 Training logs: `pilot/control/train/checkpoints/run1_log.csv`  
-Latest archived checkpoint sidecar: `…/run1_s5046272.json` (weights in the matching `.pt`)
+Latest archived checkpoint sidecar: `…/run1_s5046272.json` (weights in the matching `.pt`)  
+Continue that run (opt-in): `python pilot/control/train/train.py … --name run1 --resume run1_s5046272` — note there is no `run1_s5046272_resume.pt` on disk yet, so this is the degraded weights-only path until a new save writes one.
 
 For a machine-oriented contract dump (constants, APIs, gotchas), see `CONTROL_STATE_AGENTS.md` beside this file. For the deep read on the plant fit and the surrogate specifically — every number verified by *running* the checks, not by reading source — see `STATE_PLANT_SURROGATE.md`.

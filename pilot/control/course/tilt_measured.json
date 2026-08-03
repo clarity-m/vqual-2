@@ -1,0 +1,190 @@
+{
+ "method": "build_tilt.py -- per-gate TILT-FROM-VERTICAL, measured, for the course export.\n\nEstimator (pilot/perception/gatetilt.py, edge_tilt): the plane through the camera centre\nand the image line of one gate edge has normal N = K^T l; the edge's 3-D direction lies\nin it, so a gravity-vertical edge satisfies N.g = 0 and\n\n    phi = asin(N_hat . g_hat)\n\nis that edge's lean out of vertical -- from the IMAGE LINE and GRAVITY only. No PnP\nrotation, no IPPE twin, no compass, so it survives exactly the head-on degeneracy that\nmakes gate-plane YAW unmeasurable at gates 8/12/13.\n\nValidated on an independent frame: gate8.png (a fresh sim screenshot, not one of the five\nmapped sessions) shows a gate edge-on as a narrow orange bar. Fitting that bar's axis and\nrunning the same formula (90 deg HFOV, camera pitched 20 deg up) returns 19.7 deg lean --\nagainst 3.9 deg of pure perspective lean for a TRUE vertical at that image position, and\n1.0-1.2 deg measured on two hangar columns in the same frame. So the estimator resolves a\nreal ~15-20 deg tilt when one is present.\n\nKNOWN BLIND SPOT, stated because it decides how to read the result: a gate that leans\nBACK or FORWARD (tilt about its own horizontal in-plane axis) projects its side edges as\nvertical lines when viewed HEAD-ON. The lean only appears off-axis, and the detector's\naspect-ratio filter throws away the most oblique views. So this measurement is strongest\nwhere the flight passed a gate side-on and weakest on approach-only gates.",
+ "per_gate": {
+  "0": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 2.3,
+   "tilt_n": 680,
+   "tilt_median_deg": 2.3,
+   "tilt_p90_deg": 7.78,
+   "tilt_frac_over_10deg": 0.051,
+   "tilt_median_oblique_views_deg": 3.91,
+   "tilt_status": "vertical (measured)"
+  },
+  "1": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.1,
+   "tilt_n": 770,
+   "tilt_median_deg": 3.1,
+   "tilt_p90_deg": 8.51,
+   "tilt_frac_over_10deg": 0.045,
+   "tilt_median_oblique_views_deg": 4.41,
+   "tilt_status": "vertical (measured)"
+  },
+  "2": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.08,
+   "tilt_n": 391,
+   "tilt_median_deg": 3.08,
+   "tilt_p90_deg": 6.67,
+   "tilt_frac_over_10deg": 0.026,
+   "tilt_median_oblique_views_deg": 3.73,
+   "tilt_status": "vertical (measured)"
+  },
+  "3": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.73,
+   "tilt_n": 435,
+   "tilt_median_deg": 3.73,
+   "tilt_p90_deg": 9.72,
+   "tilt_frac_over_10deg": 0.076,
+   "tilt_median_oblique_views_deg": 9.03,
+   "tilt_status": "vertical (measured)"
+  },
+  "4": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 2.97,
+   "tilt_n": 691,
+   "tilt_median_deg": 2.97,
+   "tilt_p90_deg": 7.0,
+   "tilt_frac_over_10deg": 0.036,
+   "tilt_median_oblique_views_deg": 7.12,
+   "tilt_status": "vertical (measured)"
+  },
+  "5": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.5,
+   "tilt_n": 1083,
+   "tilt_median_deg": 3.5,
+   "tilt_p90_deg": 7.57,
+   "tilt_frac_over_10deg": 0.026,
+   "tilt_median_oblique_views_deg": 5.91,
+   "tilt_status": "vertical (measured)"
+  },
+  "6": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 2.65,
+   "tilt_n": 933,
+   "tilt_median_deg": 2.65,
+   "tilt_p90_deg": 8.77,
+   "tilt_frac_over_10deg": 0.068,
+   "tilt_median_oblique_views_deg": 6.25,
+   "tilt_status": "vertical (measured)"
+  },
+  "7": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 2.9,
+   "tilt_n": 649,
+   "tilt_median_deg": 2.9,
+   "tilt_p90_deg": 10.31,
+   "tilt_frac_over_10deg": 0.114,
+   "tilt_median_oblique_views_deg": 4.55,
+   "tilt_status": "vertical (measured)"
+  },
+  "8": {
+   "tilt_from_vertical_deg": null,
+   "tilt_sigma_deg": null,
+   "tilt_n": 1094,
+   "tilt_median_deg": 4.78,
+   "tilt_p90_deg": 12.89,
+   "tilt_frac_over_10deg": 0.274,
+   "tilt_median_oblique_views_deg": 3.86,
+   "tilt_status": "UNRESOLVED -- randomize. data outlier: 27% of rows lean >10 deg, p90 12.9 deg -- the only gate that stands out, but its sessions disagree",
+   "tilt_prior": {
+    "kind": "uniform",
+    "low_deg": 0.0,
+    "high_deg": 20.0
+   }
+  },
+  "9": {
+   "tilt_from_vertical_deg": null,
+   "tilt_sigma_deg": null,
+   "tilt_n": 382,
+   "tilt_median_deg": 4.03,
+   "tilt_p90_deg": 9.97,
+   "tilt_frac_over_10deg": 0.099,
+   "tilt_median_oblique_views_deg": 3.39,
+   "tilt_status": "UNRESOLVED -- randomize. pilot's visual identification of the ~15-20 deg tilted gate in gate8.png; our rows read 4.0 deg median and do NOT confirm it",
+   "tilt_prior": {
+    "kind": "uniform",
+    "low_deg": 0.0,
+    "high_deg": 20.0
+   }
+  },
+  "10": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 2.0,
+   "tilt_n": 151,
+   "tilt_median_deg": 1.38,
+   "tilt_p90_deg": 4.15,
+   "tilt_frac_over_10deg": 0.013,
+   "tilt_median_oblique_views_deg": null,
+   "tilt_status": "vertical (measured)"
+  },
+  "11": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.01,
+   "tilt_n": 527,
+   "tilt_median_deg": 3.01,
+   "tilt_p90_deg": 6.07,
+   "tilt_frac_over_10deg": 0.017,
+   "tilt_median_oblique_views_deg": 4.03,
+   "tilt_status": "vertical (measured)"
+  },
+  "12": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.99,
+   "tilt_n": 1817,
+   "tilt_median_deg": 3.99,
+   "tilt_p90_deg": 9.2,
+   "tilt_frac_over_10deg": 0.081,
+   "tilt_median_oblique_views_deg": 4.08,
+   "tilt_status": "vertical (measured)"
+  },
+  "13": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.12,
+   "tilt_n": 528,
+   "tilt_median_deg": 3.12,
+   "tilt_p90_deg": 6.65,
+   "tilt_frac_over_10deg": 0.023,
+   "tilt_median_oblique_views_deg": 3.07,
+   "tilt_status": "vertical (measured)"
+  },
+  "14": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 3.36,
+   "tilt_n": 56,
+   "tilt_median_deg": 3.36,
+   "tilt_p90_deg": 7.11,
+   "tilt_frac_over_10deg": 0.0,
+   "tilt_median_oblique_views_deg": 0.94,
+   "tilt_status": "vertical (measured)"
+  },
+  "15": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 4.64,
+   "tilt_n": 301,
+   "tilt_median_deg": 4.64,
+   "tilt_p90_deg": 7.0,
+   "tilt_frac_over_10deg": 0.043,
+   "tilt_median_oblique_views_deg": 5.11,
+   "tilt_status": "vertical (measured)"
+  },
+  "16": {
+   "tilt_from_vertical_deg": 0.0,
+   "tilt_sigma_deg": 4.93,
+   "tilt_n": 123,
+   "tilt_median_deg": 4.93,
+   "tilt_p90_deg": 8.98,
+   "tilt_frac_over_10deg": 0.057,
+   "tilt_median_oblique_views_deg": 3.59,
+   "tilt_status": "vertical (measured)"
+  }
+ },
+ "structure": {
+  "gates_are_vertical": "Measured: every gate reads a median side-edge lean of 1.3-4.9 deg out of gravity-vertical, which is the noise floor of the estimator, and nothing rises with viewing obliquity the way a real tilt must. Treat the course as vertical planes. This is a usable PRIOR for a pose estimator: it resolves the two-fold IPPE tilt ambiguity, which is exactly the ambiguity that made gate YAW unmeasurable at 8/12/13.",
+  "tilted_gate": "ONE EXCEPTION EXISTS AND WE COULD NOT NAIL WHICH GATE IT IS. An independent sim screenshot (gate8.png) shows a gate edge-on leaning 19.7 deg off vertical -- unambiguous, and 5x the 3.9 deg of perspective lean expected for a true vertical at that image position. The pilot first read it as gate 8, then as gate 9. Our five mapped sessions do not confirm either: gate 8 has by far the heaviest lean tail (27% of rows over 10 deg, p90 12.9 deg, against 1-11% and p90 4-10 deg for every other gate) but its own sessions disagree (median 10.5 deg on 121520, 3.1 deg on 202110); gate 9 reads 4.0 deg median, 10% over 10 deg -- unremarkable. Because a lean-BACK tilt is invisible head-on and our rows are mostly approach views, absence of evidence here is weak evidence of absence. RECOMMENDED HANDLING: randomize the tilt of gates 8 AND 9 over 0-20 deg (course_vq2.sample does this) rather than committing to either.",
+  "gate_faces_and_the_grid": "The pilot reports that gate faces are parallel to the hangar columns, i.e. gate yaw is quantized to the ceiling/floor/column grid (which the skylight compass reads, and which the station rows share within sketch accuracy). OUR MEASURED YAWS DO NOT REPRODUCE THAT: the 14 accepted plane azimuths, taken mod 90, spread over 11-88 deg with no cluster at the grid bin (deviations -37 to +44 deg). They agree far better with the RACE-LINE BISECTOR (median |error| 10.9 deg, and under 6 deg for gates 1, 3, 6, 10, 14, 16). Both facts are exported per gate -- yaw_deg, yaw_grid_bin_deg + yaw_grid_dev_deg, yaw_race_bisector_deg -- and the conflict is flagged rather than smoothed. Given how noisy IPPE azimuth proved to be on this course, the visual claim may well be right and our azimuths wrong; do not build anything that needs an exact gate yaw."
+ }
+}
