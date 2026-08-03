@@ -73,6 +73,13 @@ class RolloutStats:
     # times the aircraft hit something. That is exactly the regime where collisions are
     # the thing worth watching, so count them properly.
     collision_counts: list[float] = field(default_factory=list)
+    # The same count split by CAUSE. `collision_counts` says the aircraft hit something
+    # `n` times; these say what it hit, which is the difference between "the policy sinks"
+    # and "the policy clips gates" -- two failures with opposite fixes. They do not sum to
+    # `collision_counts`: handback spawns seed the total with a causeless collision.
+    collision_floor: list[float] = field(default_factory=list)
+    collision_ceiling: list[float] = field(default_factory=list)
+    collision_gate: list[float] = field(default_factory=list)
     completions: list[bool] = field(default_factory=list)
     # Active-gate plane crossings and clean passes, per finished episode. Their pooled
     # ratio is the per-gate accuracy the curriculum promotes on: whole-course completion
@@ -322,6 +329,14 @@ class PPO:
         cn = info_array(info, "collision_episodes", n)
         if cn is not None:
             stats.collision_counts += [float(v) for v in cn[done]]
+        # Absent on an env that predates the cause split (`testenv`, or a surrogate from
+        # an older checkout), so each is optional and independently guarded.
+        for key, sink in (("collision_floor", stats.collision_floor),
+                          ("collision_ceiling", stats.collision_ceiling),
+                          ("collision_gate", stats.collision_gate)):
+            arr = info_array(info, key, n)
+            if arr is not None:
+                sink += [float(v) for v in arr[done]]
         if self.completion_fn is not None:
             stats.completions += [bool(v) for v in self.completion_fn(info, done)]
 

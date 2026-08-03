@@ -357,6 +357,24 @@ class VecSurrogate:
         self.t_gate = np.zeros(n)
         self.t_coll = np.full(n, 1e3)
         self.coll_n = np.zeros(n, dtype=np.int64)
+        # Contact CAUSE, per episode. The three sources are already distinguished in
+        # `step` (`hit` from the gate geometry, `floor_hit`, `ceil_hit`) and used to be
+        # OR-ed into one flag and discarded, which left the dominant failure mode
+        # unobservable: the 55.5/34.5/8.6 split quoted above `k_clear` had to be
+        # RECONSTRUCTED after the fact from terminal altitude (`evalsuite/viz3d.py`),
+        # because no run ever logged it.
+        #
+        # Attribution is MUTUALLY EXCLUSIVE with floor/ceiling taking priority over the
+        # gate frame, matching how viz3d infers cause, so the numbers stay comparable to
+        # that earlier measurement. A step that hits the floor inside a gate counts as
+        # floor.
+        #
+        # These do NOT sum to `coll_n`: modes >= 2 seed `coll_n` to 1 for a handback
+        # start (see `_respawn`) and that synthetic collision has no cause. The
+        # difference `coll_n - (floor + ceil + gate)` is exactly the seeded count.
+        self.coll_floor = np.zeros(n, dtype=np.int64)
+        self.coll_ceil = np.zeros(n, dtype=np.int64)
+        self.coll_gate = np.zeros(n, dtype=np.int64)
         # Gate index the episode SPAWNED at, so achievement can be reported as a delta.
         self.a_start = np.zeros(n, dtype=np.int64)
         # Active-gate plane crossings and clean passes, per episode. Their ratio is the
@@ -557,6 +575,12 @@ class VecSurrogate:
         # disagree and the supervisor's two trigger branches see different worlds.
         self.t_coll[mask] = np.where(mode >= 2, rng.uniform(0.2, 2.5, m), 1e3)
         self.coll_n[mask] = np.where(mode >= 2, 1, 0)
+        # Deliberately NOT seeded to match: the handback's collision is synthetic and has
+        # no cause. Attributing it to one would put ~33% of episodes' worth of invented
+        # floor strikes into the very statistic being used to diagnose floor strikes.
+        self.coll_floor[mask] = 0
+        self.coll_ceil[mask] = 0
+        self.coll_gate[mask] = 0
         self.a_start[mask] = a0
         self.n_attempt[mask] = 0
         self.n_pass[mask] = 0
@@ -630,7 +654,16 @@ class VecSurrogate:
         # Every collision terminates in this surrogate, so in practice the gate is always
         # open and the counter steps 0 -> 1 on the terminal step; the rule is written out
         # anyway so the semantics stay right if contact ever stops being terminal.
-        self.coll_n = self.coll_n + (collided & (self.t_coll + dt > COLLISION_GAP_S))
+        # One gap gate, shared: `counts` must be computed once and used for the total and
+        # for all three causes, or a contact can land in the total and not in any cause
+        # (or vice versa) and the columns stop reconciling.
+        counts = collided & (self.t_coll + dt > COLLISION_GAP_S)
+        self.coll_n = self.coll_n + counts
+        # Floor beats ceiling beats gate. `collided` is `hit | floor_hit | ceil_hit`, so
+        # a counted contact that is neither floor nor ceiling was the gate frame.
+        self.coll_floor = self.coll_floor + (counts & floor_hit)
+        self.coll_ceil = self.coll_ceil + (counts & ceil_hit & ~floor_hit)
+        self.coll_gate = self.coll_gate + (counts & ~floor_hit & ~ceil_hit)
         self.t_coll = np.where(collided, 0.0, self.t_coll + dt)
         self.ep_len = self.ep_len + 1
 
@@ -733,6 +766,12 @@ class VecSurrogate:
                     # terminating step belongs to the next episode, and the last
                     # observation handed out before it predates the contact.
                     collision_episodes=self.coll_n.copy(),
+                    # Same timing rule as `collision_episodes`: post-increment,
+                    # pre-reset. See the counters' definition for why these three do not
+                    # sum to it.
+                    collision_floor=self.coll_floor.copy(),
+                    collision_ceiling=self.coll_ceil.copy(),
+                    collision_gate=self.coll_gate.copy(),
                     corridor_exit=corridor.copy(),
                     timeout=timeout.copy(),
                     finished=finished.copy(),

@@ -556,7 +556,8 @@ def run(args: argparse.Namespace) -> dict:
     log_path = CHECKPOINT_DIR / f"{args.name}_log.csv"
     log_fields = [
         "step", "update", "sps", "ep_return", "ep_len", "gates", "collision_rate",
-        "collisions_per_ep", "gate_rate", "gates_per_episode", "noise_scale",
+        "collisions_per_ep", "coll_floor", "coll_ceiling", "coll_gate",
+        "gate_rate", "gates_per_episode", "noise_scale",
         "completion_rate", "difficulty", "speed_cap", "time_penalty", "policy_loss",
         "value_loss", "entropy", "approx_kl", "clip_frac", "explained_var", "reward_scale",
     ]
@@ -640,6 +641,15 @@ def run(args: argparse.Namespace) -> dict:
             # non-terminal: the flag above is sampled on `done` and reads ~0 in that mode.
             "collisions_per_ep": (round(float(np.mean(stats.collision_counts)), 3)
                                   if stats.collision_counts else ""),
+            # Contact per episode, split by what was hit. Blank on an env that does not
+            # report the split rather than 0.0, so "not measured" stays distinguishable
+            # from "measured, never happened".
+            "coll_floor": (round(float(np.mean(stats.collision_floor)), 3)
+                           if stats.collision_floor else ""),
+            "coll_ceiling": (round(float(np.mean(stats.collision_ceiling)), 3)
+                             if stats.collision_ceiling else ""),
+            "coll_gate": (round(float(np.mean(stats.collision_gate)), 3)
+                          if stats.collision_gate else ""),
             "gate_rate": round(curriculum.gate_rate_raw, 4),
             "noise_scale": round(float(getattr(env_cfg, "noise_scale", 1.0)), 4),
             "gates_per_episode": curriculum.gates_per_episode,
@@ -660,6 +670,12 @@ def run(args: argparse.Namespace) -> dict:
         log_file.flush()
 
         if not args.quiet and (update % max(1, args.log_every) == 0 or update == total_updates):
+            # Cause split, inline and only when the env reports it. Floor/ceiling/gate --
+            # the ordering is by which one has historically dominated, not alphabetical.
+            split = ""
+            if row["coll_floor"] != "":
+                split = (f"(f{row['coll_floor']:.2f} c{row['coll_ceiling']:.2f} "
+                         f"g{row['coll_gate']:.2f}) ")
             print(
                 f"[{update:5d}/{total_updates}] step={row['step']:>9} "
                 f"fps={row['sps']:>8} ret={row['ep_return']!s:>8} "
@@ -667,6 +683,7 @@ def run(args: argparse.Namespace) -> dict:
                 # `coll` is the terminal-flag rate while contact ends an episode, and
                 # collisions-per-episode once it does not. Same column, right meaning.
                 f"coll={(row['collisions_per_ep'] if row['collisions_per_ep'] != '' else row['collision_rate'])!s:>5} "
+                f"{split}"
                 f"grate={row['gate_rate']:.3f} compl={row['completion_rate']:.2f} "+ (f"nz={row['noise_scale']:.2f} " if row['noise_scale'] < 1.0 else "") + "| "
                 f"{curriculum.summary()} | "
                 f"pl={row['policy_loss']:+.4f} vl={row['value_loss']:.4f} "
