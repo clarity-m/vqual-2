@@ -280,7 +280,29 @@ class EnvConfig:
     # that recovers it without reintroducing mid-course spawns is
     # `collision_terminates=False` (architecture E5): contact costs `k_collision` and
     # hands back to a recovered state, so one gate-0 episode still reaches the back half.
-    start_probs: tuple = (0.50, 0.00, 0.12, 0.08, 0.05)
+    #
+    # NOW PAD-ONLY: every episode begins where the real race begins, at rest on the
+    # platform at gate 0. Modes 2-4 (hover, corridor-offset, no-gate-visible) modelled
+    # D6's recovery handback and were 33% of episodes after renormalisation; they are off
+    # for three reasons.
+    #
+    # 1. Everything that SCORES a policy already spawns pad-only -- `selfcheck.py`,
+    #    `evalsuite/viz3d.py` and the eval path all force (1,0,0,0,0). Training on a
+    #    different start distribution than the one being measured on means a third of
+    #    every rollout was spent on states no score ever reflected.
+    # 2. With `collision_terminates=True` there is no in-flight handback DURING training
+    #    anyway, so modes 2-4 were synthesizing at the start line a distribution that
+    #    arises mid-race or not at all.
+    # 3. They quietly polluted the diagnostics: mode >= 2 seeds `coll_n = 1`, so
+    #    `collisions_per_ep` carried ~0.33 of invented contact before the policy did
+    #    anything, and `t_since_collision_s` opened mid-recovery.
+    #
+    # THE COST, so it is not rediscovered the hard way: the policy no longer trains on
+    # the states D6's supervisor hands back into (hover, arbitrary corridor offset,
+    # nothing in frustum). If the supervisor is relied on in the live run, the handback
+    # is now a distribution the policy has never seen. Restoring it is this tuple, not a
+    # code change -- but restore it to TRAIN a handback, not by accident.
+    start_probs: tuple = (1.00, 0.00, 0.00, 0.00, 0.00)
     cruise_speed_mps: float = 10.0
     start_speed_frac: tuple = (0.35, 1.05)
     # OBSERVED start state, VQ2: the vehicle sits on a platform ~10 m out, level with
@@ -369,9 +391,11 @@ class VecSurrogate:
         # that earlier measurement. A step that hits the floor inside a gate counts as
         # floor.
         #
-        # These do NOT sum to `coll_n`: modes >= 2 seed `coll_n` to 1 for a handback
-        # start (see `_respawn`) and that synthetic collision has no cause. The
-        # difference `coll_n - (floor + ceil + gate)` is exactly the seeded count.
+        # These sum to `coll_n` under the default pad-only `start_probs`. They do NOT if
+        # the handback modes are re-enabled: mode >= 2 seeds `coll_n` to 1 (see
+        # `_respawn`) and that synthetic collision has no cause, so the difference
+        # `coll_n - (floor + ceil + gate)` is exactly the seeded count. Read the residual,
+        # do not assume either case.
         self.coll_floor = np.zeros(n, dtype=np.int64)
         self.coll_ceil = np.zeros(n, dtype=np.int64)
         self.coll_gate = np.zeros(n, dtype=np.int64)
