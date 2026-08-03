@@ -23,3 +23,6 @@ __pycache__/
 
 # Fork/worktree scratch space — never part of the project tree
 .claude/worktrees/
+
+# Reproducible render output -- regenerate with coursevar_sheet.py
+pilot/control/variations/
