@@ -116,6 +116,21 @@ class VerticalRate:
             m = np.asarray(mask).reshape(-1).astype(bool)
             self.v[m] = 0.0
 
+    def peek(self, obs: np.ndarray) -> np.ndarray:
+        """The channels one step ahead, WITHOUT advancing the integrator.
+
+        For the terminal observation of a truncated episode. That frame is the last one
+        of the ending episode, so the integrator state it belongs with is the current
+        one — not the state after `step` has zeroed it for the episode that follows. PPO
+        bootstraps `V(s_T)` from it, and a value fitted on the wrong four channels is a
+        silently mis-scaled advantage, not a crash.
+
+        `step` is defined in terms of this, so the two cannot drift apart.
+        """
+        a = vertical_accel(obs).reshape(-1, 1)
+        v = self._decay[None, :] * self.v + a * self.dt
+        return np.clip(v, -self.clip, self.clip).astype(np.float32)
+
     def step(self, obs: np.ndarray, done=None) -> np.ndarray:
         """Advance one decision step and return the derived channels, [n_envs, n_taus].
 
@@ -126,9 +141,7 @@ class VerticalRate:
         """
         if done is not None:
             self.reset(done)
-        a = vertical_accel(obs).reshape(-1, 1)
-        self.v = self._decay[None, :] * self.v + a * self.dt
-        np.clip(self.v, -self.clip, self.clip, out=self.v)
+        self.v = self.peek(obs)
         return self.v.astype(np.float32, copy=True)
 
     def state_dict(self) -> dict:

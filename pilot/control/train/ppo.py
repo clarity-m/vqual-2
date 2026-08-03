@@ -286,7 +286,19 @@ class PPO:
         if idx.size == 0:
             return None
 
-        term = np.asarray(term, dtype=np.float32).reshape(self.n_envs, self.obs_dim)
+        # `raw_dim`, not `obs_dim`: the env hands back the UNAUGMENTED 73-D observation,
+        # exactly as `_raw_obs` is kept unaugmented. Under `--vertical-rate` the network
+        # reads 77-D, so the derived channels have to be appended here too -- the same
+        # derive -> augment -> normalize -> stack order every other path uses. Reshaping
+        # straight to `obs_dim` was a hard dimension mismatch, latent until an episode
+        # actually ended on a TRUNCATION: while every contact was terminal, `trunc` was
+        # empty on every step and this function returned before reaching the reshape.
+        term = np.asarray(term, dtype=np.float32).reshape(self.n_envs, self.raw_dim)
+        if self.vrate is not None:
+            # `peek`, not `step`: this frame belongs to the ENDING episode, and the
+            # integrator must not be advanced or reset here -- the real observation is
+            # still to be pushed through `step` below with its own `done` mask.
+            term = augment(term, self.vrate.peek(term))
         # Roll one frame into the pre-step stack. The layout is oldest-first with the most
         # recent observation last (framestack.py), so this is exactly the stack the policy
         # would have seen at s_T. `s[:, D:]` is empty at k == 1, which is correct.
