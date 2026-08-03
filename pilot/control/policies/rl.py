@@ -108,7 +108,34 @@ class RLPolicy(interface.Policy):
                                % (self.obs_dim, interface.OBS_DIM))
 
         self.norm = ObsNormalizer.from_arrays(ckpt["obs_mean"], ckpt["obs_std"])
-        self.stack = FrameStack(self.obs_dim, self.k, n_envs=1)
+
+        # Both of these describe the input pipeline / action mapping the checkpoint was
+        # TRAINED under and are not recoverable from the weights. Absent = the original
+        # behaviour, so pre-existing checkpoints are unaffected.
+        self.frame_offsets = ckpt.get("frame_offsets")
+        self.stack = FrameStack(self.obs_dim, self.k, n_envs=1,
+                                offsets=self.frame_offsets)
+
+        self.thrust_residual = ckpt.get("thrust_residual")
+        if self.thrust_residual:
+            try:
+                from pilot.control.train.actionmap import (PITCH_INDEX, ROLL_INDEX,
+                                                           ActionMap, ResidualThrustMap)
+                from pilot.control.surrogate import actions as _actions
+            except Exception as exc:
+                raise _need("pilot/control/train/actionmap.py (ResidualThrustMap)", exc)
+            base = ActionMap(policy_to_action, "surrogate",
+                             float(getattr(_actions, "RATE_CAP_RPS", 2.75)),
+                             float(getattr(_actions, "THRUST_FLOOR", 0.10)))
+            self._residual = ResidualThrustMap(
+                base,
+                hover_thrust=float(self.thrust_residual["hover_thrust"]),
+                span=float(self.thrust_residual.get("span", 0.30)),
+                min_cos=float(self.thrust_residual.get("min_cos", 0.5)))
+            self._roll_i, self._pitch_i = ROLL_INDEX, PITCH_INDEX
+        else:
+            self._residual = None
+
         self._to_action = policy_to_action
         self._FrameStack = FrameStack
 
@@ -121,8 +148,10 @@ class RLPolicy(interface.Policy):
         # flown at TWICE the rate authority it ever saw, in evaluation and in deployment
         # alike. It is stored in the checkpoint, so read it rather than assume 1.0.
         self.speed_cap = _ckpt_speed_cap(ckpt)
-        self.info = ("ckpt %s | step %d | k=%d | hidden %s"
+        self.info = ("ckpt %s | step %d | k=%d | offsets %s | thrust %s | hidden %s"
                      % (os.path.basename(self.path), self.step, self.k,
+                        self.frame_offsets or "consecutive",
+                        "residual" if self._residual else "affine",
                         ckpt.get("net_config", {}).get("hidden")))
         self.reset()
 
@@ -145,7 +174,16 @@ class RLPolicy(interface.Policy):
         x = self.stack.push(self.norm(v[None, :]))
         u = np.asarray(self.model.infer(x, deterministic=True),
                        dtype=np.float64).reshape(-1)[:3]
-        phys = np.asarray(self._to_action(u), dtype=np.float64).reshape(-1)
+        if self._residual is not None:
+            # RAW roll/pitch, before normalization -- training reads the same unnormalized
+            # channels (ppo._raw_obs). Normalizing here would apply the compensation at a
+            # different attitude than the one the aircraft is actually at.
+            phys = np.asarray(self._residual(u.astype(np.float32),
+                                             roll=v[self._roll_i],
+                                             pitch=v[self._pitch_i]),
+                              dtype=np.float64).reshape(-1)
+        else:
+            phys = np.asarray(self._to_action(u), dtype=np.float64).reshape(-1)
         if phys.size < 3:
             raise RuntimeError("policy_to_action returned %d values, expected 3 "
                                "(roll rate, pitch rate, thrust)" % phys.size)

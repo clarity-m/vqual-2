@@ -33,6 +33,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from .actionmap import PITCH_INDEX, ROLL_INDEX, ResidualThrustMap
 from .framestack import FrameStack
 from .network import ActorCritic
 from .normalize import ObsNormalizer, RewardScaler
@@ -101,6 +102,7 @@ class PPO:
         n_envs: int,
         cfg: PPOConfig,
         action_map,
+        frame_offsets=None,
         obs_norm: ObsNormalizer | None = None,
         rew_scaler: RewardScaler | None = None,
         device: str = "cpu",
@@ -117,7 +119,8 @@ class PPO:
         self.completion_fn = completion_fn
 
         self.opt = torch.optim.Adam(net.parameters(), lr=cfg.lr, eps=1e-5)
-        self.stack = FrameStack(self.obs_dim, frame_stack, self.n_envs)
+        self.stack = FrameStack(self.obs_dim, frame_stack, self.n_envs,
+                                offsets=frame_offsets)
         self.obs_norm = obs_norm if obs_norm is not None else ObsNormalizer(self.obs_dim)
         self.rew_scaler = (
             rew_scaler if rew_scaler is not None else RewardScaler(self.n_envs, gamma=cfg.gamma)
@@ -137,6 +140,7 @@ class PPO:
 
         self.env = None
         self._needs_reset = True
+        self._raw_obs = None
         self.global_step = 0
 
     # --- env plumbing ------------------------------------------------------------------
@@ -152,6 +156,7 @@ class PPO:
 
     def _reset(self) -> None:
         obs = np.asarray(self.env.reset(), dtype=np.float32)
+        self._raw_obs = obs
         self.obs_norm.update(obs)
         self.stack.reset(self.obs_norm(obs))
         self.rew_scaler.reset()
@@ -162,8 +167,20 @@ class PPO:
 
         `speed_cap` scales the two RATE channels only. Capping thrust would move the
         aircraft's trim point and is not what "cap commanded aggressiveness" means.
+
+        Under a `ResidualThrustMap` the thrust channel is a residual about
+        attitude-compensated hover, so the map additionally needs the MEASURED roll and
+        pitch of the observation the policy just acted on -- `self._raw_obs`, kept
+        unnormalized precisely so this reads the same numbers deployment will.
         """
-        a = self.action_map(u)
+        if isinstance(self.action_map, ResidualThrustMap):
+            if self._raw_obs is None:
+                raise RuntimeError("residual thrust map needs the raw observation; "
+                                   "_reset() must run before collect()")
+            a = self.action_map(u, roll=self._raw_obs[:, ROLL_INDEX],
+                                pitch=self._raw_obs[:, PITCH_INDEX])
+        else:
+            a = self.action_map(u)
         a = np.array(a, dtype=np.float32, copy=True).reshape(u.shape)
         a[:, :2] *= self.speed_cap
         return a
@@ -210,6 +227,7 @@ class PPO:
                     self.b_trunc_val[t] = tv
 
             self.obs_norm.update(obs)
+            self._raw_obs = obs
             self.stack.push(self.obs_norm(obs), done=done)
 
             if done.any():
