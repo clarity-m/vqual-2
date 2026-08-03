@@ -10,8 +10,13 @@ Checks, in order:
      training must beat the first fifth by a clear margin, and all losses must stay finite.
   5. The checkpoint round-trips: contract keys present, shapes right, reloaded network
      reproduces the trained network's action bit-for-bit, JSON sidecar readable.
+  6. Time-limit truncations bootstrap from V(s_T) and genuine terminals do not, including
+     the case where a collision and a timeout land on the same step.
+  7. A run resumes: it continues the step count and the curriculum rather than restarting,
+     appends to its log instead of truncating it, and degrades honestly to weights-only
+     when no resume sidecar exists.
 
-Takes ~1 minute on CPU. Exits non-zero on the first failure.
+Takes ~2 minutes on CPU. Exits non-zero on the first failure.
 """
 
 from __future__ import annotations
@@ -111,7 +116,15 @@ def test_curriculum() -> None:
     check("no completions: speed_cap never drops below the start", never.speed_cap >= 0.5,
           f"speed_cap={never.speed_cap:.2f}")
     check("no completions: time penalty stays off", not never.enable_time_penalty)
-    check("stall weakens the progress term near gates", never.progress_gate_scale < 1.0,
+    # The stall detector still has to FIRE -- that half is load-bearing and is what backs
+    # speed_cap off. What it no longer does is touch `progress_gate_scale`: that response
+    # assumed a stall means the policy is diving at gates, whereas the measured cause was
+    # that completion over 18-22 gates is per-gate-rate^20 and unreachable. It is also
+    # the only shaping term that is not potential-based, i.e. the only one that can move
+    # the optimal policy rather than just the learning dynamics.
+    check("stall detector still fires when completion never moves", never.n_stalls > 0,
+          f"n_stalls={never.n_stalls}")
+    check("stall leaves the progress term alone", never.progress_gate_scale == 1.0,
           f"progress_gate_scale={never.progress_gate_scale:.2f} after {never.n_stalls} stalls")
 
     always = Curriculum(CurriculumConfig(speed_cap_start=0.5, **base))
@@ -223,6 +236,124 @@ def test_checkpoint(out: dict) -> None:
               str(j.get("harness", {}).get("action_map_source")))
 
 
+def test_truncation() -> None:
+    print("[7] time-limit truncation bootstrap")
+    from pilot.control.train.ppo import PPO, PPOConfig
+    from pilot.control.train.testenv import TestEnvConfig, VecPointMass
+
+    n_envs, k, obs_dim = 4, 3, 8
+    net = ActorCritic(obs_dim=obs_dim, frame_stack=k, act_dim=3, hidden=(32, 32))
+    cfg = PPOConfig(n_steps=256, gamma=0.9, gae_lambda=0.95)
+    agent = PPO(net=net, obs_dim=obs_dim, frame_stack=k, n_envs=n_envs, cfg=cfg,
+                action_map=resolve_action_map())
+    agent.set_env(VecPointMass(n_envs, TestEnvConfig(), seed=0))
+    agent._reset()
+
+    # --- which endings bootstrap, and which do not ---------------------------------
+    s = agent.stack.get()
+    term = np.linspace(-1.0, 1.0, n_envs * obs_dim, dtype=np.float32).reshape(n_envs, obs_dim)
+    done = np.array([True, True, True, False])
+    info = {
+        "terminal_obs": term,
+        "timeout":   np.array([True, True, False, True]),   # 3 timed out but is not done
+        "collision": np.array([False, True, False, False]),  # 1 also hit a wall
+        "completed": np.zeros(n_envs, dtype=bool),
+    }
+    tv = agent._truncation_values(s, info, done)
+    check("bootstraps the truncation", tv is not None and tv[0] != 0.0,
+          f"env0 -> {None if tv is None else tv[0]:.4f}")
+    check("a coinciding collision wins over the timeout", tv is not None and tv[1] == 0.0)
+    check("a non-timeout done stays at zero", tv is not None and tv[2] == 0.0)
+    check("a timeout without done stays at zero", tv is not None and tv[3] == 0.0)
+
+    rolled = np.concatenate([s[:, obs_dim:], agent.obs_norm(term)], axis=1)
+    with torch.no_grad():
+        expect = cfg.gamma * float(net.value(torch.as_tensor(rolled[[0]])).item())
+    check("value is gamma * V(s_T) on the rolled stack",
+          tv is not None and abs(float(tv[0]) - expect) < 1e-6,
+          f"{float(tv[0]):.6f} vs {expect:.6f}")
+
+    check("no timeout key -> legacy bootstrap at zero",
+          agent._truncation_values(s, {"terminal_obs": term}, done) is None)
+    check("no terminal_obs key -> legacy bootstrap at zero",
+          agent._truncation_values(s, {"timeout": info["timeout"]}, done) is None)
+
+    # --- the term reaches the TD error --------------------------------------------
+    for buf in (agent.b_rew, agent.b_val, agent.b_done, agent.b_trunc_val):
+        buf[:] = 0.0
+    t0 = 5
+    agent.b_done[t0] = 1.0
+    agent.b_rew[t0] = 1.0
+    adv_zero, _ = agent._gae()
+    agent.b_trunc_val[t0] = 5.0
+    adv_boot, _ = agent._gae()
+    check("without the term the TD error is reward only", np.allclose(adv_zero[t0], 1.0),
+          f"{adv_zero[t0][0]:.4f}")
+    check("with it the TD error picks up gamma*V(s_T)", np.allclose(adv_boot[t0], 6.0),
+          f"{adv_boot[t0][0]:.4f}")
+    check("non-terminal steps are untouched",
+          np.allclose(adv_zero[t0 + 1:], adv_boot[t0 + 1:]))
+
+    # --- and it is wired into collect() on the real env ----------------------------
+    for buf in (agent.b_trunc_val,):
+        buf[:] = 0.0
+    agent.collect()          # 256 steps > testenv MAX_STEPS, so timeouts must fire
+    nz = np.flatnonzero(agent.b_trunc_val.reshape(-1))
+    check("collect() populates the buffer from the live env", nz.size > 0,
+          f"{nz.size} truncated transitions in {agent.b_trunc_val.size}")
+    check("buffer is nonzero only where an episode ended",
+          bool(np.all(agent.b_done.reshape(-1)[nz] == 1.0)))
+
+
+def test_resume() -> None:
+    print("[8] resume round-trip")
+    name = "selftest_resume"
+    per_update = 64 * 32
+    base = ["--env", "testenv", "--name", name, "--n-envs", "32", "--n-steps", "64",
+            "--seed", "3", "--quiet"]
+    log_path = train_mod.CHECKPOINT_DIR / f"{name}_log.csv"
+    if log_path.exists():
+        log_path.unlink()
+
+    out1 = train_mod.run(train_mod.parse_args(base + ["--total-steps", str(4 * per_update)]))
+    ep1 = out1["curriculum"].n_episodes
+    side = train_mod.resume_sidecar_path(Path(out1["checkpoint"]))
+    check("resume sidecar written beside the checkpoint", side.exists(), side.name)
+    blob = torch.load(side, map_location="cpu", weights_only=False)
+    check("sidecar carries what the .pt cannot",
+          {"opt", "obs_rms", "rew_rms", "curriculum", "torch_rng", "numpy_rng",
+           "global_step", "n_rebuilds"} <= set(blob),
+          f"format {blob.get('format')}")
+    check("optimizer moments are in it", len(blob["opt"].get("state", {})) > 0)
+    check("obs statistics carry their sample count",
+          float(blob["obs_rms"]["count"]) > 1.0, f"count={blob['obs_rms']['count']:.0f}")
+
+    # --- continue it ----------------------------------------------------------------
+    out2 = train_mod.run(train_mod.parse_args(
+        base + ["--total-steps", str(8 * per_update), "--resume", f"{name}_final"]))
+    first = out2["history"][0]
+    check("continues rather than restarting", first["update"] == 5 and first["step"] == 5 * per_update,
+          f"first row update={first['update']} step={first['step']}")
+    check("runs the remaining updates, not another full run", len(out2["history"]) == 4,
+          f"{len(out2['history'])} updates")
+    check("curriculum counters carried across", out2["curriculum"].n_episodes > 1.5 * ep1,
+          f"{ep1} -> {out2['curriculum'].n_episodes} episodes")
+
+    rows = [r for r in log_path.read_text(encoding="utf-8").splitlines() if r.strip()]
+    heads = [r for r in rows if r.startswith("step,")]
+    check("log appended under a single header", len(heads) == 1 and len(rows) == 9,
+          f"{len(rows) - 1} data rows, {len(heads)} header(s)")
+
+    # --- and the weights-only path, which is what run1 on disk actually needs --------
+    side.unlink()
+    out3 = train_mod.run(train_mod.parse_args(
+        base + ["--total-steps", str(12 * per_update), "--resume", f"{name}_final"]))
+    check("resumes from a bare .pt with no sidecar",
+          out3["history"][0]["update"] == 9, f"update {out3['history'][0]['update']}")
+    check("weights-only resume still recovers the obs statistics",
+          float(out3["agent"].obs_norm.rms.count) >= train_mod.DEGRADED_OBS_COUNT)
+
+
 def main() -> int:
     print("=== T4 harness self-test ===", flush=True)
     test_framestack()
@@ -231,6 +362,8 @@ def main() -> int:
     test_curriculum()
     out = test_ppo_learns()
     test_checkpoint(out)
+    test_truncation()
+    test_resume()
     print()
     if FAILURES:
         print(f"FAILED: {len(FAILURES)} check(s): {FAILURES}")

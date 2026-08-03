@@ -32,12 +32,13 @@ STRESS_HZ = (28.0, 32.0)
 
 
 def compare(policy, name, seeds, difficulty, speed_cap, stress_hz=STRESS_HZ,
-            nominal_hz=None, n_gates=None, time_penalty=None, max_steps=5000,
-            quiet=False):
+            nominal_hz=None, n_gates=None, time_penalty=None, max_steps=None,
+            quiet=False, vq2_frac=None, random_starts=False):
     runs = {}
     for label, hz in (("nominal", nominal_hz), ("stress %g-%g Hz" % stress_hz, stress_hz)):
         cfg = build_config(difficulty, speed_cap, decision_hz=hz, n_gates=n_gates,
-                           time_penalty=time_penalty)
+                           time_penalty=time_penalty, vq2_frac=vq2_frac,
+                           random_starts=random_starts)
         print("\n--- %s ---" % label)
         results = evaluate(policy, cfg, seeds, max_steps=max_steps)
         summary = summarize(results)
@@ -81,7 +82,8 @@ def main(argv=None):
                    stress_hz=parse_pair(args.stress_hz),
                    nominal_hz=parse_pair(args.decision_hz),
                    n_gates=parse_pair(args.n_gates), time_penalty=args.time_penalty,
-                   max_steps=args.max_steps, quiet=args.quiet)
+                   max_steps=args.max_steps, quiet=args.quiet,
+                   vq2_frac=args.vq2_frac, random_starts=args.random_starts)
     print_delta(runs)
     write_json(args.json, dict(policy=name, seeds=seeds, runs=runs))
     return 0

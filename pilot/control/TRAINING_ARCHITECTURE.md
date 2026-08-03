@@ -2,12 +2,25 @@
 
 Owner: Alex (kongalex@umich.edu). Deadline 2026-08-03 06:00 PST.
 
-**Status, 2026-08-01.** P1 done and validated (`README.md`), refitted on card 2.
-P2 built and self-checking 17/17 — course generator, synthetic detections and
-the vector env all exist. P3 is still the hand-specified fallback, not measured.
-T4's harness is built and its self-test passes; real training has been run and
-has **not** produced a flyable policy yet (see the note on the discount factor
-under T4). E5 is wired; D6 is untested end to end.
+**Status, 2026-08-02. → `STATE_RL_TRAINING.md` holds the measured state; read it
+first.** P1 done and validated (`README.md`), refitted on card 2. P2 built and
+self-checking 17/17. P3 is still the hand-specified fallback, not measured. T4
+**now trains a policy that beats the reactive baseline 2.3–2.5× on per-gate
+accuracy** — 0.705 against 0.307 at the physical aperture, `runB1` at 207M steps.
+But **neither policy completes a course**: completion over 20 gates needs a
+per-gate rate of ~0.989 and the best measured is 0.705. E5 is wired and its
+batched path is now checked against the reference; D6 is coded and **still
+untested end to end**.
+
+The discount question under T4 is settled rather than open: γ=0.99 at 45–65 Hz is a
+~1.8 s horizon against a ~2.4 s time-to-floor, discounting the collision terminal to
+0.27 of face value. γ is now 0.997. But it was not the main cause — `run1`'s failure
+was never the optimiser. The completion metric was unreachable by construction
+(per-gate-rate^20 over 18–22 gates), and the reward contained no altitude term at
+all while 55.5% of episodes ended on the floor. Measurements in
+`STATE_RL_TRAINING.md`.
+
+**Nothing below has been flown live.**
 
 *(An earlier version of this header said the course generator, synthetic
 detections, P3 and T4 "do not" exist. That was true when it was written and is

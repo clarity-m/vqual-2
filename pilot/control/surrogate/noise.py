@@ -133,18 +133,73 @@ SAMPLED = tuple(f for f in NoiseParams.__dataclass_fields__
                 if f not in ("worse_high", "worse_low"))
 
 
-def sample(params, rng, n, difficulty):
+# The value of each parameter in a PERFECT sensor, used as the origin of the `scale`
+# interpolation below. It is not uniformly zero: `p_detect` is a probability whose ideal is
+# 1, `pose_fail_bias` and the `*_mult` fields are multipliers whose neutral value is 1, and
+# the `*_min_px` fields are thresholds whose ideal is 0 (never binds). Where the ideal is
+# not obvious from the semantics, the good end of the field's own measured range is used
+# rather than inventing a value beyond anything observed.
+#
+# `cam_fps` is deliberately absent: the camera frame rate is PHYSICAL, not error. A clean
+# sensor still runs at 30 fps, and collapsing it would hand the policy a continuous-time
+# detector that cannot exist.
+#
+# "Clean" means NO ERROR, not NO PHYSICS. The fields below that describe a geometric
+# visibility LIMIT rather than an error take the good end of their own measured range, not
+# infinity: a 2.7 m gate at 120 m spans 7.2 px, under every threshold the detector has
+# (`normal_min_px` 12-22, `pose_min_px` 18-40), so a "perfect" sensor that reports it is a
+# superhuman one. That is a bigger distribution shift than the noise it was meant to remove.
+_CLEAN = {
+    "max_range_m": 30.0, "min_range_m": 0.0, "min_cos_visible": 0.10,
+    "p_detect": 1.0, "burst_p": 0.0, "burst_frames": 0.0,
+    "latency_s": 0.0, "max_coast_s": 1.10,
+    "pos_noise_frac": 0.0, "pos_noise_floor_m": 0.0, "range_noise_frac": 0.0,
+    "oblique_gain": 1.0, "normal_sigma_rad": 0.0,
+    "normal_tilt_min_px": 0.0, "normal_min_px": 0.0, "pose_min_px": 0.0,
+    "p_pose_fail": 0.0, "pose_fail_bias": 1.0, "pose_fail_sigma_mult": 1.0,
+    "sigma_report_mult": 1.0,
+    "conf_base": 1.0, "conf_sigma": 0.0,
+    "fp_rate_hz": 0.0, "fp_frames": 0.0,
+    "ribbon_duty": 1.0, "ribbon_switch_hz": 0.0, "ribbon_noise_rad": 0.0,
+    "ribbon_pixfrac": 0.030,
+    "gyro_sigma": 0.0, "gyro_bias": 0.0, "accel_sigma": 0.0, "accel_bias": 0.0,
+    "attitude_sigma_rad": 0.0, "attitude_ref_a": 16.0, "align_min_accel": 0.0,
+    "speed_resid_mps2": 0.0,
+}
+
+# Adding a field to NoiseParams without a clean value would silently leave it at full
+# strength at scale 0, i.e. a "clean" sensor that is not clean. Fail at import instead.
+_missing = set(SAMPLED) - set(_CLEAN) - {"cam_fps"}
+if _missing:
+    raise RuntimeError(f"noise._CLEAN is missing a clean value for: {sorted(_missing)}")
+
+
+def sample(params, rng, n, difficulty, scale=1.0):
     """Draw one point per episode from every range. Returns `{name: float64 [n]}`.
 
     `difficulty` in [0, 1] narrows each range toward its pessimistic end rather than
     scaling a magnitude: at difficulty 0 the draw covers the gentle 60% of the range, at
-    difficulty 1 the whole of it. The gentle end is still noisy -- clean detections are a
-    bug, not a simplification (architecture P3), so difficulty never reaches zero noise.
+    difficulty 1 the whole of it. The gentle end is still noisy -- difficulty alone never
+    reaches zero noise.
+
+    `scale` in [0, 1] is the separate axis that does. Each range is interpolated from its
+    perfect-sensor value (`_CLEAN`) toward the configured range, so `scale=0` is a NOISELESS
+    sensor, `scale=1` is exactly the behaviour before this argument existed, and anything
+    between is a partially degraded one. `cam_fps` is never scaled.
+
+    Training at scale 0 for any length of time is a KNOWN RISK, not a free win --
+    architecture P3 is explicit that "clean detections are a bug: a policy will exploit any
+    regularity in synthetic tracks". A policy that converges on a perfect sensor learns to
+    trust `pos_body` exactly and has to unlearn it. This exists to be ramped, not parked.
     """
     d = float(min(max(difficulty, 0.0), 1.0))
+    s = float(min(max(scale, 0.0), 1.0))
     out = {}
     for name in SAMPLED:
         lo, hi = getattr(params, name)
+        if s < 1.0 and name in _CLEAN:
+            c = _CLEAN[name]
+            lo, hi = c + s * (lo - c), c + s * (hi - c)
         span = hi - lo
         if name in params.worse_high:
             # gentle end is `lo`; open the window from 60% to 100% of the range

@@ -2,7 +2,8 @@
 
 **Generated:** 2026-08-01 from disk inspection of `pilot/control/` (source, `plant.json`, checkpoint sidecars, training CSVs).  
 **Do not treat older `HANDOFF*.md` / stale header lines as authority.** Prefer this file + the code.  
-**P1/P2 detail:** `STATE_PLANT_SURROGATE.md` beside this file — same date, scoped to plant + surrogate, every number verified by executing the self-checks.
+**P1/P2 detail:** `STATE_PLANT_SURROGATE.md` beside this file — same date, scoped to plant + surrogate, every number verified by executing the self-checks.  
+**Course generation (2026-08-02, NEWER than this file):** `STATE_VQ2_COURSE.md` — the measured VQ2 map is now wired into the surrogate (`surrogate/vq2course.py`, opt-in via `vq2_frac`). It supersedes any statement here or in `TRAINING_ARCHITECTURE.md` that courses are always procedural, and carries a spec audit of the collision model.
 
 **Deliverable:** an `interface.Policy` that beats the reactive baseline on the live sim.  
 **Contract:** `pilot/interface.py` (frozen; propose changes, do not edit unilaterally).  

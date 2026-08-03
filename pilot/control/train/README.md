@@ -24,6 +24,60 @@ field (python literal value), e.g. `--env-kwarg decision_hz_range=(28.0,34.0)` f
 low-rate stress runs E5 wants; unknown fields are reported and ignored rather than
 crashing, so this harness does not break when the surrogate's config grows.
 
+## Training on the measured VQ2 course
+
+    python pilot/control/train/train.py --env surrogate --total-steps 20000000 \
+        --n-envs 256 --n-steps 128 --frame-stack 6 --name vq2_run1 \
+        --env-kwarg vq2_frac=0.8
+
+`vq2_frac` is the share of episodes flown on the **measured** 17-gate VQ2 layout
+(`../course/`) instead of a procedurally generated one. It defaults to `0` — the surrogate
+is unchanged until you ask for it. Rationale, and the full measured-vs-assumed split, is in
+`../surrogate/vq2course.py`; the short version is that the generator's shortest segment is
+18 m while 10 of VQ2's 16 race edges are shorter than that, and the corners that decide
+this course pair a sharp turn with a ~10 m exit — a combination the generator never draws.
+
+### Training on VQ2 only
+
+`vq2_frac=1.0` is a legitimate strategy — the course is fixed and deterministic (spec
+§3.5), attempts are unlimited and ranking is on time (§9.4), so overfitting to it is the
+point. Three things change, and one is easy to miss:
+
+    # train
+    --env-kwarg vq2_frac=1.0
+    # rank checkpoints on the SAME course, or selection is meaningless
+    python pilot/control/evalsuite/select.py --ckpt ... --vq2-frac 1.0
+
+1. **Eval must match.** `select.py` / `run_policy.py` / `stress.py` default to procedural
+   courses. Ranking a VQ2-only checkpoint against courses it never trained on selects the
+   wrong checkpoint, quietly. Pass `--vq2-frac 1.0`.
+2. **`difficulty` loses half its meaning.** It no longer anneals course geometry — that is
+   now fixed — so it only drives perception noise, the collision margin and the corridor
+   radius. `speed_cap` is unaffected. The curriculum still works, it just anneals less.
+3. **You give up the gate-seeking safety net.** `course/README.md` warns that a whole leg
+   can rotate by 90° if its mod-90 quadrant came from the sketch rather than a shared
+   measurement — "a discrete failure a Gaussian cannot express", and the sampled envelope
+   is "a lower bound". A pure-VQ2 policy has memorized a track that may be wrong in a way
+   no amount of sampling covers. `vq2_frac=0.9` buys the insurance for ~10% of the run.
+
+`vq2_alt_hypothesis_p` (default 0.5) covers the contested 1-2 edge: the accepted 8.32 m
+rests on five rows from one flight and a refused 34-row channel reads 13.0 m. Every VQ2
+episode flies 1→2, so the rival lands in ~25% of pool courses rather than betting the run
+on one reading.
+
+Keep some procedural share otherwise. The map cannot help a policy that is lost, so
+gate-seeking has to survive alongside the track.
+
+Other knobs (all `--env-kwarg`): `vq2_yaw_mode` (`'mixed'` randomizes across the three
+disagreeing gate-yaw hypotheses, `'bisector'` fixes them), `vq2_pool_size`,
+`vq2_floor_clear_m`, `vq2_headroom_m`, `vq2_tilt_deg`.
+
+**On Colab:** open `colab_vq2.ipynb`. It clones the repo, runs both verification suites,
+symlinks `checkpoints/` to Drive so a disconnect does not lose the run, and launches
+training with the knobs as form fields. Use a CPU runtime — the env is vectorized NumPy and
+dominates the step, so a GPU only speeds the PPO update. The win from Colab is running
+several configs in parallel, not one run faster.
+
 ## Files
 
 | file | what |
@@ -37,6 +91,7 @@ crashing, so this harness does not break when the surrogate's config grows.
 | `train.py` | entry point: CLI, curriculum loop, logging, checkpointing |
 | `testenv.py` | throwaway 2-D point-mass stub exposing the `VecSurrogate` API. Test only |
 | `selftest.py` | the verification above: stacking, normalization, hover init, curriculum, PPO learning, checkpoint round-trip |
+| `colab_vq2.ipynb` | Colab runner: clone, verify, checkpoints to Drive, train on the measured VQ2 course |
 
 ## The three things that are easy to get silently wrong
 
@@ -111,11 +166,19 @@ comes back as a plain dict, so `EnvConfig(**d)` alone would leave `noise` un-typ
 * **Pre-tanh log-probabilities.** The sampled pre-tanh value is stored and scored, so PPO
   ratios are plain Gaussian ones; the tanh Jacobian cancels in the ratio and the entropy
   bonus uses the Gaussian entropy. Standard practice and numerically well-behaved.
-* **Every `done` bootstraps at zero.** The env auto-resets and reports no truncation flag,
-  and the pre-reset terminal observation is not recoverable through the contract, so
-  time-limit truncations are treated as terminal. Mild value bias, uniform across gates,
-  no sign effects. If the surrogate later exposes `truncated` in `info`, that is a
-  five-line improvement in `ppo._gae`.
+* **Time-limit truncations bootstrap from `V(s_T)`; genuine terminals bootstrap at zero.**
+  The env auto-resets, but the ending observation is not lost — it arrives as
+  `info['terminal_obs']`, which `surrogate/env.py` emits for exactly this purpose.
+  `ppo._truncation_values` reconstructs the terminal frame stack from the pre-step stack
+  plus that observation and adds `gamma * V(s_T)` to the TD error at `info['timeout']`
+  steps. A collision, corridor exit or finish still bootstraps at zero and wins when it
+  coincides with a timeout, since `env.py` ORs the flags. An env that publishes neither
+  key falls back to bootstrapping every `done` at zero.
+
+  This README previously recorded the terminal observation as unrecoverable and accepted
+  the bias. It was recoverable the whole time; the note is why nobody looked. Scale, so
+  the fix is not oversold: at `run1`'s ~0.94 collision rate, truncations are at most ~6%
+  of endings, and this is a correctness fix rather than a completion fix.
 * **Curriculum changes rebuild the env** (config is a constructor argument; mutating it in
   place would not be guaranteed to reach precomputed internal state). Rebuilds are rate
   limited by `--curriculum-hold` updates and reseeded each time so courses stay fresh.

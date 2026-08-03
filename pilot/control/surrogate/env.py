@@ -64,6 +64,7 @@ import course  # noqa: E402
 import detect  # noqa: E402
 import noise as noise_mod  # noqa: E402
 import vmath  # noqa: E402
+import vq2course  # noqa: E402
 
 G = plant_mod.G
 N_SLOTS = interface.N_GATES
@@ -76,6 +77,11 @@ RIBBON_LOOKAHEAD = np.array([4.0, 8.0, 14.0, 22.0, 32.0, 45.0])
 
 # Drone bounding sphere: 280 x 280 x 160 mm (spec 3.7) -> half-diagonal 0.214 m.
 DRONE_SPHERE_M = 0.214
+
+# `interface.RaceObs.collision_episodes` counts contact EPISODES, not contact samples:
+# two contacts closer together than this are the same episode. The number is the
+# interface's own (a parked drone emits ~250 contact messages a second).
+COLLISION_GAP_S = 0.5
 
 # The drag coefficient the ON-BOARD speed estimator believes, i.e. the published fit.
 # Deliberately NOT the per-episode randomised value: the aircraft only ever knows the
@@ -105,6 +111,20 @@ class EnvConfig:
     n_gates_range: tuple = (18, 22)
     enable_time_penalty: bool = False
 
+    # Gates flown per episode before the episode is CUT, or None for the whole course.
+    # The observation only ever shows `interface.N_GATES` = 3 gates plus a ribbon that
+    # reaches one further, so nothing beyond ~4 gates ahead is observable and a 20-gate
+    # episode teaches nothing a 3-gate episode does not -- it only multiplies the failure
+    # probability. Measured on the shipped surrogate with the reactive baseline: per-gate
+    # pass 51%, so completion over 20 gates is 0.51^20, and `run1` duly logged 0.000
+    # completion for 77 straight updates while the curriculum waited for 0.70 to promote.
+    #
+    # The course is still GENERATED at full length and the cut is a TRUNCATION, not a
+    # finish: `active/n_gates`, the lookahead slots and the corridor all keep their
+    # full-course distributions, and the value function bootstraps from V(s_T) instead of
+    # learning that the world ends at gate K.
+    gates_per_episode: int = None
+
     # -- course --------------------------------------------------------------
     # ~28 m per gate: 2.76 s/station at a racing 8-12 m/s, and VQ1's 167 m / 6 gates.
     seg_len_easy: tuple = (26.0, 34.0)
@@ -131,8 +151,40 @@ class EnvConfig:
     rate_gain_jitter: float = 0.10
     delay_jitter: tuple = (0.7, 1.4)
 
+    # -- the measured VQ2 course, see vq2course.py ---------------------------
+    # 0 keeps the surrogate exactly as it was: every course procedural. Above 0, that
+    # share of episodes runs the measured 17-gate VQ2 layout instead. Keep some
+    # procedural share: the map cannot help a policy that is lost, so gate-SEEKING has
+    # to survive alongside the track.
+    vq2_frac: float = 0.0
+    vq2_pool_size: int = 2048
+    vq2_pool_seed: int = 0
+    vq2_yaw_mode: str = "mixed"       # 'mixed' (randomize the disagreement) | 'bisector'
+    vq2_yaw_jitter_deg: float = 4.0
+    # Probability a pool course is built with edge 1-2's CONTESTED rival reading in play
+    # (accepted 8.32 m from 5 rows of one flight; a refused 34-row channel says 13.0 m).
+    # The package then coin-flips, so the rival lands in ~half of those. Every VQ2 episode
+    # flies 1->2, so training only on the accepted value bets the run on that edge.
+    vq2_alt_hypothesis_p: float = 0.5
+    # {gate: (lo_deg, hi_deg)} MANUAL OVERRIDE. None = use the package's measured per-gate
+    # tilt, which since 2026-08-02 carries gate 9 at 21+/-5 deg leaning toward azimuth
+    # ~130 deg and every other gate vertical at its own residual. Overriding loses the
+    # lean azimuth for that gate, so prefer None unless deliberately probing.
+    vq2_tilt_deg: object = None
+    # ASSUMED -- the map's z is relative to gate 0, not to the floor, so where the floor
+    # sits is a free parameter. Randomized rather than guessed. The lower bound must clear
+    # floor_clear_m plus half the aperture or gates start underground.
+    vq2_floor_clear_m: tuple = (2.6, 4.5)     # lowest gate's height above the floor
+    vq2_headroom_m: tuple = (1.75, 4.0)       # ceiling above the course's own high point
+
     # -- collision -----------------------------------------------------------
-    margin_range_m: tuple = (0.10, 0.40)   # architecture T4: the main transfer trick
+    # Inflating the drone's sphere is the architecture's main transfer trick, but the low
+    # end was 0.10, which at difficulty 0 put the sphere at 0.314-0.434 m against a 0.75 m
+    # aperture half-width -- i.e. the policy had to cross within 0.32-0.44 m of the exact
+    # centre, roughly 30% tighter than the PHYSICAL clearance of 0.536 m. Starting the
+    # range at zero makes difficulty 0 the real aperture and keeps the inflation as
+    # something difficulty adds, which is what a transfer margin is for.
+    margin_range_m: tuple = (0.0, 0.40)
     gate_outer_m: float = course.GATE_OUTER_M
 
     # -- reward --------------------------------------------------------------
@@ -146,6 +198,25 @@ class EnvConfig:
     k_jerk: float = 0.02
     k_nogate: float = 0.01
     k_time: float = 0.01
+
+    # The discount the SHAPING terms telescope against. Must equal the PPO gamma, or the
+    # potential-based terms stop being potential-based; `train.py` sets it from --gamma.
+    gamma_shaping: float = 0.997
+
+    # Floor/ceiling clearance shaping. The reward had no altitude term at all: the floor
+    # was a terminal discovered on contact, and nothing anywhere referenced clearance.
+    # Measured on `run1` at 5.05M steps, 55.5% of episodes ended on the FLOOR (34.5% on a
+    # gate frame, 8.6% on the ceiling) -- the policy flew at 14.5 deg bank / 14.1 deg
+    # nose-down commanding 0.278 throttle where holding altitude needed 0.315, a ~2.1
+    # m/s^2 sink, and its thrust bias had moved DOWN from hover. That is the reward being
+    # optimised correctly, not a network that failed to learn.
+    #
+    # Applied as `gamma*PHI(s') - PHI(s)`, so by Ng/Harada/Russell the optimal policy is
+    # unchanged and this cannot breed the timid hoverer the architecture's failure table
+    # warns about. PHI saturates at `clear_ref_m` so there is no incentive to climb away
+    # from the course -- only a gradient in the band where contact is a real risk.
+    k_clear: float = 3.0
+    clear_ref_m: float = 2.5
     # The curriculum's stall response, mandated by TRAINING_ARCHITECTURE.md T4: "If
     # completion stalls, weaken the progress term near gates; do not weaken the collision
     # penalty." A policy that stalls is usually one that dives at the gate because dense
@@ -164,6 +235,28 @@ class EnvConfig:
     # 1.0 = no effect. Touches neither the crossing bonus nor the collision penalty.
     progress_gate_scale: float = 1.0
 
+    # Does contact END the race, or merely cost time?
+    #
+    # `TRAINING_ARCHITECTURE.md` E5 lists this as an open question worth one live run,
+    # and it is not a detail: it decides what gets submitted. With contact terminal
+    # (True, the default and what every run so far trained on) a policy has to fly a
+    # whole course in one life. With contact merely expensive (False) the D6 recovery
+    # supervisor takes over, levels the aircraft, hands back, and the race continues --
+    # and an 8-minute budget against a ~1-2 minute lap makes a crash-prone but ACCURATE
+    # policy viable. At a measured per-gate rate of 0.705 that is ~2.4 gates per life,
+    # so ~10 recoveries clears 20 gates.
+    #
+    # The surrogate cannot answer the question, only model both regimes. Set False and
+    # a collision costs `k_collision`, resets the collision clock, increments
+    # `collision_episodes` -- and the episode continues from a recovered state.
+    #
+    # WHAT "RECOVERED" MEANS IS AN ASSUMPTION, not a measurement: the aircraft is placed
+    # back inside the arena with zero velocity and a tumbled attitude. Nobody has watched
+    # a real collision in VQ2. This predicts the SHAPE of the answer, not the number.
+    collision_terminates: bool = True
+    # Attitude disturbance handed to the recovery, radians, when contact is not terminal.
+    recover_tumble_rad: float = 0.45
+
     # -- episode -------------------------------------------------------------
     max_time_s: float = 120.0
     gate_timeout_s: float = 12.0
@@ -176,6 +269,10 @@ class EnvConfig:
 
     # -- perception ----------------------------------------------------------
     noise: noise_mod.NoiseParams = field(default_factory=noise_mod.NoiseParams)
+    # Sensor-error strength, independent of `difficulty`. 1.0 is the measured model;
+    # 0.0 is a PERFECT sensor. Meant to be ramped up over a run, not left low --
+    # architecture P3: clean detections are a bug, a policy will exploit them.
+    noise_scale: float = 1.0
     r_commit_m: float = attn_mod.R_COMMIT_M     # TBD, see attention.py
     attention_factory: object = None            # () -> object with reset/step_batch
 
@@ -224,6 +321,16 @@ class VecSurrogate:
         self.t_s = np.zeros(n)
         self.t_gate = np.zeros(n)
         self.t_coll = np.full(n, 1e3)
+        self.coll_n = np.zeros(n, dtype=np.int64)
+        # Gate index the episode SPAWNED at, so achievement can be reported as a delta.
+        self.a_start = np.zeros(n, dtype=np.int64)
+        # Active-gate plane crossings and clean passes, per episode. Their ratio is the
+        # per-gate accuracy that actually drives learning; whole-course completion is
+        # that ratio raised to the gate count and is 0.000 long after the ratio is moving.
+        self.n_attempt = np.zeros(n, dtype=np.int64)
+        self.n_pass = np.zeros(n, dtype=np.int64)
+        self._cross0 = np.zeros(n, dtype=bool)
+        self.phi_prev = np.zeros(n)
         self.ep_ret = np.zeros(n)
         self.ep_len = np.zeros(n, dtype=np.int64)
 
@@ -273,6 +380,10 @@ class VecSurrogate:
 
         mk = self.cfg.attention_factory or (
             lambda: attn_mod.AttentionPolicy(r_commit_m=self.cfg.r_commit_m))
+        # Built once per process and cached across curriculum rebuilds; None unless
+        # cfg.vq2_frac > 0, in which case this is the measured VQ2 layout.
+        self.vq2_pool = vq2course.get_pool(self.cfg)
+
         self.attn = mk()
         self.attn.reset(n)
         self._yaw_cmd = np.zeros(n)
@@ -295,7 +406,7 @@ class VecSurrogate:
             return
         cfg, rng = self.cfg, self.rng
 
-        c = course.generate(rng, m, cfg)
+        c = vq2course.mix(rng, m, cfg, self.vq2_pool)
         self.g_pos[mask] = c["pos"]
         self.g_nrm[mask] = c["nrm"]
         self.n_gates[mask] = c["n_gates"]
@@ -303,7 +414,7 @@ class VecSurrogate:
         self.z_ceil[mask] = c["z_ceil"]
         self.corridor_r[mask] = c["corridor_r"]
 
-        nz = noise_mod.sample(cfg.noise, rng, m, cfg.difficulty)
+        nz = noise_mod.sample(cfg.noise, rng, m, cfg.difficulty, cfg.noise_scale)
         for k, val in nz.items():
             self.nz[k][mask] = val
 
@@ -395,7 +506,14 @@ class VecSurrogate:
         self.t_gate[mask] = 0.0
         # A hover / no-gate start is the D6 handback: the supervisor gives control back
         # shortly after a collision episode, so t_since_collision_s must look like it.
+        # `collision_episodes` is seeded to match: a start that claims a collision just
+        # happened must also have COUNTED it, or the two halves of the same event
+        # disagree and the supervisor's two trigger branches see different worlds.
         self.t_coll[mask] = np.where(mode >= 2, rng.uniform(0.2, 2.5, m), 1e3)
+        self.coll_n[mask] = np.where(mode >= 2, 1, 0)
+        self.a_start[mask] = a0
+        self.n_attempt[mask] = 0
+        self.n_pass[mask] = 0
         self.ep_ret[mask] = 0.0
         self.ep_len[mask] = 0
         self.gyro_true[mask] = 0.0
@@ -416,6 +534,9 @@ class VecSurrogate:
         self.det.tick(self.rng, self.nz, self.p, self.q, self.g_pos, self.g_nrm,
                       self.active, self.n_gates, self.t_s, mask)
         self.rem_prev[mask] = self._remaining()[mask]
+        # Both shaping potentials must be re-anchored on the NEW state, or the first step
+        # of a fresh episode books the difference between two unrelated worlds as reward.
+        self.phi_prev[mask] = self._clearance_potential()[mask]
 
     # =====================================================================
     # step
@@ -437,6 +558,8 @@ class VecSurrogate:
             p0 = self.p.copy()
             self._substep(rates, thr)
             hit, passed = self._gate_geometry(p0, self.p)
+            self.n_attempt = self.n_attempt + self._cross0
+            self.n_pass = self.n_pass + passed
             collided |= hit
             newly = passed & ~advanced & ~collided
             self.active = self.active + newly.astype(np.int64)
@@ -456,8 +579,19 @@ class VecSurrogate:
         dt = self.dt_dec
         self.t_s = self.t_s + dt
         self.t_gate = np.where(advanced, 0.0, self.t_gate + dt)
+        # `interface.RaceObs`: COLLISION is a contact SAMPLE, not a crash, and the counter
+        # reports EPISODES separated by a gap > COLLISION_GAP_S -- never message counts.
+        # Every collision terminates in this surrogate, so in practice the gate is always
+        # open and the counter steps 0 -> 1 on the terminal step; the rule is written out
+        # anyway so the semantics stay right if contact ever stops being terminal.
+        self.coll_n = self.coll_n + (collided & (self.t_coll + dt > COLLISION_GAP_S))
         self.t_coll = np.where(collided, 0.0, self.t_coll + dt)
         self.ep_len = self.ep_len + 1
+
+        # When contact is not terminal the aircraft has to be put somewhere flyable, or
+        # the next step re-detects the same floor strike forever. See EnvConfig.
+        if not cfg.collision_terminates and np.any(collided):
+            self._collision_recover(collided)
 
         # -- pose history and the camera clock --------------------------------
         self._phead = (self._phead + 1) % _POSE_HIST
@@ -477,9 +611,23 @@ class VecSurrogate:
 
         # -- termination -------------------------------------------------------
         finished = self.active >= self.n_gates
+        if cfg.gates_per_episode is None:
+            capped = np.zeros(self.n, dtype=bool)
+        else:
+            capped = (self.active - self.a_start) >= int(cfg.gates_per_episode)
+        capped = capped & ~finished
+        # Contact ends the race only if the config says it does. Everything else about a
+        # collision -- the reward, the clock, the counter -- is unchanged either way.
+        term_coll = collided if cfg.collision_terminates else np.zeros(self.n, dtype=bool)
         corridor = self._corridor_exit() & ~finished
-        timeout = (self.t_s > cfg.max_time_s) | (self.t_gate > cfg.gate_timeout_s)
-        done = collided | corridor | timeout | finished
+        # A WALL-CLOCK cut and a K-gate cut are arbitrary: the race would have continued,
+        # so both bootstrap from V(s_T). A PER-GATE timeout is not -- it is the policy
+        # failing to reach its gate, a genuine terminal worth zero. These used to be ORed
+        # into one `timeout` flag that `ppo.py` bootstrapped wholesale, which credited a
+        # stuck policy with the rest of the course it was never going to fly.
+        timeout = (self.t_s > cfg.max_time_s) | capped
+        gate_timeout = (self.t_gate > cfg.gate_timeout_s) & ~timeout
+        done = term_coll | corridor | timeout | gate_timeout | finished
 
         # -- reward, from TRUE state ------------------------------------------
         rem = self._remaining()
@@ -487,13 +635,31 @@ class VecSurrogate:
         # the NEW one, ~28 m further off. Differencing them would charge a large negative
         # progress for the one event the reward most wants to encourage, cancelling most
         # of the crossing bonus. The target moved; the aircraft did not regress.
+        # PHI = -rem, telescoped at gamma = 1 ON PURPOSE. The textbook potential-based
+        # form is `gamma*PHI(s') - PHI(s)`, and it was tried: at gamma=0.997 it pays a
+        # STATIONARY aircraft `rem*(1-gamma)` every step, which at a typical 25 m is
+        # +0.075/step against a real closure signal of ~0.09/step -- a survival bonus that
+        # GROWS with distance from the gate. Measured over 30M steps (`runA`): episode
+        # return climbed 10.7 -> 12.4 while per-gate rate stayed at 0.07 and collisions at
+        # 0.94, i.e. the policy learned to loiter at range and farm the bonus. run1, with
+        # this gamma=1 form, returned ~+2 at the same task performance; the +10 was pure
+        # drift. Ng/Harada/Russell needs a BOUNDED potential to be safe in practice, and
+        # `rem` is not bounded. The residual bias from gamma=1 here is orders of magnitude
+        # smaller than the pathology it removes. `_clearance_potential` keeps its gamma
+        # because it saturates at `k_clear`, so its drift is a harmless -0.009/step.
+        g = float(cfg.gamma_shaping)
         prog = np.where(advanced | finished, 0.0,
-                        np.clip(self.rem_prev - rem, -cfg.progress_clip, cfg.progress_clip))
+                        np.clip(self.rem_prev - rem,
+                                -cfg.progress_clip, cfg.progress_clip))
         if cfg.progress_gate_scale != 1.0:
             prog = prog * np.where(self._near_gate_mask(), cfg.progress_gate_scale, 1.0)
+        # Clearance shaping, same telescoping form. See `EnvConfig.k_clear`.
+        phi_c = self._clearance_potential()
+        clear_term = g * phi_c - self.phi_prev
+        self.phi_prev = phi_c
         u = np.stack([a[:, 0] / act.RATE_CAP_RPS, a[:, 1] / act.RATE_CAP_RPS,
                       act.thrust_to_unit(a[:, 2])], axis=1)
-        rew = cfg.k_progress * prog
+        rew = cfg.k_progress * prog + clear_term
         rew = rew + cfg.k_cross * advanced
         rew = rew + cfg.k_finish * finished
         rew = rew - cfg.k_collision * collided
@@ -507,7 +673,20 @@ class VecSurrogate:
         self.ep_ret = self.ep_ret + rew
 
         info = dict(gates_passed=self.active.copy(),
+                    # `gates_passed` is the ABSOLUTE index, and 25% of episodes spawn
+                    # mid-course, so it is not what the policy achieved: at update 1 of
+                    # `run1` a freshly initialised network already "passed" 2.05 gates,
+                    # which is just the mean spawn offset. This is the real number.
+                    gates_this_episode=(self.active - self.a_start).copy(),
+                    gate_attempts=self.n_attempt.copy(),
+                    gate_passes=self.n_pass.copy(),
+                    gate_timeout=gate_timeout.copy(),
                     collision=collided.copy(),
+                    # Post-increment, pre-reset -- the count the ENDING episode finished
+                    # with. Scoring must read it here: the observation handed back by a
+                    # terminating step belongs to the next episode, and the last
+                    # observation handed out before it predates the contact.
+                    collision_episodes=self.coll_n.copy(),
                     corridor_exit=corridor.copy(),
                     timeout=timeout.copy(),
                     finished=finished.copy(),
@@ -592,6 +771,11 @@ class VecSurrogate:
         rel = x - gp
         lat = np.linalg.norm(rel - np.einsum('nsi,nsi->ns', rel, gn)[:, :, None] * gn, axis=2)
 
+        # Crossings of the ACTIVE gate's plane, whether or not they were clean: the
+        # denominator of the per-gate pass rate. Stashed rather than returned so the
+        # signature stays what `selfcheck.py` and the probes already call.
+        self._cross0 = cross[:, 0]
+
         r = self.sphere_r[:, None]
         inner = 0.5 * course.GATE_INNER_M
         outer = 0.5 * self.cfg.gate_outer_m
@@ -628,6 +812,64 @@ class VecSurrogate:
         rem = (w * (np.linalg.norm(self.p - ap, axis=1) + dd)
                + (1.0 - w) * np.linalg.norm(self.p - gp, axis=1))
         return np.where(self.active >= self.n_gates, 0.0, rem)
+
+    def _collision_recover(self, mask):
+        """Put a collided aircraft back into a flyable state, mid-episode.
+
+        Only reachable with `EnvConfig.collision_terminates = False`. Models the live
+        sequence the D6 supervisor exists for: contact, tumble, the scripted supervisor
+        levels and hovers, control is handed back. So the aircraft is pulled inside the
+        arena, its velocity is killed, and it is left with a tumbled attitude for the
+        supervisor to recover from. Yaw survives -- a graze does not reorient the
+        aircraft in the horizontal plane, and the attention servo owns that axis anyway.
+
+        `active` is deliberately NOT advanced: a gate you hit is a gate you still have to
+        fly. If the policy cannot ever pass it, `gate_timeout_s` ends the episode, which
+        is the correct outcome rather than an infinite grind.
+
+        THIS IS A MODELLING ASSUMPTION. Nobody has watched a real VQ2 collision; zero
+        velocity and a 0.45 rad tumble are a guess. It predicts the shape of the answer.
+        """
+        m = int(np.count_nonzero(mask))
+        if m == 0:
+            return
+        rng, cfg = self.rng, self.cfg
+
+        # Back inside the arena, with clearance at both ends. NED: z more negative is up,
+        # so `z_up` (nearest the ceiling) is the LOWER numeric bound.
+        z_up = self.z_ceil[mask] + 1.2
+        z_down = -(cfg.floor_clear_m + 0.6)
+        p = self.p[mask].copy()
+        p[:, 2] = np.clip(p[:, 2], z_up, z_down)
+        self.p[mask] = p
+        self.v[mask] = 0.0
+
+        _, _, yaw = vmath.euler_from_rot(vmath.quat_to_rot(self.q))
+        t = cfg.recover_tumble_rad
+        self.q[mask] = vmath.quat_from_euler(
+            rng.uniform(-t, t, m), rng.uniform(-t, t, m), yaw[mask])
+        self.gyro_true[mask] = 0.0
+        self.accel_body[mask] = np.array([0.0, 0.0, -G])
+
+        # In-flight commands belong to the life that just ended.
+        self._cbuf[:, mask] = 0.0
+        self._tbuf[:, mask] = 0.0
+
+        # Re-anchor BOTH shaping potentials on the recovered pose. Without this the next
+        # step books the teleport itself as progress -- which would pay the policy for
+        # crashing, the exact hack this whole flag exists to measure honestly.
+        self.rem_prev[mask] = self._remaining()[mask]
+        self.phi_prev[mask] = self._clearance_potential()[mask]
+
+    def _clearance_potential(self):
+        """PHI for the floor/ceiling shaping term. Saturating, so it only has a gradient
+        in the band where contact is a real risk -- above `clear_ref_m` it is flat and
+        climbing buys nothing. Privileged world state, like the rest of the reward.
+        """
+        floor_c = -self.p[:, 2] - self.sphere_r
+        ceil_c = self.p[:, 2] - self.z_ceil - self.sphere_r
+        c = np.minimum(floor_c, ceil_c)
+        return self.cfg.k_clear * np.clip(c / max(self.cfg.clear_ref_m, 1e-6), 0.0, 1.0)
 
     def _near_gate_mask(self):
         """Where `progress_gate_scale` applies: inside `2*approach_d_m` of the approach point.
@@ -731,7 +973,8 @@ class VecSurrogate:
             speed=speed, speed_conf=speed_conf,
             active=self.active.copy(), n_gates=self.n_gates.copy(),
             t_gate=self.t_gate.copy(), race_t=self.t_s.copy(),
-            t_coll=self.t_coll.copy(), armed=np.ones(n, dtype=bool),
+            t_coll=self.t_coll.copy(), coll_n=self.coll_n.copy(),
+            armed=np.ones(n, dtype=bool),
             t_s=self.t_s.copy(), dt_s=self.dt_dec.copy(),
         )
 
@@ -856,7 +1099,8 @@ def build_observation(f, i):
     race = interface.RaceObs(
         active_gate_index=int(f["active"][i]), n_gates_total=int(f["n_gates"][i]),
         t_since_gate_s=float(f["t_gate"][i]), race_time_s=float(f["race_t"][i]),
-        armed=bool(f["armed"][i]), t_since_collision_s=float(f["t_coll"][i]))
+        armed=bool(f["armed"][i]), t_since_collision_s=float(f["t_coll"][i]),
+        collision_episodes=int(f["coll_n"][i]))
     att = interface.Attention(
         kind=interface.Attn(int(f["att_kind"][i])),
         target_dir_body=np.array(f["att_dir"][i], dtype=float),
