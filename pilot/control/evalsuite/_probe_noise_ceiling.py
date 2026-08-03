@@ -23,12 +23,29 @@ the configured one, so 0.0 is a genuinely noiseless detector while the physics, 
 course and the plant are untouched. The gap between the two columns is the share of the
 gate-frame failure that perception alone accounts for.
 
-READ IT AS A BOUND, NOT A VERDICT. `noise_scale=0` is a sensor no pipeline will ever
-have, so the clean column is an upper bound on what better perception could buy, not a
-prediction. And the surrogate's noise is the hand-specified fallback (`noise.py` line 1),
-optimistic on continuity and wrong in the sign of the range bias, so the noisy column is
-not the real pipeline either. What the comparison establishes is which of the two is
-worth spending the next month on.
+THE LIMITATION THAT NEARLY MADE THIS USELESS, measured before it misled anyone. A
+policy is FITTED to the noise it trained on, so lowering `noise_scale` at eval time
+changes the observation distribution out from under it and the comparison stops being
+about perception at all. Measured on `vq2_arch1_s143130624` (143M steps, K=22, 60 seeds):
+`grate` 0.447 noisy vs **0.210** clean, -0.237 +-0.063 -- clean detections made it
+dramatically WORSE, with floor strikes appearing at 0.15 where there had been none. That
+is distribution shift, exactly what `noise.py`'s own docstring warns about ("a policy
+that converges on a perfect sensor learns to trust `pos_body` exactly"). It says nothing
+about a perception ceiling.
+
+So: a NEGATIVE difference means the probe is confounded, not that control is the limit,
+and the script now says so instead of printing a verdict. The comparison is only
+meaningful where the policy is not fitted to the noise -- the reactive baseline -- or
+across a SMALL scale step (1.0 vs 0.8), or between policies separately TRAINED at each
+level. For a trained policy the cleaner question is instrumental rather than
+counterfactual: at the moment of plane crossing, how far is the aircraft from the true
+centre, and how far is it from where perception SAID the centre was? The first is total
+error, the second is tracking error, and the difference is the sensor's contribution --
+with no distribution shift anywhere.
+
+`noise_scale=0` is also a sensor no pipeline will ever have, and the surrogate's noise is
+the hand-specified fallback (`noise.py` line 1), optimistic on continuity and wrong in the
+sign of the range bias. Neither column is the real pipeline.
 
 Scored through `SingleSurrogate` + `RLPolicy` -- the deployment path, not the training
 one -- so a divergence between them shows up here as a bonus.
@@ -192,6 +209,15 @@ def main():
         se = float(np.hypot(noisy["se"], clean["se"]))
         diff = clean["grate"] - noisy["grate"]
         print("\nclean - noisy = %+.3f  +-%.3f (1se)" % (diff, se))
+        if diff < -2.0 * se:
+            print("  CONFOUNDED -- clean detections made it WORSE, so this run measures")
+            print("  DISTRIBUTION SHIFT, not a perception ceiling. A policy fitted to")
+            print("  noisy detections has never seen a perfect sensor: no dropouts,")
+            print("  exact pos_body, different staleness/confidence statistics. Nothing")
+            print("  about the control-vs-perception question is settled by this number.")
+            print("  Use --scales with a SMALL step (e.g. 1.0,0.8) or compare policies")
+            print("  TRAINED at different noise_scale instead.")
+            return 0
         if abs(diff) < 2.0 * se:
             print("  NOT SIGNIFICANT at this sample size: |diff| < 2se. Re-run with more")
             print("  --seeds before reading the verdict below as anything.")
