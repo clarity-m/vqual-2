@@ -221,7 +221,7 @@ def _catmull_rom(P, per_seg=60, alpha=0.5):
     return np.vstack(out)
 
 
-def _speed_profile(poly, v_max, a_lat, a_long):
+def _speed_profile(poly, v_max, a_lat, a_long, start_at_rest=True):
     """Curvature-limited speed, then forward/backward passes for longitudinal grip.
 
     v <= sqrt(a_lat / kappa) is the cornering limit; the two passes then enforce that
@@ -234,6 +234,12 @@ def _speed_profile(poly, v_max, a_lat, a_long):
              / (np.linalg.norm(d1, axis=1) ** 3 + 1e-12))
     v = np.minimum(v_max, np.sqrt(a_lat / np.maximum(kappa, 1e-9)))
     ds = np.concatenate([[0.0], np.linalg.norm(np.diff(poly, axis=0), axis=1)])
+    # The drone spawns AT REST on a platform, so the route may not open at pace: it has
+    # to launch. Without this the lead-in claims 8 m/s at s = 0, momentum the aircraft
+    # does not have, and anything reading the profile as a reference trajectory inherits
+    # the lie. The forward pass then accelerates out of zero at the longitudinal limit.
+    if start_at_rest:
+        v[0] = 0.0
     for i in range(1, len(v)):
         v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_long * ds[i]))
     for i in range(len(v) - 2, -1, -1):
@@ -245,7 +251,7 @@ SPAWN_BACK_M = 10.0        # observed: the drone starts ~10 m out, level with ga
 
 
 def spline_route(course, v_max=8.0, a_lat=12.0, a_long=8.0, spacing=SPACING,
-                 runout_m=SPAWN_BACK_M, yaw_fallback="bisector"):
+                 runout_m=SPAWN_BACK_M, yaw_fallback="bisector", start_at_rest=True):
     """The reference route as a smooth spline the gates sit on.
 
     The lead-in runs back `runout_m` along gate 0's normal so the route STARTS WHERE
@@ -279,7 +285,7 @@ def spline_route(course, v_max=8.0, a_lat=12.0, a_long=8.0, spacing=SPACING,
     s = _arc(dense)
     q = np.arange(0.0, s[-1], spacing)
     poly = np.stack([np.interp(q, s, dense[:, k]) for k in range(3)], axis=1)
-    v, kappa = _speed_profile(poly, v_max, a_lat, a_long)
+    v, kappa = _speed_profile(poly, v_max, a_lat, a_long, start_at_rest)
     return Route(poly, q, np.zeros(N_GATES), True, speed=v), kappa
 
 
