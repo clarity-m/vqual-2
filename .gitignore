@@ -10,6 +10,8 @@ AI-GP Simulator*/
 # are what the plant fit is built from. This rule still ignores everything else here, so
 # a new session is NOT committed by accident — force-add it if you want it tracked.
 pilot/sessions/
+pilot/physics_recon/
+
 
 # Archives used to move recordings off the CAEN VM
 *.tar

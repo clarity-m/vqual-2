@@ -1,0 +1,60 @@
+{
+  "obs_mean": [
+    0.05739751085639,
+    -0.029913589358329773,
+    2.2941079139709473,
+    0.0077593643218278885,
+    0.014050145633518696,
+    42.06985092163086,
+    0.3360654413700104,
+    0.47722330689430237
+  ],
+  "obs_std": [
+    1.7453994750976562,
+    1.7663999795913696,
+    0.9528092741966248,
+    2.7695438861846924,
+    2.8311164379119873,
+    16.10307502746582,
+    0.27024921774864197,
+    0.2113422155380249
+  ],
+  "frame_stack": 4,
+  "net_config": {
+    "obs_dim": 8,
+    "frame_stack": 4,
+    "act_dim": 3,
+    "hidden": [
+      256,
+      256
+    ],
+    "log_std_init": -0.5,
+    "thrust_bias": -0.7286230366587794,
+    "hover_thrust": 0.27,
+    "thrust_floor": 0.1
+  },
+  "env_config": {
+    "difficulty": 0.0,
+    "speed_cap": 1.0,
+    "decision_hz_range": [
+      45.0,
+      65.0
+    ],
+    "n_gates_range": [
+      3,
+      3
+    ],
+    "enable_time_penalty": false,
+    "progress_gate_scale": 1.0
+  },
+  "step": 397312,
+  "harness": {
+    "env_kind": "testenv",
+    "action_map_source": "surrogate",
+    "rate_cap_rps": 2.75,
+    "thrust_floor": 0.1,
+    "obs_clip": 10.0,
+    "run_name": "selftest",
+    "seed": 1
+  }
+}

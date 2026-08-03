@@ -54,9 +54,21 @@ policy consumes 73 numbers, not images) is what buys tuning iterations. If you g
 policy that flies without one — reactive control off the guidance ribbon, hand-tuned gains,
 anything — that counts. Nothing in the interface assumes a model exists.
 
-Worth knowing before you commit to the model route: the first-cut fit did **not** converge
-(thrust R² ≈ 0.05 against both command and motor sum; see the dead-end list below). It is
-not a solved subproblem you can budget an afternoon for.
+**The plant fit is done as of 2026-07-31** — `pilot/control/plant.json`, with
+`pilot/control/plant.py` as the model and a steppable NumPy `Sim`. Drag fits to R² 0.99 on
+a held-out session, thrust and rate loop to 0.92 and 0.99, and hover throttle comes out at
+0.267 against the ~0.27 measured in flight. `pilot/control/README.md` has the numbers, the
+five-stage pipeline that produced them, and what is still open.
+
+The earlier note here said the first cut did **not** converge (thrust R² ≈ 0.05 against
+both command and motor sum) and that the model route was not a solved subproblem. The
+first half was true and is reproduced by the new tooling; the cause was one missing term.
+`-a_z` is not thrust, it is thrust *plus vertical drag*, and in racing flight the two
+nearly cancel — throttle goes up exactly when body-z speed is high. Add `kz·w|w|` to the
+same regression on the same data and R² goes 0.0435 → 0.9205.
+
+What remains of the surrogate is the part that was never started: the course map and the
+**synthetic detection noise model**, which is the transfer risk the section below is about.
 
 ## Two things that will cost you a week if skipped
 
@@ -66,6 +78,13 @@ where a world frame appears, so it's the only place a sign error is silent inste
 self-announcing — and a wrong sign yields a model that fits the data, looks sensible, and
 quietly mistunes every gain trained against it. It surfaces as "great on the surrogate, bad
 in the sim", which reads like a sim-to-real gap and sends you off fixing the wrong thing.
+
+`pilot/control/sysid_replay.py` is that check and it stays useful for any change to the
+model: it replays open loop against held-out truth and scores deliberately mirrored copies
+of the fit alongside the fit, so a model that has lost a sign fails visibly rather than
+quietly. Worth knowing what it measured: a per-axis force fit at R² 0.99 barely notices a
+mirrored rotation, and a **yaw** sign error does not move the drone at all — it shows up
+only in attitude, so a position-only check would pass it.
 
 **The transfer risk is the noise model, not the plant model.** A policy exploits any
 regularity in synthetic detections. Dropout, latency and false-positive statistics must be
@@ -87,6 +106,11 @@ laptop. Ask Claire for a copy; don't assume they're backed up.
 
 1. The VQ1 truth streams are each wrong on a *different* axis.
    `truth_roll = ATTITUDE.roll`, `truth_pitch = ODOMETRY.pitch`, `truth_yaw = -ATTITUDE.yaw`.
+   Roll and pitch were refereed against gravity on a parked drone; **yaw could not be**
+   (parked, both streams sit at the degenerate −179.9° heading) and was settled separately
+   on 2026-07-31 by a kinematic referee over flying data — `pilot/control/sysid_frames.py`,
+   which brute-forces all sixteen candidate conventions and re-derives the other two lines
+   as a side effect.
 2. The simulator's whole body-rate convention is mirrored vs MAVLink NED — commands *and*
    gyro. Comparing them to each other correlates at +0.96 and proves nothing.
 
@@ -135,6 +159,11 @@ actuation basis differs all the way down. `link.py` (MAVLink plumbing) does tran
 * **Sim access**: you likely don't need it. Your half runs entirely on the surrogate and
   the recordings. The live sim is one exclusive UDP port on one machine, so it is a
   serialized integration resource — coordinate with Claire rather than assuming access.
+  If you do get a slot, **card 2 at the bottom of `pilot/SYSID.md` is what to fly**: three
+  minutes that retire the plant's last unmeasured hack (the low-throttle thrust clamp), the
+  one coefficient still fitted jointly with another, and the missing completed lap. Adding
+  terms to the model is exhausted — every plausible one now makes held-out fit worse or
+  barely better — so that flight is the only remaining lever on plant accuracy.
 * **Environment**: Python 3, NumPy, OpenCV, pymavlink. Pin `numpy==1.26.4` and
   `opencv-python==4.10.0.84`; unpinned installs pull opencv 5 → numpy 2 and break things.
 

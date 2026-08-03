@@ -44,10 +44,21 @@ The three in bold are the deliberate system-ID cards; `pilot/SYSID.md` says what
 segment was for. The rest is ordinary flying, useful as extra coverage and as held-out
 data.
 
-Per-session files: `imu.csv` (~61 Hz), `cmd.csv` (command paired with the response that
+Per-session files: `imu.csv`, `cmd.csv` (command paired with the response that
 followed), `actuators.csv` (motor outputs, 95 Hz), `race.csv`, `collisions.csv`,
 `frames.csv`, `events.jsonl`, and the VQ1-only truth streams `attitude.csv`,
 `position.csv`, `odometry.csv`.
+
+**`imu.csv` is not one rate.** The four morning sessions (`130744` … `132659`) record
+HIGHRES_IMU at **31.8–34.6 Hz**; the four from `135735` on record it at **60.6–61.6 Hz**.
+`ATTITUDE` (~112 Hz) and `ODOMETRY` (~71 Hz) are unchanged across all eight, and frames run
+~30 fps in all eight, so this is not frame load. Nothing in `teleop.py` requests a message
+interval, so what changed around 13:30 is not recorded. It matters because kinematic-referee
+residuals split on the same line — 0.110–0.216 median for the morning sessions against
+0.029–0.091 for the afternoon ones — so **prefer the 61 Hz sessions for anything
+timing-sensitive**, and weight by real `time_usec` deltas rather than any nominal period.
+(The 47.7 Hz figure quoted in `../SYSID.md`'s closing note matches neither tier; treat all
+three numbers as load-dependent rather than fixed.)
 
 ## Read this before fitting anything
 
@@ -73,9 +84,28 @@ because both ends carry the same mirror. Only a referee outside the convention s
 
 Full detail: `pilot/NOTES.md`, `pilot/control/README.md`.
 
-## Suggested split
+## The split, as used
 
-Nothing here has been designated held-out yet. Pick one session, do not fit on it, and
-validate against it — `20260731-131305` is a reasonable choice: nine minutes, wide thrust
-range, near-30 m/s, and it is ordinary flying rather than a maneuver card, so it tests
-whether the model generalises past the excitation it was fitted from.
+**`20260731-131305` is held out** (2026-07-31): nine minutes, wide thrust range, near-30
+m/s, and ordinary flying rather than a maneuver card, so it tests whether a model
+generalises past the excitation it was fitted from. The plant fit uses the three bold
+sessions above and records the split in `pilot/control/plant.json` — keep it that way, or
+the replay ends up validating on its own training data.
+
+**`20260731-130744` is excluded from both.** It is the one session where the kinematic
+referee does not close: median residual 1.45 m/s² against 0.007–0.22 everywhere else. Cause
+still unknown, but partly narrowed — it is a morning session, and the whole morning tier
+runs the IMU at half rate and carries 2–8x worse referee residuals (see above). That does
+not fully explain it: `131305` shares the low rate, reaches 30 m/s, and closes fine, so
+sample rate alone does not produce a 1.45. Card 2 maneuver D in `../SYSID.md` is the test.
+
+## Two things about these files that are not obvious
+
+* **The sim boot clock restarts at every `SIM_RESET`, mid-session** — six times in
+  `20260731-150712`, four in `20260731-131305`. `t_wall_ns` keeps running, so on the wall
+  clock a session looks like one continuous flight while actually splicing separate runs
+  across a teleport back to the pad. Split on the device stamp before differentiating
+  anything (`pilot/control/sysid_data.py` does).
+* **`cmd.csv`'s `armed` column is the HEARTBEAT flag and reads 0 through whole flights** on
+  this build. Epoch 0 of `20260731-150712` reaches 34.3 m/s at throttle 0.86 with `armed`
+  never true. Do not use it to find the flying stretches; use thrust and speed.

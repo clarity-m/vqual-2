@@ -70,6 +70,39 @@ elsewhere: pose paired with gate truth makes them **labelled perception data**.
 The usable plant data is the 2026-07-31 VQ1-build sessions recorded through `teleop.py`,
 now tracked in `sessions/` — see `sessions/README.md`.
 
+### Two recording facts that silently corrupt a fit (2026-07-31)
+
+| fact | value |
+|---|---|
+| **the sim boot clock restarts at every `SIM_RESET`** | six times inside `20260731-150712`, four inside `20260731-131305`. Wall time keeps running, so a session read on the wall clock looks continuous while splicing separate runs across a teleport to the pad. Differentiate across that seam and you get a several-hundred-m/s² sample that no model explains. Load sessions as *epochs* (`pilot/control/sysid_data.py`) |
+| **`cmd.csv`'s `armed` column reads 0 through entire VQ1 flights** | it is the HEARTBEAT `SAFETY_ARMED` flag; epoch 0 of `20260731-150712` hits 34.3 m/s and throttle 0.86 with `armed` never true. Filtering on it throws away the widest-envelope data in the dataset |
+
+Also measured while checking those: the sim clock runs within 0.2% of realtime per epoch,
+and telemetry transport jitter is ±17–25 ms on the high-rate sessions but ±50–220 ms on the
+loaded ones — which is the floor on any latency measured from them.
+
+### The plant, fitted (2026-07-31)
+
+Per unit mass, body axes, `(u,v,w)` = body-frame velocity. Full derivation, held-out
+numbers and the pipeline that produced it: `pilot/control/README.md`.
+
+| | value | held-out R² |
+|---|---|---|
+| drag, body x / y / z | `-k·v_i·|v_i|`, k = **0.0487 / 0.0496 / 0.0364** | 0.993 / 0.994 / — |
+| thrust | `T/m = -6.08 + 59.59·throttle` m/s², clamped ≥ 0 | 0.916 (with `kz`) |
+| hover throttle, from the curve | **0.267** — independent route to the ~0.27 measured in flight | |
+| full throttle | 53.5 m/s² = **5.45 g** | |
+| rate loop | gain **0.970 / 0.963 / 0.904**, delay ~10 ms, τ < 10 ms | 0.98–1.00 |
+| rate mirror, re-derived from truth | **−1.000 / −0.993 / −1.001** — exact, all three axes | |
+
+Drag is **component-wise** quadratic, not a function of `|v|`: per-axis fits R² 0.999, the
+isotropic `-k·|v|·v_i` form 0.80. That is a fact about this simulator, not aerodynamics.
+
+The thing worth carrying forward: **`-a_z` is not thrust.** It is thrust plus vertical
+drag, and in racing flight the two nearly cancel — throttle goes up exactly when body-z
+speed is high (mean `|w|` 29 m/s in the top throttle bin against 1 m/s at hover). Omitting
+that one term is the whole difference between R² 0.04 and R² 0.92 on identical data.
+
 ### The VQ1 truth streams are each wrong on a different axis (2026-07-31)
 
 Moved to **`CONVENTIONS.md`** — the per-field corrections, the gravity referee that
