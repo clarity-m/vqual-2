@@ -29,10 +29,16 @@ Read in this order when picking this up again:
 ## The control half lives on Alex's machine, not here
 
 Claire took control over on the night of 2026-08-02/03 so Alex could sleep, and worked on
-HIS computer. Nothing from that effort — noise model, generated environment built from the
-VQ2 map, gate-pass-rate plateau investigation — exists in this repository. Confirmed
-2026-08-03: no merge commits at all, one stale worktree branch from 07-31, nothing
-committed since 08-01. Do not go looking for it here.
+HIS computer. The split is:
+
+* **HERE, committed 2026-08-03 in 2294da3** — `pilot/course/`: `build_course.py`,
+  `course_vq2.json`, `build_tilt.py`, `tilt_measured.json`, `ROUTE_REWARD_SPEC.md`. This
+  is the generated environment built from the VQ2 map, done on this laptop 08-02 daytime.
+  It survived and is safe.
+* **ON ALEX'S MACHINE, not here** — the noise model, the later control work, and the
+  gate-pass-rate plateau investigation, done overnight 08-02/03. Verified absent from this
+  repo: no merge commits at all, one stale worktree branch from 07-31, nothing committed
+  between 08-01 and the 08-03 catch-up commit. Do not go looking for those here.
 
 **A merge on that machine silently removed the noise model, some of the controls, and
 adjusted difficulty parameters.** Claire discovered this only after the fact. Two
