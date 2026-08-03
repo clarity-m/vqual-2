@@ -143,8 +143,14 @@ SAMPLED = tuple(f for f in NoiseParams.__dataclass_fields__
 # `cam_fps` is deliberately absent: the camera frame rate is PHYSICAL, not error. A clean
 # sensor still runs at 30 fps, and collapsing it would hand the policy a continuous-time
 # detector that cannot exist.
+#
+# "Clean" means NO ERROR, not NO PHYSICS. The fields below that describe a geometric
+# visibility LIMIT rather than an error take the good end of their own measured range, not
+# infinity: a 2.7 m gate at 120 m spans 7.2 px, under every threshold the detector has
+# (`normal_min_px` 12-22, `pose_min_px` 18-40), so a "perfect" sensor that reports it is a
+# superhuman one. That is a bigger distribution shift than the noise it was meant to remove.
 _CLEAN = {
-    "max_range_m": 120.0, "min_range_m": 0.0, "min_cos_visible": 0.0,
+    "max_range_m": 30.0, "min_range_m": 0.0, "min_cos_visible": 0.10,
     "p_detect": 1.0, "burst_p": 0.0, "burst_frames": 0.0,
     "latency_s": 0.0, "max_coast_s": 1.10,
     "pos_noise_frac": 0.0, "pos_noise_floor_m": 0.0, "range_noise_frac": 0.0,
