@@ -205,7 +205,8 @@ CHECKPOINT_KEYS = ("model", "obs_mean", "obs_std", "frame_stack", "net_config", 
 #   'frame_offsets'    list of k frame lags, oldest first; None/absent = consecutive
 #   'thrust_residual'  dict(hover_thrust, span, min_cos); None/absent = plain affine map
 # Both default to the pre-existing behaviour, so old checkpoints load and fly unchanged.
-OPTIONAL_CHECKPOINT_KEYS = ("frame_offsets", "thrust_residual")
+#   'vertical_rate'    bool; derived v_z channels appended before normalization
+OPTIONAL_CHECKPOINT_KEYS = ("frame_offsets", "thrust_residual", "vertical_rate")
 
 
 def _json_safe(obj):
@@ -238,6 +239,7 @@ def save_checkpoint(
     extra_json: dict | None = None,
     frame_offsets=None,
     thrust_residual: dict | None = None,
+    vertical_rate: bool = False,
 ) -> Path:
     """Write `<path>.pt` and the `<path>.json` sidecar. Returns the .pt path.
 
@@ -272,6 +274,8 @@ def save_checkpoint(
         ckpt["frame_offsets"] = [int(o) for o in frame_offsets]
     if thrust_residual is not None:
         ckpt["thrust_residual"] = _json_safe(thrust_residual)
+    if vertical_rate:
+        ckpt["vertical_rate"] = True
     pt_path = path.with_suffix(".pt")
     torch.save(ckpt, pt_path)
 

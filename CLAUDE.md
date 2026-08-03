@@ -24,9 +24,6 @@ Deadline is 2026-08-03 06:00 PST; the repo is under active, time-boxed work.
    change a sign, change it there first.
 3. `pilot/control/CONTROL_STATE_AGENTS.md` — disk-verified state of the control pipeline
    (dated 2026-08-01), including a table of where older docs have drifted from the code.
-   Two docs are newer and supersede it in their areas: `STATE_RL_TRAINING.md` (what training
-   actually produced) and `STATE_VQ2_COURSE.md` (the measured VQ2 map, now wired into the
-   surrogate via `surrogate/vq2course.py`, opt-in through `vq2_frac`).
 4. `pilot/NOTES.md` — measured facts about the simulator. Where it contradicts the spec, the
    measurement wins.
 
@@ -130,11 +127,9 @@ P0 recordings -> P1 plant fit -> P2 surrogate -> T4 PPO -> E5 eval -> D6 deploy
 * **D6 `policies/`** — `baseline.py` (reactive PID floor), `rl.py` (checkpoint -> Policy),
   `supervisor.py` (recovery: level + hover, hand back), `envelope.py` (`clamp_action`).
 
-Current reality worth knowing (measured, `STATE_RL_TRAINING.md`): the RL policy beats the
-reactive baseline **2.3–2.5× on per-gate accuracy** — 0.705 against 0.307 at the physical
-aperture, `runB1` at 207M steps. **Neither policy completes a course**, and that gap is
-arithmetic rather than tuning: completion over 20 gates needs a per-gate rate around 0.989
-against the 0.705 measured. Nothing has been flown live.
+Current reality worth knowing: `run1` logged ~5M steps at **0% completion throughout**, so the
+curriculum never promoted; the baseline is not yet a reliable lap-finisher on the surrogate
+either. No scored winning-policy artifact exists on disk.
 
 ## Traps that have already cost this project weeks
 
@@ -210,6 +205,12 @@ VQ1 and VQ2 have identical physics and gate dimensions (all three spec revisions
 **The rule: ground truth checks estimators offline, and never feeds the pilot.**
 
 ## Conventions for changes here
+
+**Do not open new git worktrees.** Background isolation has been turned off - Work in the existing checkout only — no
+`git worktree add`, no Cursor/Claude worktree clones, no parallel checkouts for
+experiments or best-of-N runs.
+
+
 
 Design work lands as committed markdown beside the other pipeline docs in `pilot/control/`, not
 as scratch notes. When a doc's claims are superseded, update the drift table in

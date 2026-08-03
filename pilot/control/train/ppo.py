@@ -34,6 +34,7 @@ import torch
 import torch.nn as nn
 
 from .actionmap import PITCH_INDEX, ROLL_INDEX, ResidualThrustMap
+from .derived import VerticalRate, augment
 from .framestack import FrameStack
 from .network import ActorCritic
 from .normalize import ObsNormalizer, RewardScaler
@@ -103,6 +104,7 @@ class PPO:
         cfg: PPOConfig,
         action_map,
         frame_offsets=None,
+        vertical_rate: bool = False,
         obs_norm: ObsNormalizer | None = None,
         rew_scaler: RewardScaler | None = None,
         device: str = "cpu",
@@ -117,6 +119,11 @@ class PPO:
         self.action_map = action_map
         self.speed_cap = float(speed_cap)
         self.completion_fn = completion_fn
+
+        # Derived channels are computed BEFORE normalization and stacking, so the
+        # normalizer fits them like any other channel and the stack carries their history.
+        self.vrate = VerticalRate(n_envs=self.n_envs) if vertical_rate else None
+        self.raw_dim = self.obs_dim - (self.vrate.n_channels if self.vrate else 0)
 
         self.opt = torch.optim.Adam(net.parameters(), lr=cfg.lr, eps=1e-5)
         self.stack = FrameStack(self.obs_dim, frame_stack, self.n_envs,
@@ -147,8 +154,8 @@ class PPO:
 
     def set_env(self, env) -> None:
         """(Re)attach an environment. The curriculum rebuilds it when config changes."""
-        if getattr(env, "obs_dim", self.obs_dim) != self.obs_dim:
-            raise ValueError(f"env.obs_dim={env.obs_dim} but harness expects {self.obs_dim}")
+        if getattr(env, "obs_dim", self.raw_dim) != self.raw_dim:
+            raise ValueError(f"env.obs_dim={env.obs_dim} but harness expects {self.raw_dim}")
         if getattr(env, "act_dim", self.net.act_dim) != self.net.act_dim:
             raise ValueError(f"env.act_dim={env.act_dim} but network has {self.net.act_dim}")
         self.env = env
@@ -157,6 +164,9 @@ class PPO:
     def _reset(self) -> None:
         obs = np.asarray(self.env.reset(), dtype=np.float32)
         self._raw_obs = obs
+        if self.vrate is not None:
+            self.vrate.reset()
+            obs = augment(obs, self.vrate.step(obs))
         self.obs_norm.update(obs)
         self.stack.reset(self.obs_norm(obs))
         self.rew_scaler.reset()
@@ -226,8 +236,10 @@ class PPO:
                 if tv is not None:
                     self.b_trunc_val[t] = tv
 
-            self.obs_norm.update(obs)
             self._raw_obs = obs
+            if self.vrate is not None:
+                obs = augment(obs, self.vrate.step(obs, done=done))
+            self.obs_norm.update(obs)
             self.stack.push(self.obs_norm(obs), done=done)
 
             if done.any():

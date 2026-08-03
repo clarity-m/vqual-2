@@ -102,10 +102,13 @@ class RLPolicy(interface.Policy):
         self.step = int(ckpt.get("step", -1))
         self.env_config = ckpt.get("env_config")
         self.k = int(ckpt["frame_stack"])
-        self.obs_dim = int(getattr(self.model, "obs_dim", interface.OBS_DIM))
-        if self.obs_dim != interface.OBS_DIM:
+        # The RAW observation width is always interface.OBS_DIM; the NETWORK may be wider
+        # when derived channels are on (checked below, once we know whether they are).
+        self.net_obs_dim = int(getattr(self.model, "obs_dim", interface.OBS_DIM))
+        self.obs_dim = interface.OBS_DIM
+        if self.net_obs_dim != interface.OBS_DIM and not ckpt.get("vertical_rate"):
             raise RuntimeError("checkpoint network takes %d-D observations, OBS_DIM is %d"
-                               % (self.obs_dim, interface.OBS_DIM))
+                               % (self.net_obs_dim, interface.OBS_DIM))
 
         self.norm = ObsNormalizer.from_arrays(ckpt["obs_mean"], ckpt["obs_std"])
 
@@ -113,8 +116,27 @@ class RLPolicy(interface.Policy):
         # TRAINED under and are not recoverable from the weights. Absent = the original
         # behaviour, so pre-existing checkpoints are unaffected.
         self.frame_offsets = ckpt.get("frame_offsets")
-        self.stack = FrameStack(self.obs_dim, self.k, n_envs=1,
+        self.stack = FrameStack(self.net_obs_dim, self.k, n_envs=1,
                                 offsets=self.frame_offsets)
+
+        # Derived channels are appended to the raw vector BEFORE normalization and
+        # stacking, exactly as ppo does it, so the frozen obs_mean/obs_std cover them and
+        # the stack carries their history.
+        self.vertical_rate = bool(ckpt.get("vertical_rate", False))
+        if self.vertical_rate:
+            try:
+                from pilot.control.train.derived import VerticalRate, augment
+            except Exception as exc:
+                raise _need("pilot/control/train/derived.py (VerticalRate)", exc)
+            self._vrate = VerticalRate(n_envs=1)
+            self._augment = augment
+            if self.obs_dim + self._vrate.n_channels != self.model.obs_dim:
+                raise RuntimeError(
+                    "checkpoint says vertical_rate but network takes %d-D from a %d-D "
+                    "observation plus %d derived channels"
+                    % (self.model.obs_dim, self.obs_dim, self._vrate.n_channels))
+        else:
+            self._vrate = None
 
         self.thrust_residual = ckpt.get("thrust_residual")
         if self.thrust_residual:
@@ -148,10 +170,11 @@ class RLPolicy(interface.Policy):
         # flown at TWICE the rate authority it ever saw, in evaluation and in deployment
         # alike. It is stored in the checkpoint, so read it rather than assume 1.0.
         self.speed_cap = _ckpt_speed_cap(ckpt)
-        self.info = ("ckpt %s | step %d | k=%d | offsets %s | thrust %s | hidden %s"
+        self.info = ("ckpt %s | step %d | k=%d | offsets %s | thrust %s | vrate %s | hidden %s"
                      % (os.path.basename(self.path), self.step, self.k,
                         self.frame_offsets or "consecutive",
                         "residual" if self._residual else "affine",
+                        "on" if self._vrate is not None else "off",
                         ckpt.get("net_config", {}).get("hidden")))
         self.reset()
 
@@ -167,11 +190,16 @@ class RLPolicy(interface.Policy):
     def reset(self):
         """Drop the history. The next push refills all k slots from one observation."""
         self.stack.clear()
+        if self._vrate is not None:
+            self._vrate.reset()
 
     def __call__(self, obs):
         v = np.asarray(obs.to_vector(), dtype=np.float32)
         v = np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0)
-        x = self.stack.push(self.norm(v[None, :]))
+        raw = v[None, :]
+        if self._vrate is not None:
+            raw = self._augment(raw, self._vrate.step(raw))
+        x = self.stack.push(self.norm(raw))
         u = np.asarray(self.model.infer(x, deterministic=True),
                        dtype=np.float64).reshape(-1)[:3]
         if self._residual is not None:

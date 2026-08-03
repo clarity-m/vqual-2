@@ -15,6 +15,7 @@ sys.path.insert(0, ROOT)
 from pilot import interface
 from pilot.control.train.network import ActorCritic, save_checkpoint, load_checkpoint
 from pilot.control.train.framestack import FrameStack
+from pilot.control.train.derived import VerticalRate, augment, N_DERIVED
 from pilot.control.train.normalize import ObsNormalizer
 from pilot.control.train.actionmap import (resolve_action_map, ResidualThrustMap,
                                            ROLL_INDEX, PITCH_INDEX)
@@ -41,29 +42,40 @@ def make_obs(i):
     return o
 
 
-def run_case(name, offsets, residual):
+def run_case(name, offsets, residual, vrate=False):
     amap = resolve_action_map()
     tr = None
     if residual:
         amap = ResidualThrustMap(amap, hover_thrust=interface.HOVER_THRUST, span=0.30)
         tr = {"hover_thrust": interface.HOVER_THRUST, "span": amap.span,
               "min_cos": amap.min_cos}
-    net = ActorCritic(obs_dim=D, frame_stack=K, hidden=(32, 32),
+    net_dim = D + (N_DERIVED if vrate else 0)
+    net = ActorCritic(obs_dim=net_dim, frame_stack=K, hidden=(32, 32),
                       thrust_bias=0.0 if residual else None)
     net.eval()
 
     obs_list = [make_obs(i) for i in range(40)]
     vecs = [np.asarray(o.to_vector(), np.float32) for o in obs_list]
-    norm = ObsNormalizer(D)
+    norm = ObsNormalizer(net_dim)
+    vr_fit = VerticalRate(n_envs=1) if vrate else None
     for v in vecs:
-        norm.update(v[None, :])
+        a = v[None, :]
+        if vr_fit is not None:
+            a = augment(a, vr_fit.step(a))
+        norm.update(a)
     norm.freeze()
 
     # ---- TRAINING-SIDE: FrameStack + net + action map, as ppo does it ----------
-    fs = FrameStack(D, K, n_envs=1, offsets=offsets)
+    fs = FrameStack(net_dim, K, n_envs=1, offsets=offsets)
+    vr = VerticalRate(n_envs=1) if vrate else None
+    if vr is not None:
+        vr.reset()
     train_cmds = []
     for v in vecs:
-        x = fs.push(norm(v[None, :]))
+        raw = v[None, :]
+        if vr is not None:
+            raw = augment(raw, vr.step(raw))
+        x = fs.push(norm(raw))
         u = net.infer(x, deterministic=True).reshape(-1)[:3]
         if residual:
             a = amap(u.astype(np.float32), roll=v[ROLL_INDEX], pitch=v[PITCH_INDEX])
@@ -76,7 +88,7 @@ def run_case(name, offsets, residual):
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "t")
         save_checkpoint(p, net, norm.mean, norm.std, K, {"difficulty": 0.0}, 1234,
-                        frame_offsets=offsets, thrust_residual=tr)
+                        frame_offsets=offsets, thrust_residual=tr, vertical_rate=vrate)
         pol = RLPolicy(p + ".pt")
         deploy_cmds = np.array([np.array(
             [(a := pol(o)).roll_rate, a.pitch_rate, a.thrust]) for o in obs_list])
@@ -95,8 +107,10 @@ o1, i1 = run_case("baseline (unchanged)", None, False); ok.append(o1)
 o2, i2 = run_case("dilated stack", [32, 16, 8, 4, 2, 0], False); ok.append(o2)
 o3, i3 = run_case("residual thrust", None, True); ok.append(o3)
 o4, i4 = run_case("dilated + residual", [32, 16, 8, 4, 2, 0], True); ok.append(o4)
+o5, i5 = run_case("vertical rate", None, False, vrate=True); ok.append(o5)
+o6, i6 = run_case("all three", [32, 16, 8, 4, 2, 0], True, vrate=True); ok.append(o6)
 print()
-print("  checkpoint self-describes:", i4.split("| step")[1].strip())
+print("  checkpoint self-describes:", i6.split("| step")[1].strip())
 
 # old checkpoints must still load and behave as before
 print()
@@ -109,7 +123,7 @@ with tempfile.TemporaryDirectory() as td:
           "frame_offsets" not in ck and "thrust_residual" not in ck)
     pol = RLPolicy(p + ".pt")
     print("  legacy checkpoint loads and defaults correctly:",
-          pol.frame_offsets is None and pol._residual is None)
+          pol.frame_offsets is None and pol._residual is None and pol._vrate is None)
 
 print()
 print("ALL CASES AGREE:", all(ok))

@@ -25,6 +25,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from pilot.control.train.derived import N_DERIVED  # noqa: E402
 from pilot.control.train.actionmap import (ResidualThrustMap,  # noqa: E402
                                           resolve_action_map)
 from pilot.control.train.curriculum import (  # noqa: E402
@@ -266,6 +267,11 @@ def parse_args(argv=None) -> argparse.Namespace:
                         "'32,16,8,4,2,0'. Must have --frame-stack entries and include 0. "
                         "Default (unset) is consecutive steps, i.e. 0.111 s at k=6 and "
                         "55 Hz, which holds only ~3.3 distinct camera frames.")
+    p.add_argument("--vertical-rate", action="store_true",
+                   help="add 4 derived vertical-rate channels (leaky integrals of "
+                        "world-frame vertical acceleration). interface.Observation is "
+                        "unchanged at 73-D; the network sees 77-D. Measured R2 against "
+                        "true v_z: 0.630, vs 0.460 for the shipping frame stack.")
     p.add_argument("--thrust-residual", action="store_true",
                    help="make the thrust action a residual about "
                         "hover/(cos roll cos pitch), so u[2]=0 holds altitude at any "
@@ -437,12 +443,19 @@ def run(args: argparse.Namespace) -> dict:
     thrust_bias = (0.0 if thrust_residual is not None
                    else action_map.thrust_pre_tanh_bias(HOVER_THRUST))
 
+    # The NETWORK's input width, which exceeds the env's when derived channels are on.
+    # Everything downstream of the augmentation -- normalizer, stack, PPO buffers -- sizes
+    # off this; only the env itself still speaks the raw 73-D contract.
+    net_obs_dim = obs_dim + (N_DERIVED if args.vertical_rate else 0)
+
     if ckpt_net is not None:
-        if ckpt_net.obs_dim != obs_dim or ckpt_net.act_dim != act_dim:
+        if ckpt_net.obs_dim != net_obs_dim or ckpt_net.act_dim != act_dim:
+            extra = (f" (env reports {obs_dim} plus {N_DERIVED} derived channels)"
+                     if args.vertical_rate else "")
             raise RuntimeError(
                 f"--resume {ckpt_path}: checkpoint network is "
-                f"obs_dim={ckpt_net.obs_dim} act_dim={ckpt_net.act_dim}, but --env "
-                f"{args.env} reports {obs_dim}/{act_dim}. Resuming across a different "
+                f"obs_dim={ckpt_net.obs_dim} act_dim={ckpt_net.act_dim}, but this run "
+                f"expects {net_obs_dim}/{act_dim}{extra}. Resuming across a different "
                 f"observation contract would load weights into the wrong channels."
             )
         net = ckpt_net.to(args.device)
@@ -456,9 +469,11 @@ def run(args: argparse.Namespace) -> dict:
             net._frame_offsets = frame_offsets
         if getattr(net, "_thrust_residual", None) is None:
             net._thrust_residual = thrust_residual
+        if getattr(net, "_vertical_rate", None) is None:
+            net._vertical_rate = bool(args.vertical_rate)
     else:
         net = ActorCritic(
-            obs_dim=obs_dim,
+            obs_dim=net_obs_dim,
             frame_stack=args.frame_stack,
             act_dim=act_dim,
             hidden=hidden,
@@ -469,6 +484,7 @@ def run(args: argparse.Namespace) -> dict:
         ).to(args.device)
         net._frame_offsets = frame_offsets
         net._thrust_residual = thrust_residual
+        net._vertical_rate = bool(args.vertical_rate)
 
     ppo_cfg = PPOConfig(
         n_steps=args.n_steps,
@@ -483,18 +499,19 @@ def run(args: argparse.Namespace) -> dict:
         max_grad_norm=args.max_grad_norm,
         target_kl=args.target_kl if args.target_kl and args.target_kl > 0 else None,
     )
-    obs_norm = ObsNormalizer(obs_dim)
+    obs_norm = ObsNormalizer(net_obs_dim)
     rew_scaler = RewardScaler(args.n_envs, gamma=args.gamma)
     rew_scaler.enabled = not args.no_reward_scaling
 
     agent = PPO(
         net=net,
-        obs_dim=obs_dim,
+        obs_dim=net_obs_dim,
         frame_stack=args.frame_stack,
         n_envs=args.n_envs,
         cfg=ppo_cfg,
         action_map=action_map,
         frame_offsets=frame_offsets,
+        vertical_rate=args.vertical_rate,
         obs_norm=obs_norm,
         rew_scaler=rew_scaler,
         device=args.device,
@@ -697,6 +714,7 @@ def _save(args, agent: PPO, net: ActorCritic, env_cfg, action_map, tag: str = ""
         agent.global_step,
         frame_offsets=getattr(net, "_frame_offsets", None),
         thrust_residual=getattr(net, "_thrust_residual", None),
+        vertical_rate=bool(getattr(net, "_vertical_rate", False)),
         extra_json={
             "env_kind": args.env,
             "action_map_source": action_map.source,

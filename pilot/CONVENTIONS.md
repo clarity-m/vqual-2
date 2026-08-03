@@ -132,8 +132,12 @@ Body-forward therefore renders **below** image centre, at
 
     v = 180 + 320·tan(20°) = 296   of 360
 
-which is the binding constraint on this course: a gate at own altitude renders low, and
-pitching down to accelerate pushes it lower.
+which is the binding constraint on this course: a gate at own altitude renders low, only
+64 px above the bottom edge. Pitching **up** pushes it lower still, out of frame by about
++9.4°; pitching **down** to accelerate is what brings it back toward centre (−20° of pitch
+puts a co-altitude gate at v = 180, dead centre). Verified 2026-08-03 by projecting
+through `vmath.quat_from_euler` → `camera.project`. The prose here previously had this
+backwards, and `surrogate/camera.py`'s docstring still does.
 
 Body(FRD) → camera(x right, y down, z forward) is `RELABEL @ Ry(-20°)`. **The tilt is
 negative**: forward `(1,0,0)` maps to `v = CY - FY·tan(θ)`, and a camera pointing *up* must
