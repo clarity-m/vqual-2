@@ -86,10 +86,9 @@ only when in use, so a default run still produces exactly the seven original key
   `policies/rl.py` do it in that order; they must keep agreeing.
 * **`CONVENTIONS.md` had the pitch/framing relation backwards** and is now corrected:
   pitching **down** brings a co-altitude gate *toward* frame centre (v 296 → 180); pitching
-  **up** pushes it out of frame at about +9.4°. `surrogate/camera.py`'s docstring **still
-  carries the old, wrong claim** — that file belongs to the environment work. Given
-  CLAUDE.md names `CONVENTIONS.md` the single source for sign facts, this is worth
-  finishing.
+  **up** pushes it out of frame at about +9.4°. `surrogate/camera.py`'s docstring carried
+  the same wrong claim and **was corrected in `6d54f3d`** by the environment work; the two
+  now agree, and the code was right throughout — only the prose was inverted.
 * Under `--thrust-residual` the commanded thrust varies with attitude even when the
   policy's output is constant, so `env.py`'s jerk penalty reads that compensation as jerk.
   Magnitude ~0.00013/step against a ~0.09 progress signal — negligible, but it is there if
@@ -125,8 +124,7 @@ Still open on the environment side:
    integrator drifts on accelerometer bias (hence the leaky form), and per
    `perception-error.md` the vision channels are too noisy to correct that drift. Better
    altitude control, not a solved problem.
-3. **`camera.py`'s docstring** still contradicts the corrected `CONVENTIONS.md`.
-4. **Entropy bonus has zero gradient into either trunk**, because `log_std` is
+3. **Entropy bonus has zero gradient into either trunk**, because `log_std` is
    state-independent — exploration is a fixed isotropic blob the policy cannot modulate by
    situation. Consistent with `--ent-coef` 0.005 → 0.001 buying real accuracy; that lever
    is not exhausted.
