@@ -326,6 +326,21 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--promote-rate", type=float, default=0.70)
     p.add_argument("--demote-rate", type=float, default=0.25)
     p.add_argument("--time-penalty-rate", type=float, default=0.80)
+    # The per-gate rate the schedule promotes and demotes on. Exposed because the shipped
+    # 0.60 turned out to sit ABOVE what the architecture reaches: `vq2_arch1` ran the full
+    # 200M steps and saturated at gate_rate 0.458 (+0.004 over its last 50M), and
+    # `vq2_ladder1` was still at gates_per_episode=3 with n_promotions=0 after 95M. A gate
+    # nothing can pass is not a curriculum, it is a freeze -- the policy trains forever on
+    # the first three gates and never sees the rest of the course.
+    #
+    # 0.60 was justified as "roughly twice the baseline" from a measured 0.291. That figure
+    # is stale: under the current pad-only spawns the reactive baseline measures 0.412, and
+    # under the old mix 0.350 (`evalsuite/_probe_noise_ceiling.py`). Left at 0.60 so no
+    # existing run changes behaviour; set it explicitly to something reachable.
+    p.add_argument("--gate-rate-promote", type=float, default=0.60,
+                   help="per-gate rate above which the curriculum promotes")
+    p.add_argument("--gate-rate-demote", type=float, default=0.30,
+                   help="per-gate rate below which it demotes")
     p.add_argument("--curriculum-window", type=int, default=200)
     p.add_argument("--curriculum-hold", type=int, default=5)
 
@@ -399,6 +414,8 @@ def run(args: argparse.Namespace) -> dict:
             window=args.curriculum_window,
             hold_updates=args.curriculum_hold,
             gates_start=args.gates_per_episode,
+            gate_rate_promote=args.gate_rate_promote,
+            gate_rate_demote=args.gate_rate_demote,
             frozen=args.no_curriculum,
         )
     )
