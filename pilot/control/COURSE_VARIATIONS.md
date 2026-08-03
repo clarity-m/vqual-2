@@ -1,6 +1,33 @@
 # Course variations — a tolerance envelope around a lap we intend to memorize
 
-2026-08-02. Code: `coursevar.py` (deform + route solve), `coursevar_sheet.py` (render).
+2026-08-02. Code: `coursevar.py` (deform + route solve), `coursevar_sheet.py` (render),
+`coursevar_reward.py` (measures the spec's reward against a route).
+
+## Picking this up
+
+Everything lives on branch **`worktree-vq2-reward-eval`**, which already contains
+`worktree-vq2-reward-merge` (merged in at `b192aa8`, clean). To take it:
+
+```
+git merge worktree-vq2-reward-eval        # from your own worktree, tree clean
+```
+
+That brings three new modules, this doc, and **two edits inside `surrogate/`** — the
+race-start spawn (`env.py`) and a corrected docstring (`camera.py`), both at `6d54f3d`.
+Those are the only files touched outside the new modules, and neither exists on any
+other branch: a merge to master from a branch other than this one silently drops them.
+
+DONE — course variations (300 reviewed and signed off), the spline route generator,
+the observed race-start geometry, and a measurement of `ROUTE_REWARD_SPEC` section 4
+that characterizes both of its defects with fixes demonstrated.
+
+NOT DONE, and it is the substantive remainder: **the route reward is not wired into
+`env.py`.** The reward there is still `k_progress * prog`, the old straight-line closure
+term. `coursevar_reward.py` proves the route works as a reward reference and proves what
+breaks; it is a harness, connected to nothing that trains. Wiring it needs routes
+precomputed per pool course, a batched projection across `n_envs` rows per step (the
+solver here is per-course Python), and the term itself in `env.py`. The deformation is
+likewise a standalone bank — `vq2course.py` still builds the pool its own way.
 
 ## The decision this rests on
 
