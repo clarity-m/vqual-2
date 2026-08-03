@@ -102,6 +102,76 @@ class ActionMap:
         return 0.5 * (lo + hi)
 
 
+# Channel indices into the 73-D observation. Verified against `interface.Observation`
+# rather than counted by hand -- see NETWORK_ARCHITECTURE.md.
+ROLL_INDEX = 54
+PITCH_INDEX = 55
+
+
+class ResidualThrustMap:
+    """Action map whose thrust channel is a RESIDUAL about attitude-compensated hover.
+
+    WHY. A multirotor's thrust must rise as `1/(cos roll * cos pitch)` merely to hold
+    altitude, because thrust acts along body -z and only its vertical component fights
+    gravity. Under the plain affine map the network has to learn that trigonometry
+    implicitly, from reward, through a tanh -- and the correction is SMALLER THAN ITS OWN
+    EXPLORATION NOISE:
+
+        attitude      thrust correction needed     as a multiple of exploration sigma
+        10 deg        0.0084                       0.10
+        15 deg        0.0194                       0.24
+        20 deg        0.0358                       0.43
+        run1 measured deficit 0.0370               0.45
+
+    run1 flew at 14.5 deg bank / 14.1 deg nose-down commanding 0.278 where 0.315 was
+    needed, and 55.5% of its episodes ended on the floor. That deficit is the size of the
+    compensation term. The policy cannot separate a systematic 0.45-sigma bias from the
+    noise it is exploring with, so it never learns it cleanly.
+
+    This moves the term into the mapping. `u[2] = 0` then means "hold altitude at the
+    current attitude" whatever that attitude is, and the network only has to learn the
+    residual -- the part that actually depends on where the gate is. It also makes the
+    correct thrust head bias exactly 0.
+
+    The attitude used is the MEASURED roll/pitch out of the observation, never truth, so
+    training and deployment compute the identical command from the identical input.
+    """
+
+    def __init__(self, base: ActionMap, hover_thrust: float, span: float = 0.30,
+                 min_cos: float = 0.5) -> None:
+        self.base = base
+        self.hover_thrust = float(hover_thrust)
+        self.span = float(span)
+        # Clamp at 60 deg: beyond that the 1/cos blows up and would demand thrust the
+        # aircraft does not have. A drone at 60 deg of combined tilt is not holding
+        # altitude anyway, and saturating is honest where extrapolating is not.
+        self.min_cos = float(min_cos)
+        self.rate_cap = base.rate_cap
+        self.thrust_floor = base.thrust_floor
+        self.source = base.source + "+residual"
+
+    def hover_for(self, roll, pitch):
+        """Thrust that holds altitude at this attitude."""
+        c = np.cos(np.asarray(roll, dtype=np.float32)) * np.cos(np.asarray(pitch, dtype=np.float32))
+        c = np.maximum(np.abs(c), self.min_cos)
+        return np.clip(self.hover_thrust / c, self.thrust_floor, 1.0)
+
+    def __call__(self, u: np.ndarray, roll=None, pitch=None) -> np.ndarray:
+        a = np.asarray(u, dtype=np.float32)
+        single = a.ndim == 1
+        a2 = np.atleast_2d(np.clip(a, -1.0, 1.0))
+        if roll is None or pitch is None:
+            raise ValueError("ResidualThrustMap needs measured roll and pitch")
+        r = np.asarray(roll, dtype=np.float32).reshape(-1)
+        p = np.asarray(pitch, dtype=np.float32).reshape(-1)
+        out = np.empty_like(a2)
+        out[:, 0] = a2[:, 0] * self.rate_cap
+        out[:, 1] = a2[:, 1] * self.rate_cap
+        out[:, 2] = np.clip(self.hover_for(r, p) + self.span * a2[:, 2],
+                            self.thrust_floor, 1.0)
+        return out[0] if single else out
+
+
 def resolve_action_map(require_surrogate: bool = False) -> ActionMap:
     """Import the surrogate's mapping, else the documented fallback."""
     try:
