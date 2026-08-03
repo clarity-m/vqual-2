@@ -36,13 +36,68 @@ A deformed course carries no `edge_d_m` / `edge_bearing_deg`, so `cv.sanity_chec
 not apply to it by design — there is no drawn edge table to reconcile against.
 
 Validity is judged by eye against the mapped course, not by an acceptance predicate.
-`geometry_faults()` only removes courses that are not flyable at all (sub-5 m legs,
-gates inside one another, turn reversals) so review time isn't spent on obvious junk.
+`geometry_faults()` removes only what no reviewer should have to spot: sub-5 m legs, gates
+displaced into one another, and corners sharper than the real course has (see the turn
+filter below).
 
-## The route solver — two corrections to spec section 3
+## The route is a spline, not a pursuit path
 
-The spec's pursuit ODE does not run as written. Both failures were reproduced against
-the real `course_vq2` package before being fixed.
+`spline_route()` is the generator. A centripetal Catmull-Rom curve is interpolated
+through the 17 gate centres, arc-length resampled at 0.25 m, and given a speed profile
+that respects the cornering limit (`v ≤ √(a_lat/κ)`) with forward and backward passes for
+braking and acceleration — so it is a trajectory a drone could fly, not a drawing.
+
+**Why it replaced the pursuit ODE.** The spec's generator drives a waypoint *pair* offset
+along each gate normal, which makes every gate a **vertex**: the path arrives, stops
+turning, and leaves. On this course that produced hairpins at 6-7-8 sharp enough to read
+as doubling back, and no racing line does that. A spline turns *about* the gates rather
+than *at* them, so a corner has an entry, an apex and an exit.
+
+| | pursuit ODE | spline |
+|---|---|---|
+| min turn radius (nominal) | **0.32 m** | **3.18 m** |
+| gate crossing distance | ≤ 0.126 m | 0 by construction |
+| speed in tightest corner | — | 6.2 m/s (from 8.0) |
+
+Because the centres are interpolated exactly, crossing *distance* stops being the
+interesting number and crossing *angle* takes over: a gate is a square hole, so meeting
+its plane at θ off the normal narrows the usable opening to `inner_m · cos θ`.
+`gate_crossings()` reports both. On the nominal course the worst is **gate 7 at 46.2°,
+leaving a 1.04 m opening** — passable, and far better than the 85.3° the straight chain
+implies, because the spline is already turning as it arrives.
+
+Centripetal parameterization (α = 0.5) matters here: uniform Catmull-Rom forms cusps and
+self-intersecting loops exactly where control points turn sharply, which on this course is
+gates 7, 9 and 13.
+
+## The turn filter — and a bug in the first version of it
+
+The sharpest corner on the **measured** course is 76.5° (gate 13). Independent per-gate
+displacement readily invents corners far sharper, and a 120° hairpin is not a deformation
+of this course — it is a different course.
+
+The first version of `geometry_faults()` capped turns at an absolute 150°. That is above
+anything the deformation can produce, so it filtered **nothing**: measured over 120
+variations, **63 carried a turn past 90°** — an actual double-back — and the filter passed
+every one. A bound has to sit inside the distribution to bound anything.
+
+Now two limits, both needed:
+
+* `MAX_TURN_DEG = 90` — absolute; past this the route doubles back on itself.
+* `TURN_MARGIN_DEG = 20` — per gate, against the nominal turn **at that gate**, so a
+  corner that is straight on the real course cannot become a corner here.
+
+This costs yield: ~9% at 3–6 gates moving 2–8 m, against ~90% before. Rejection is cheap
+(0.4 s per 40 kept) so the range is kept rather than traded away, but the accepted set is
+**selection-biased and that is the intended behaviour**: a gate at a corner cannot move far
+in an arbitrary direction and still leave the course recognisable, so corner gates are
+displaced less, and along-track more than across-track. Realized median displacement is
+3.9 m against the 2–8 m drawn. All 16 movable gates still appear.
+
+## The pursuit solver — two corrections to spec section 3
+
+`solve_route()` is kept for comparison and because the findings below are about the spec,
+not about this module. Both failures were reproduced against the real `course_vq2` package.
 
 **1. The phase switch has no hysteresis, so it deadlocks at gate 0.** The spec switches
 from the approach waypoint to the punch-through waypoint when "the approach-side distance
@@ -70,10 +125,8 @@ bandwidth:
 
 Fixed by holding the approach waypoint until it is reached, whatever the plane does
 meanwhile. With both corrections the nominal course solves **17/17 gates, worst miss
-0.126 m** (spec acceptance is 0.55 m), 263 m long, peak lateral accel 8.6 m/s² < 12.
-
-Yield over deformed courses: **~95%**, zero route failures — the rejects are the geometry
-filter catching gates displaced into each other.
+0.126 m** (spec acceptance is 0.55 m), 263 m long, peak lateral accel 8.6 m/s² < 12 —
+correct, but with the 0.32 m min turn radius that sent us to the spline instead.
 
 Note also that ζ = 1.0 does **not** give "no overshoot by construction" as §3.1 claims:
 `sat()` is active 1–5% of steps at spec parameters and 44% at the ωn the retry ladder
@@ -115,6 +168,10 @@ python coursevar_sheet.py --n 300 --out variations
 Deterministic in `--seed0`, so the same 300 come back on demand and the PNGs are
 reproducible output rather than precious data — they are gitignored for that reason.
 
+Yield is ~9% under the turn filter; generation is fast enough that this is irrelevant.
+
+Yield is ~9% under the turn filter; generation is fast enough that this is irrelevant.
+
 Images are `v000.png` upward, **sorted by max displacement**, so the mild cases come
 first and the marginal ones cluster at the end; the point where they stop looking like
 VQ2 is the number worth knowing. Every image is drawn on **identical axes** — per-image
@@ -123,5 +180,6 @@ reviewed.
 
 Each frame carries the mapped course as a grey ghost (chain + its solved route), this
 variation's route in teal, and displaced gates in rust with a leader back to where the
-map puts them. Plan view on top, elevation below. Screen x is `-world_x` so the lap reads
+map puts them. The header carries route length, min turn radius, sharpest gate turn, and
+the worst gate-plane crossing angle. Plan view on top, elevation below. Screen x is `-world_x` so the lap reads
 left-to-right, with y flipped to match so handedness survives.

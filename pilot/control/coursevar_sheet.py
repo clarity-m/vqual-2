@@ -70,6 +70,7 @@ def frame(kept, nom_route, pad=6.0):
 
 
 def render(var, route, nom_route, path, box, index=None):
+    ang, _eff = C.gate_crossings(var.course, route)
     P = np.asarray(var.course.positions, float)
     Q = np.asarray(var.nominal, float)
     x0, x1, y0, y1, z0, z1 = box
@@ -141,8 +142,11 @@ def render(var, route, nom_route, path, box, index=None):
     fig.text(0.035, 0.958, "moved  %s" % moved, fontsize=9.5, color=MOVED,
              fontfamily="monospace", va="top")
     fig.text(0.990, 0.988,
-             "route %.0f m   worst gate miss %.2f m   max lat %.1f m/s²"
-             % (route.length_m, np.nanmax(route.miss), C.max_lateral_accel(route)),
+             "route %.0f m   min turn radius %.1f m   sharpest turn %.0f°   "
+             "tightest gate %d at %.0f° off normal"
+             % (route.length_m, C.min_turn_radius(route),
+                float(np.max(C.turn_angles(var.course.positions))),
+                int(np.argmax(ang)), float(np.max(ang))),
              fontsize=9, color=GHOST, fontfamily="monospace", va="top", ha="right")
     ax.legend(handles=[Line2D([], [], color=GHOST, lw=1.6, label="VQ2 as mapped"),
                        Line2D([], [], color=ROUTE, lw=3.0, label="this variation"),
@@ -173,7 +177,7 @@ def main():
     if stats["route_fail_gate"]:
         print("  route failures by gate:", dict(sorted(stats["route_fail_gate"].items())))
 
-    nom_route = C.solve_route(cv.load())
+    nom_route, _k = C.spline_route(cv.load())
     if a.sort == "shift":
         kept.sort(key=lambda k: float(np.max(k[0].shift_m)))
     box = frame(kept, nom_route)

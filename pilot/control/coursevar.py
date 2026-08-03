@@ -1,10 +1,10 @@
 """coursevar -- VQ2 course variations and their solved reference routes.
 
-    from coursevar import deform, solve_route, generate
+    from coursevar import deform, spline_route, generate
 
-    var  = deform(seed=7)                  # one displaced course + what moved
-    rt   = solve_route(var.course)         # the reference path through it
-    bank = generate(400)                   # a few hundred, auto-filtered
+    var    = deform(seed=7)                # one displaced course + what moved
+    rt, k  = spline_route(var.course)      # the smooth path the gates sit on
+    bank   = generate(400)                 # a few hundred, auto-filtered
 
 PURPOSE. We intend the policy to LEARN THIS LAP. These variations are not samples
 from the map's measurement posterior -- they are a deliberate tolerance envelope
@@ -191,6 +191,104 @@ def solve_route(course, wn=1.5, zeta=1.0, L=3.0, a_max=12.0, v_max=8.0, dt=0.02,
     return Route(poly, s, miss, True, speed=spd)
 
 
+def _catmull_rom(P, per_seg=60, alpha=0.5):
+    """Centripetal Catmull-Rom through every point in P.
+
+    Interpolating, so the curve passes through each gate centre exactly. Centripetal
+    parameterization (alpha = 0.5) rather than uniform: uniform Catmull-Rom forms
+    cusps and self-intersecting loops exactly where the control points turn sharply,
+    which on this course is gates 7, 9 and 13 -- the corners that matter most.
+
+    Ends are extrapolated by reflecting the first and last segment, so the curve
+    starts and ends with the heading the course implies rather than a phantom corner.
+    """
+    P = np.asarray(P, float)
+    ext = np.vstack([2 * P[0] - P[1], P, 2 * P[-1] - P[-2]])
+    out = []
+    for i in range(len(ext) - 3):
+        p0, p1, p2, p3 = ext[i:i + 4]
+        t = [0.0]
+        for a, b in ((p0, p1), (p1, p2), (p2, p3)):
+            t.append(t[-1] + max(float(np.linalg.norm(b - a)), 1e-9) ** alpha)
+        t0, t1, t2, t3 = t
+        tt = np.linspace(t1, t2, per_seg, endpoint=(i == len(ext) - 4))
+        a1 = ((t1 - tt)[:, None] * p0 + (tt - t0)[:, None] * p1) / (t1 - t0)
+        a2 = ((t2 - tt)[:, None] * p1 + (tt - t1)[:, None] * p2) / (t2 - t1)
+        a3 = ((t3 - tt)[:, None] * p2 + (tt - t2)[:, None] * p3) / (t3 - t2)
+        b1 = ((t2 - tt)[:, None] * a1 + (tt - t0)[:, None] * a2) / (t2 - t0)
+        b2 = ((t3 - tt)[:, None] * a2 + (tt - t1)[:, None] * a3) / (t3 - t1)
+        out.append(((t2 - tt)[:, None] * b1 + (tt - t1)[:, None] * b2) / (t2 - t1))
+    return np.vstack(out)
+
+
+def _speed_profile(poly, v_max, a_lat, a_long):
+    """Curvature-limited speed, then forward/backward passes for longitudinal grip.
+
+    v <= sqrt(a_lat / kappa) is the cornering limit; the two passes then enforce that
+    the aircraft can actually brake into a corner and accelerate out of it. This is
+    what makes the route a trajectory a drone could fly rather than a drawing.
+    """
+    d1 = np.gradient(poly, axis=0)
+    d2 = np.gradient(d1, axis=0)
+    kappa = (np.linalg.norm(np.cross(d1, d2), axis=1)
+             / (np.linalg.norm(d1, axis=1) ** 3 + 1e-12))
+    v = np.minimum(v_max, np.sqrt(a_lat / np.maximum(kappa, 1e-9)))
+    ds = np.concatenate([[0.0], np.linalg.norm(np.diff(poly, axis=0), axis=1)])
+    for i in range(1, len(v)):
+        v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_long * ds[i]))
+    for i in range(len(v) - 2, -1, -1):
+        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_long * ds[i + 1]))
+    return v, kappa
+
+
+def spline_route(course, v_max=8.0, a_lat=12.0, a_long=8.0, spacing=SPACING,
+                 runout_m=6.0, yaw_fallback="bisector"):
+    """The reference route as a smooth spline the gates sit on.
+
+    Replaces the pursuit ODE of ROUTE_REWARD_SPEC section 3. That generator drove a
+    waypoint pair (approach, exit) offset along each gate normal, which turns every
+    gate into a VERTEX: the path arrives, stops turning, and leaves. On this course
+    that produced hairpins at 6-7-8 sharp enough to read as doubling back, and no
+    racing line does that. A spline turns ABOUT the gates instead of at them, so a
+    corner is an arc with an entry, an apex and an exit.
+
+    The gate centres are interpolated exactly, so the crossing distance is zero by
+    construction and the binding physical question becomes the crossing ANGLE -- see
+    `gate_crossings`.
+    """
+    P = np.asarray(course.positions, float)
+    n0 = cv.gate_normal(0, course, yaw_fallback)
+    n1 = cv.gate_normal(N_GATES - 1, course, yaw_fallback)
+    pts = np.vstack([P[0] - runout_m * n0, P, P[-1] + runout_m * n1])
+
+    dense = _catmull_rom(pts)
+    s = _arc(dense)
+    q = np.arange(0.0, s[-1], spacing)
+    poly = np.stack([np.interp(q, s, dense[:, k]) for k in range(3)], axis=1)
+    v, kappa = _speed_profile(poly, v_max, a_lat, a_long)
+    return Route(poly, q, np.zeros(N_GATES), True, speed=v), kappa
+
+
+def gate_crossings(course, route, yaw_fallback="bisector"):
+    """Per gate: how obliquely the route crosses its plane, and what aperture is left.
+
+    A gate is a square hole. Crossing its plane at angle `theta` off the normal
+    narrows the usable opening to `inner_m * cos(theta)`, so this -- not distance
+    from centre -- is what decides whether a smooth line physically fits through.
+    """
+    P = np.asarray(course.positions, float)
+    ang, eff = np.zeros(N_GATES), np.zeros(N_GATES)
+    tan = np.gradient(route.poly, axis=0)
+    tan /= np.linalg.norm(tan, axis=1)[:, None] + 1e-12
+    for g in range(N_GATES):
+        j = int(np.argmin(np.linalg.norm(route.poly - P[g], axis=1)))
+        n = cv.gate_normal(g, course, yaw_fallback)
+        c = abs(float(tan[j] @ n))
+        ang[g] = math.degrees(math.acos(max(-1.0, min(1.0, c))))
+        eff[g] = course.inner_m * c
+    return ang, eff
+
+
 def _arc(traj):
     t = np.asarray(traj)
     if len(t) < 2:
@@ -215,15 +313,47 @@ def _resample(traj, dt, spacing=SPACING):
 
 MIN_EDGE_M = 5.0          # a leg shorter than this is not a leg
 MIN_SEP_M = 3.0           # two gates closer than this overlap in a 2.7 m frame
-MAX_TURN_DEG = 150.0      # a reversal, not a corner
+# Turn limits. The sharpest corner on the MEASURED course is 76.5 deg at gate 13, so
+# a variation carrying a 120 deg hairpin is not a deformation of this course -- it is
+# a different course, and one no racing line flies. Two bounds, both needed:
+#   MAX_TURN_DEG  absolute: past 90 deg the route doubles back on itself.
+#   TURN_MARGIN   per gate, against the nominal turn AT THAT GATE, so a corner that is
+#                 straight on the real course cannot become a corner here.
+# An earlier version of this filter used a single absolute cap of 150 deg, which is
+# above anything the deformation can produce: it passed 63 of 120 courses containing a
+# turn past 90 deg. Bounds have to sit inside the distribution to filter anything.
+MAX_TURN_DEG = 90.0
+TURN_MARGIN_DEG = 20.0
+
+
+def turn_angles(P):
+    """Per-gate heading change, degrees. 0 is straight through, 180 a full reversal."""
+    P = np.asarray(P, float)
+    t = np.zeros(N_GATES)
+    for g in range(1, N_GATES - 1):
+        u, v = P[g] - P[g - 1], P[g + 1] - P[g]
+        c = float(u @ v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
+        t[g] = math.degrees(math.acos(max(-1.0, min(1.0, c))))
+    return t
+
+
+_NOMINAL_TURNS = None
+
+
+def nominal_turns():
+    global _NOMINAL_TURNS
+    if _NOMINAL_TURNS is None:
+        _NOMINAL_TURNS = turn_angles(cv.load().positions)
+    return _NOMINAL_TURNS
 
 
 def geometry_faults(course):
     """Automatic rejects -- the things no human should have to spot by eye.
 
-    Deliberately NOT a shape test. Whether a variation is still recognisably the
-    VQ2 course is the judgement being asked of the reviewer; this only removes the
-    ones that are not a flyable course at all.
+    Deliberately NOT a full shape test. Whether a variation is still recognisably the
+    VQ2 course is the judgement being asked of the reviewer; this removes only the
+    ones that are not a flyable course at all, or that manufacture a corner sharper
+    than anything the real course has.
     """
     P = np.asarray(course.positions, float)
     f = []
@@ -235,12 +365,12 @@ def geometry_faults(course):
             d = float(np.linalg.norm(P[a] - P[b]))
             if d < MIN_SEP_M:
                 f.append("gates %d and %d %.1f m apart" % (a, b, d))
+    t, tn = turn_angles(P), nominal_turns()
     for g in range(1, N_GATES - 1):
-        u, v = P[g] - P[g - 1], P[g + 1] - P[g]
-        cosa = float(u @ v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
-        turn = math.degrees(math.acos(max(-1.0, min(1.0, cosa))))
-        if turn > MAX_TURN_DEG:
-            f.append("gate %d turns %.0f deg" % (g, turn))
+        if t[g] > MAX_TURN_DEG:
+            f.append("gate %d turns %.0f deg" % (g, t[g]))
+        elif t[g] - tn[g] > TURN_MARGIN_DEG:
+            f.append("gate %d turns %.0f deg vs %.0f nominal" % (g, t[g], tn[g]))
     return f
 
 
@@ -260,7 +390,7 @@ def generate(n=400, seed0=0, max_tries=None, progress=None, **kw):
         if geometry_faults(var.course):
             stats["geometry"] += 1
             continue
-        rt = solve_route(var.course)
+        rt, _k = spline_route(var.course)
         if not rt.ok:
             stats["route"] += 1
             g = int(rt.fail_gate)
@@ -271,6 +401,18 @@ def generate(n=400, seed0=0, max_tries=None, progress=None, **kw):
         if progress and len(kept) % progress == 0:
             print("  %d/%d kept (%d tried)" % (len(kept), n, stats["tried"]))
     return kept, stats
+
+
+def min_turn_radius(route):
+    """Tightest radius anywhere on the route, metres. The number that says whether a
+    corner reads as a turn or as a hairpin."""
+    if len(route.poly) < 5:
+        return float("inf")
+    d1 = np.gradient(route.poly, axis=0)
+    d2 = np.gradient(d1, axis=0)
+    k = (np.linalg.norm(np.cross(d1, d2), axis=1)
+         / (np.linalg.norm(d1, axis=1) ** 3 + 1e-12))
+    return float(1.0 / max(float(np.nanmax(k)), 1e-9))
 
 
 def max_lateral_accel(route):
