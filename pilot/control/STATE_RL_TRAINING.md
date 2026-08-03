@@ -74,6 +74,27 @@ measured, none of them the optimiser:
   **ramped through**, not parked at. Anchored on absolute `global_step` so a resume rejoins
   the schedule instead of restarting it at zero — checked across a resume, 0.16 → 0.38.
 
+  **Do NOT combine the ramp with a warm start. Measured, not predicted.** `runB1` resumed at
+  `noise_scale=0` degraded immediately: policy loss went **positive on nearly every update**,
+  KL ran 0.02–0.086 against a 0.03 target, per-gate fell **0.25 → 0.03–0.07** and collisions
+  climbed 0.36 → 4.7 per episode over 25 updates.
+
+  The cause is distribution shift, not difficulty. The champion's representation *and its
+  obs-normalizer statistics* were fitted to noisy observations. Clean data is not an easier
+  version of that input, it is a different one: `conf` was 0.78 ± 0.1 and becomes exactly
+  1.0, a permanent +2σ in the normalized vector, and `pose_valid`, staleness and latency
+  pin the same way. Several of the 73 dimensions sit at values the network never saw.
+
+  It is also pointless even if it recovered: the ramp ends at `noise_scale = 1.0`, which is
+  where the champion started, so the whole trajectory is *break what works, relearn it
+  clean, relearn it noisy*. The ramp is a **from-scratch** curriculum. Use it with no
+  `--resume`, or not at all.
+
+  A separate bug found in the same run and fixed: `_CLEAN` had `max_range_m = 120 m` and
+  `min_cos_visible = 0`, so scale 0 was a *superhuman* sensor reporting 7.2-px gates and
+  edge-on gates, not merely an error-free one. Visibility limits now take the good end of
+  their own measured range.
+
 ## The reward-hacking episode, because it will recur
 
 `runA` (30 M steps) had the progress term as textbook potential-based shaping,
