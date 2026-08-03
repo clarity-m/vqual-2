@@ -10,10 +10,20 @@ body-forward BELOW image centre, at
 
 so the vertical span about body-forward is +49.4 deg (up) to -9.4 deg (down), not the
 symmetric +-29.4 deg a naive reading gives. That narrow lower edge is the binding
-constraint on this course: a gate at own altitude renders low, and pitching down to
-accelerate pushes it lower still. `selfcheck.py` asserts the 296 directly, because a
-sign flip here would produce a surrogate in which gates are visible exactly when they
-are not, and the policy would learn to look the wrong way.
+constraint on this course: a gate at own altitude already renders at 296, just 9.4 deg
+off the bottom edge, so anything below own altitude is lost fast.
+
+The attitude that costs you is nose-UP, not nose-down. Pitching nose-DOWN swings the
+camera toward the horizon and lifts a gate at own altitude TOWARD image centre -- at
+20 deg nose-down it renders at exactly 180 -- which is why the vehicle starts pitched
+20 deg down with the gate centred. Pitching nose-UP to brake is what pushes it out the
+bottom: at +10 deg it is already at 365 of 360, i.e. gone. (An earlier version of this
+paragraph had that backwards, saying nose-down pushed gates lower. The CODE was always
+right; only the prose was inverted. Verified by sweeping pitch through `project()`.)
+
+`selfcheck.py` asserts the 296 directly, because a sign flip here would produce a
+surrogate in which gates are visible exactly when they are not, and the policy would
+learn to look the wrong way.
 
 The horizontal half-angle is atan(320/320) = 45 deg, i.e. the 90 deg the spec calls
 "VFoV" and which is really the HORIZONTAL FoV.

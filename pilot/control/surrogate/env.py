@@ -263,9 +263,38 @@ class EnvConfig:
     # normal, mid-course, hover, corridor-offset, no-gate-visible. The last three cover
     # D6's recovery handback, which lands at hover with an arbitrary corridor offset and
     # possibly nothing in frustum.
-    start_probs: tuple = (0.50, 0.25, 0.12, 0.08, 0.05)
+    # normal, mid-course, hover, corridor-offset, no-gate-visible.
+    #
+    # MID-COURSE IS OFF (was 0.25). Decision: every episode starts at gate 0, because we
+    # intend the policy to learn THIS lap rather than to be robust to being dropped into
+    # the middle of it. `a0 = where(mode == 1, random, 0)`, so mode 1 is the only mode
+    # that leaves gate 0 and zeroing it is the whole change.
+    #
+    # What that costs, recorded so it is not rediscovered the hard way: mid-course spawns
+    # were buying COVERAGE, not variety. With `collision_terminates=True` a policy that
+    # dies at gate 3 never sees gates 4-16, and course deformation does not carry it
+    # downcourse -- back-half exposure is now gated on front-half reliability. The lever
+    # that recovers it without reintroducing mid-course spawns is
+    # `collision_terminates=False` (architecture E5): contact costs `k_collision` and
+    # hands back to a recovered state, so one gate-0 episode still reaches the back half.
+    start_probs: tuple = (0.50, 0.00, 0.12, 0.08, 0.05)
     cruise_speed_mps: float = 10.0
     start_speed_frac: tuple = (0.35, 1.05)
+    # OBSERVED start state, VQ2: the vehicle sits on a platform ~10 m out, level with
+    # gate 0, AT REST, pitched ~20 deg nose-down so the 20-deg-UP camera looks ahead.
+    #
+    # The pitch is not cosmetic. `camera.py` puts body-forward at image row 296 of 360
+    # with only 9.4 deg of frame below it, and gate 0 sits at the vehicle's own altitude:
+    # spawning level renders it at 296, hard against the bottom edge, while -20 deg
+    # renders it at 180, dead centre. Measured on the old level spawn, 11% of forward
+    # starts had gate 0 out of frame entirely.
+    start_pitch_rad: float = -0.349        # -20 deg; negative is nose-down, see vmath
+    # The platform is why a rest start does not simply fall. Modelled as a launch pad
+    # supporting the vehicle at its spawn altitude until it flies off -- without it a
+    # zero-velocity spawn free-falls from t=0, which is the one thing the real start
+    # demonstrably does NOT do.
+    launch_pad: bool = True
+    launch_pad_r_m: float = 1.5
 
     # -- perception ----------------------------------------------------------
     noise: noise_mod.NoiseParams = field(default_factory=noise_mod.NoiseParams)
@@ -314,6 +343,9 @@ class VecSurrogate:
         self.g_nrm[:, :, 0] = 1.0
         self.n_gates = np.full(n, self.cfg.n_gates_range[0], dtype=np.int64)
         self.start_p = np.zeros((n, 3))
+        self.pad_z = np.zeros(n)
+        self.pad_xy = np.zeros((n, 2))
+        self.on_pad = np.zeros(n, dtype=bool)
         self.z_ceil = np.full(n, -12.0)
         self.corridor_r = np.full(n, 14.0)
 
@@ -485,8 +517,12 @@ class VecSurrogate:
         p0[:, 2] = np.minimum(p0[:, 2], -alt_lo)
         p0[:, 2] = np.maximum(p0[:, 2], self.z_ceil[mask] + 1.2)
 
-        speed = np.where(mode == 2, rng.uniform(0.0, 1.2, m),
-                         rng.uniform(*cfg.start_speed_frac, size=m) * cfg.cruise_speed_mps)
+        # Mode 0 is the race start: on the platform, stationary. Modes 2-4 model D6's
+        # recovery handback, which happens in flight and keeps its own speeds.
+        speed = np.where(mode == 0, 0.0,
+                         np.where(mode == 2, rng.uniform(0.0, 1.2, m),
+                                  rng.uniform(*cfg.start_speed_frac, size=m)
+                                  * cfg.cruise_speed_mps))
         v0 = gn * speed[:, None]
 
         yaw_path = np.arctan2(gn[:, 1], gn[:, 0])
@@ -496,11 +532,18 @@ class VecSurrogate:
         yaw = np.where(mode == 4, yaw_path + away, yaw)
         roll = rng.normal(0.0, 0.06, m) * np.where(mode >= 2, 0.4, 1.0)
         pitch = rng.normal(0.0, 0.06, m) * np.where(mode >= 2, 0.4, 1.0)
+        # The race start is pitched nose-down on the pad; a recovery handback is not.
+        pitch = np.where(mode == 0, cfg.start_pitch_rad + rng.normal(0.0, 0.03, m), pitch)
         q0 = vmath.quat_from_euler(roll, pitch, yaw)
 
         self.p[mask] = p0
         self.v[mask] = v0
         self.q[mask] = q0
+        # The launch pad supports a race start until it flies off itself. Only mode 0
+        # gets one: a recovery handback happens in the air, with nothing underneath.
+        self.pad_z[mask] = p0[:, 2]
+        self.pad_xy[mask] = p0[:, :2]
+        self.on_pad[mask] = (mode == 0) if cfg.launch_pad else False
         self.active[mask] = a0
         self.t_s[mask] = 0.0
         self.t_gate[mask] = 0.0
@@ -745,6 +788,20 @@ class VecSurrogate:
         dt = self.dt_sub[:, None]
         self.p = self.p + self.v * dt + 0.5 * a_world * dt * dt
         self.v = self.v + a_world * dt
+
+        # -- launch pad --------------------------------------------------------
+        # z is DOWN-positive, so "resting on the pad" is p_z >= pad_z and sinking is
+        # v_z > 0. While supported the pad cancels exactly the sink and nothing else:
+        # no lateral friction, no torque, no assist. It stops being a floor once the
+        # vehicle has climbed 0.30 m clear of it or slid off the edge, and never
+        # re-engages, so it cannot be landed on and farmed mid-episode.
+        if self.cfg.launch_pad and np.any(self.on_pad):
+            d = np.linalg.norm(self.p[:, :2] - self.pad_xy, axis=1)
+            inside = self.on_pad & (d < self.cfg.launch_pad_r_m)
+            hold = inside & (self.p[:, 2] >= self.pad_z)
+            self.p[:, 2] = np.where(hold, self.pad_z, self.p[:, 2])
+            self.v[:, 2] = np.where(hold, np.minimum(self.v[:, 2], 0.0), self.v[:, 2])
+            self.on_pad = inside & (self.p[:, 2] > self.pad_z - 0.30)
         # NO SIGN FLIP. See the module docstring.
         omega = self.rgain * r_use
         self.q = vmath.quat_integrate(self.q, omega, self.dt_sub)
