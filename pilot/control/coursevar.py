@@ -241,9 +241,23 @@ def _speed_profile(poly, v_max, a_lat, a_long):
     return v, kappa
 
 
+SPAWN_BACK_M = 10.0        # observed: the drone starts ~10 m out, level with gate 0
+
+
 def spline_route(course, v_max=8.0, a_lat=12.0, a_long=8.0, spacing=SPACING,
-                 runout_m=6.0, yaw_fallback="bisector"):
+                 runout_m=SPAWN_BACK_M, yaw_fallback="bisector"):
     """The reference route as a smooth spline the gates sit on.
+
+    The lead-in runs back `runout_m` along gate 0's normal so the route STARTS WHERE
+    THE DRONE DOES. This is a reward correctness matter, not decoration: `s_0` is
+    initialized by nearest point, so a drone spawning behind the start of the line
+    pins to the first vertex with a large `d_perp`, and the corridor multiplier
+    `exp(-(d_perp/w)^2)` throttles the progress reward before the episode has begun.
+    At the old 6 m lead-in a drone spawning at the observed 10 m sat 4 m behind the
+    line and started every episode on a multiplier of 0.077.
+
+    Gate 0 measures vertical, so its normal is horizontal (z = 0.000) and running back
+    along it keeps the start level with gate 0, as observed.
 
     Replaces the pursuit ODE of ROUTE_REWARD_SPEC section 3. That generator drove a
     waypoint pair (approach, exit) offset along each gate normal, which turns every
